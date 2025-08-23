@@ -1,14 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { GameRoom } from '@/types/game'
+import { useEffect, useState } from 'react'
 import {
-  getGameRooms,
   createGameRoom,
-  joinGameRoom,
   createPlayer,
+  getGameRooms,
+  joinGameRoom,
 } from '@/lib/supabase/gameService'
+import type { GameRoom } from '@/types/game'
 import { generateGameId, generatePlayerId } from '@/utils/cardUtils'
 
 export default function RoomsPage() {

@@ -1,7 +1,6 @@
 'use client'
 
-import { Card as CardType } from '@/types/game'
-import { getCardDisplay } from '@/utils/cardUtils'
+import type { Card as CardType } from '@/types/game'
 
 interface CardProps {
   card: CardType
@@ -41,6 +40,8 @@ export function Card({
 
   return (
     <div
+      role="button"
+      tabIndex={isPlayable ? 0 : -1}
       className={`
         bg-white border-2 rounded-lg shadow-md flex flex-col items-center justify-center
         transition-all duration-200 select-none
@@ -51,6 +52,12 @@ export function Card({
         ${className}
       `}
       onClick={handleClick}
+      onKeyDown={(e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && isPlayable) {
+          e.preventDefault()
+          handleClick()
+        }
+      }}
     >
       <div className="font-bold">{card.rank}</div>
       <div className="text-lg">

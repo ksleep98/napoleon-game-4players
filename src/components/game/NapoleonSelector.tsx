@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Card as CardType, Player } from '@/types/game'
+import type { Card as CardType, Player } from '@/types/game'
 import { Card } from './Card'
 
 interface NapoleonSelectorProps {
@@ -35,7 +35,7 @@ export function NapoleonSelector({
     // パスの場合は次のプレイヤーに移行
     const currentIndex = players.findIndex((p) => p.id === currentPlayerId)
     const nextIndex = (currentIndex + 1) % players.length
-    const nextPlayerId = players[nextIndex].id
+    const _nextPlayerId = players[nextIndex].id
 
     // 全員がパスした場合は最初のプレイヤーが強制的にナポレオン
     if (nextIndex === 0) {
@@ -96,6 +96,7 @@ export function NapoleonSelector({
       {/* アクションボタン */}
       <div className="flex gap-4 justify-center">
         <button
+          type="button"
           onClick={handleNapoleonDeclaration}
           className="px-6 py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-lg transition-colors"
         >
@@ -103,6 +104,7 @@ export function NapoleonSelector({
         </button>
 
         <button
+          type="button"
           onClick={handlePass}
           className="px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white font-bold rounded-lg transition-colors"
         >

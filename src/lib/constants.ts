@@ -1,4 +1,4 @@
-import { Suit, Rank, Card } from '@/types/game'
+import type { Card, Rank, Suit } from '@/types/game'
 
 export const SUITS: Suit[] = ['spades', 'hearts', 'diamonds', 'clubs']
 

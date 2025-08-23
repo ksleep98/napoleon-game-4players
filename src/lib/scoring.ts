@@ -1,5 +1,5 @@
-import { GameState, GameResult, PlayerScore } from '@/types/game'
 import { NAPOLEON_RULES } from '@/lib/constants'
+import type { GameResult, GameState, PlayerScore } from '@/types/game'
 
 /**
  * ゲーム結果を計算して判定する

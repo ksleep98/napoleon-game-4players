@@ -1,5 +1,5 @@
-import { Card, Player } from '@/types/game'
 import { createGameDeck, GAME_CONFIG } from '@/lib/constants'
+import type { Card, Player } from '@/types/game'
 
 /**
  * Fisher-Yatesアルゴリズムを使ってカードをシャッフル

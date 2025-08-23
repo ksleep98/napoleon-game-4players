@@ -1,18 +1,18 @@
-import {
+import { NAPOLEON_RULES } from '@/lib/constants'
+import type {
   Card,
+  GamePhase,
   GameState,
+  PlayedCard,
   Player,
   Trick,
-  PlayedCard,
-  GamePhase,
 } from '@/types/game'
 import {
-  dealCards,
-  removeCardFromHand,
   canFollowSuit,
+  dealCards,
   generateGameId,
+  removeCardFromHand,
 } from '@/utils/cardUtils'
-import { NAPOLEON_RULES } from '@/lib/constants'
 
 /**
  * 新しいゲームを初期化

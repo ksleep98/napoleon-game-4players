@@ -1,5 +1,5 @@
+import type { GameResult, GameRoom, GameState } from '@/types/game'
 import { supabase } from './client'
-import { GameState, GameResult, GameRoom } from '@/types/game'
 
 /**
  * ゲーム状態をSupabaseに保存
@@ -195,7 +195,7 @@ export function subscribeToGameState(
  */
 export function subscribeToGameRoom(
   roomId: string,
-  onUpdate: (room: any) => void
+  onUpdate: (room: unknown) => void
 ) {
   const channel = supabase
     .channel(`room_${roomId}`)

@@ -218,6 +218,10 @@ npm run test:coverage # カバレッジ付きテスト
 
 ## 次のステップ
 
+0. **Supabase プロジェクト設定**
+
+   - src 配下のエラーと警告を修正してください
+
 1. **Supabase プロジェクト設定**
 
    - プロジェクト作成
@@ -234,3 +238,5 @@ npm run test:coverage # カバレッジ付きテスト
 - 2025-08-23: 初版作成
 - 2025-08-23: プロジェクトセットアップ完了、実行コマンド・設定詳細追記
 - 2025-08-23: Napoleon Game 実装中、Yarn→NPM 移行、Biome 導入、Tailwind CSS 修正
+
+- src 配下biomeのエラーと警告を修正してください

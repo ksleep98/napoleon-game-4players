@@ -1,20 +1,19 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { GameState, Player } from '@/types/game'
+import { useCallback, useEffect, useState } from 'react'
 import {
-  playCard,
-  setNapoleon,
-  setAdjutant,
   getCurrentPlayer,
   initializeGame,
+  playCard,
+  setAdjutant,
+  setNapoleon,
 } from '@/lib/gameLogic'
-import { canFollowSuit } from '@/utils/cardUtils'
 import {
-  saveGameState,
   loadGameState,
+  saveGameState,
   subscribeToGameState,
 } from '@/lib/supabase/gameService'
+import type { Card as CardType, GameState } from '@/types/game'
 
 export function useGameState(gameId?: string, playerNames?: string[]) {
   const [gameState, setGameState] = useState<GameState | null>(null)
@@ -87,7 +86,7 @@ export function useGameState(gameId?: string, playerNames?: string[]) {
 
   // ナポレオン宣言
   const handleSetNapoleon = useCallback(
-    async (playerId: string, napoleonCard?: any) => {
+    async (playerId: string, napoleonCard?: CardType) => {
       if (!gameState) return
 
       try {
@@ -108,7 +107,7 @@ export function useGameState(gameId?: string, playerNames?: string[]) {
 
   // 副官設定
   const handleSetAdjutant = useCallback(
-    async (adjutantCard: any) => {
+    async (adjutantCard: CardType) => {
       if (!gameState) return
 
       try {

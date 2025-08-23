@@ -1,18 +1,19 @@
 'use client'
 
-import { useState } from 'react'
 import { useParams } from 'next/navigation'
-import { useGameState } from '@/hooks/useGameState'
+import { useState } from 'react'
 import { GameBoard } from '@/components/game/GameBoard'
-import { PlayerHand } from '@/components/game/PlayerHand'
 import { GameStatus } from '@/components/game/GameStatus'
 import { NapoleonSelector } from '@/components/game/NapoleonSelector'
+import { PlayerHand } from '@/components/game/PlayerHand'
+import { useGameState } from '@/hooks/useGameState'
 import { calculateGameResult } from '@/lib/scoring'
+import type { Card as CardType } from '@/types/game'
 
 export default function GamePage() {
   const params = useParams()
   const gameId = params.gameId as string
-  const [currentPlayerId, setCurrentPlayerId] = useState<string>('player_1') // 実際の実装では認証から取得
+  const [currentPlayerId, _setCurrentPlayerId] = useState<string>('player_1') // 実際の実装では認証から取得
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
 
   const { gameState, loading, error, actions, utils } = useGameState(gameId)
@@ -35,6 +36,7 @@ export default function GamePage() {
           <div className="text-red-600 text-xl font-semibold mb-2">Error</div>
           <p className="text-red-600">{error}</p>
           <button
+            type="button"
             onClick={() => window.location.reload()}
             className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
           >
@@ -70,7 +72,7 @@ export default function GamePage() {
     setSelectedCardId(null)
   }
 
-  const handleNapoleonSelect = (playerId: string, napoleonCard?: any) => {
+  const handleNapoleonSelect = (playerId: string, napoleonCard?: CardType) => {
     actions.setNapoleon(playerId, napoleonCard)
   }
 
@@ -98,7 +100,7 @@ export default function GamePage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              {result.scores.map((score, index) => {
+              {result.scores.map((score, _index) => {
                 const player = gameState.players.find(
                   (p) => p.id === score.playerId
                 )
@@ -129,7 +131,10 @@ export default function GamePage() {
             </div>
 
             <button
-              onClick={() => (window.location.href = '/')}
+              type="button"
+              onClick={() => {
+                window.location.href = '/'
+              }}
               className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700"
             >
               Back to Home
@@ -172,7 +177,7 @@ export default function GamePage() {
                   player={currentPlayer}
                   isCurrentPlayer={isCurrentTurn}
                   onCardClick={handleCardClick}
-                  selectedCardId={selectedCardId}
+                  selectedCardId={selectedCardId || undefined}
                   playableCardIds={playableCards}
                   showCards={true}
                 />
@@ -181,6 +186,7 @@ export default function GamePage() {
                 {isCurrentTurn && selectedCardId && (
                   <div className="text-center">
                     <button
+                      type="button"
                       onClick={handlePlayCard}
                       className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors"
                     >
