@@ -27,7 +27,7 @@
 
 # GitHub 登録
 
-- GitHub リポジトリは「napoleon-game-4players」を想定
+- GitHub リポジトリは「napoleon-game-4players」
 - ブランチ戦略は Git Flow に準拠
   - main（本番リリース）
   - develop（開発用）
@@ -121,7 +121,116 @@ npm run test:watch    # Jest ウォッチモード
 npm run test:coverage # カバレッジ付きテスト
 ```
 
+# Napoleon Game 実装完了 ✅
+
+## 実装済み機能
+
+### 📁 Core Game Logic
+
+- ✅ `src/types/game.ts` - 型定義（Card, Player, GameState 等）
+- ✅ `src/lib/constants.ts` - ゲーム定数・デッキ作成
+- ✅ `src/utils/cardUtils.ts` - カードシャッフル・配布ロジック
+- ✅ `src/lib/gameLogic.ts` - ターンベースゲームロジック
+- ✅ `src/lib/scoring.ts` - 勝敗判定・スコア計算
+
+### 🗄️ Supabase Integration
+
+- ✅ `src/lib/supabase/client.ts` - データベース接続設定
+- ✅ `src/lib/supabase/gameService.ts` - ゲーム状態の保存・読込・リアルタイム監視
+- ✅ `src/lib/supabase/schema.sql` - データベーススキーマ
+- ✅ `.env.local.example` - 環境変数設定例
+
+### 🎮 UI Components
+
+- ✅ `src/components/game/Card.tsx` - カードコンポーネント
+- ✅ `src/components/game/PlayerHand.tsx` - プレイヤー手札表示
+- ✅ `src/components/game/GameBoard.tsx` - ゲームボード（4 人配置）
+- ✅ `src/components/game/NapoleonSelector.tsx` - ナポレオン宣言 UI
+- ✅ `src/components/game/GameStatus.tsx` - ゲーム状況表示
+
+### 📱 Pages & Hooks
+
+- ✅ `src/hooks/useGameState.ts` - ゲーム状態管理カスタムフック
+- ✅ `src/app/page.tsx` - ホームページ（ランディングページ）
+- ✅ `src/app/rooms/page.tsx` - ゲームルーム一覧
+- ✅ `src/app/game/[gameId]/page.tsx` - ゲームプレイページ
+
+## 実装済みゲーム仕様
+
+### 🎴 基本仕様
+
+- ✅ 4 人用ナポレオンゲーム
+- ✅ 48 枚カード使用（52 枚から 2 のカード 4 枚を除く）
+- ✅ 各プレイヤー 12 枚ずつ配布
+- ✅ 4 枚の隠しカード
+- ✅ Fisher-Yates アルゴリズムによるシャッフル
+
+### 🏆 ゲームフロー
+
+- ✅ ナポレオン宣言フェーズ
+- ✅ 副官選択（ナポレオンがカード指定可能）
+- ✅ ターン制カードプレイ
+- ✅ フォロー義務の実装
+- ✅ トリック勝者判定
+- ✅ スコア計算（ナポレオン 8 トリック以上で勝利）
+
+### 💾 データ管理
+
+- ✅ ゲーム状態の Supabase 保存
+- ✅ リアルタイム同期
+- ✅ ゲーム結果の記録
+- ✅ プレイヤー統計情報
+
+### 🎨 UI/UX
+
+- ✅ レスポンシブデザイン
+- ✅ カードアニメーション
+- ✅ 4 人プレイヤー配置（上下左右）
+- ✅ 進行状況表示
+- ✅ チーム表示（ナポレオン・副官・市民）
+
+## 環境・設定修正
+
+### 📦 パッケージ管理
+
+- ✅ Yarn → NPM 移行完了
+- ✅ `package-lock.json` 生成
+- ✅ `npm run dev` コマンド対応
+
+### 🛠️ 開発ツール
+
+- ✅ ESLint + Prettier → Biome 移行完了
+- ✅ コード品質向上・高速化
+- ✅ `.editorconfig` 設定
+
+### 🎨 スタイル設定
+
+- ✅ Tailwind CSS v3 対応（v4 互換性問題解決）
+- ✅ PostCSS 設定修正
+- ✅ 開発サーバー正常起動確認
+
+## 動作確認
+
+- ✅ `npm run dev` で開発サーバー起動（http://localhost:3001）
+- ✅ TypeScript 型チェック通過
+- ✅ Biome リント・フォーマット正常動作
+- ✅ Quick Start (Demo) 機能実装済み
+
+## 次のステップ
+
+1. **Supabase プロジェクト設定**
+
+   - プロジェクト作成
+   - `schema.sql` でテーブル作成
+   - 環境変数設定（`.env.local`）
+
+2. **4 人プレイヤーで COM ３人用の実装**
+
+   - 初期動作確認
+   - ４人用ルール追加
+
 # 更新履歴
 
 - 2025-08-23: 初版作成
 - 2025-08-23: プロジェクトセットアップ完了、実行コマンド・設定詳細追記
+- 2025-08-23: Napoleon Game 実装中、Yarn→NPM 移行、Biome 導入、Tailwind CSS 修正
