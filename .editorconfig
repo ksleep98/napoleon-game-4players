@@ -1,0 +1,72 @@
+# EditorConfig is awesome: https://EditorConfig.org
+
+# top-most EditorConfig file
+root = true
+
+# All files
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# JavaScript, TypeScript, JSX, TSX files
+[*.{js,jsx,ts,tsx}]
+indent_style = space
+indent_size = 2
+max_line_length = 80
+
+# JSON files
+[*.json]
+indent_style = space
+indent_size = 2
+insert_final_newline = false
+
+# CSS, SCSS files
+[*.{css,scss}]
+indent_style = space
+indent_size = 2
+
+# HTML files
+[*.html]
+indent_style = space
+indent_size = 2
+
+# Markdown files
+[*.md]
+trim_trailing_whitespace = false
+max_line_length = off
+
+# YAML files
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+# Package.json (specific formatting)
+[package.json]
+indent_style = space
+indent_size = 2
+
+# Next.js specific files
+[next.config.{js,mjs}]
+indent_style = space
+indent_size = 2
+
+# Prisma schema files
+[*.prisma]
+indent_style = space
+indent_size = 2
+
+# Environment files
+[.env*]
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Ignore some files
+[{.next/**,node_modules/**,dist/**,build/**}]
+charset = unset
+end_of_line = unset
+insert_final_newline = unset
+trim_trailing_whitespace = unset
+indent_style = unset
+indent_size = unset
