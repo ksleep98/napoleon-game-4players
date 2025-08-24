@@ -23,8 +23,7 @@
 #### ✅ Require status checks to pass before merging
 - **Require branches to be up to date before merging**: ON
 - **Status checks that are required**:
-  - `ci-pipeline` (push時のメインCI)
-  - `quality-check` (PR時の品質チェック)
+  - `ci-pipeline` (Push/PR時のCI/CDチェック)
 
 #### ✅ Require conversation resolution before merging
 - ON: すべてのコメントが解決済みであることを必須
