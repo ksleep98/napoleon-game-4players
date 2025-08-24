@@ -147,6 +147,7 @@ jobs:
         run: |
           # Create label if it doesn't exist
           gh label create "release" --description "Release PR" --color "0366d6" --repo "${{ github.repository }}" || true
+          gh label create "release" --description "Release PR" --color "0366d6" --repo "${{ github.repository }}" || true
 
           # Create PR from develop to main
           gh pr create \
@@ -183,6 +184,7 @@ jobs:
 
           The release notes above have been updated to reflect all latest changes.
 
+          _Updated: $(date '+%Y-%m-%d %H:%M:%S UTC')_" --repo "${{ github.repository }}"
           _Updated: $(date '+%Y-%m-%d %H:%M:%S UTC')_" --repo "${{ github.repository }}"
 
           echo "✅ Release PR #$PR_NUMBER updated successfully!"
