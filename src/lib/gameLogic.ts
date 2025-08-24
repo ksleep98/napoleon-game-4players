@@ -1,4 +1,3 @@
-import { NAPOLEON_RULES } from '@/lib/constants'
 import type {
   Card,
   GamePhase,
@@ -51,7 +50,7 @@ export function initializeGame(playerNames: string[]): GameState {
  */
 export function createNewTrick(): Trick {
   return {
-    id: `trick_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+    id: `trick_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
     cards: [],
     completed: false,
   }

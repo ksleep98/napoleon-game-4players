@@ -14,7 +14,7 @@ export default function Home() {
     const testPlayers = ['Alice', 'Bob', 'Charlie', 'Diana']
     const gameId = `quick_${Date.now()}_${Math.random()
       .toString(36)
-      .substr(2, 6)}`
+      .substring(2, 8)}`
 
     // テスト用のプレイヤーIDを保存
     localStorage.setItem('playerId', 'player_1')
