@@ -23,9 +23,8 @@
 #### ✅ Require status checks to pass before merging
 - **Require branches to be up to date before merging**: ON
 - **Status checks that are required**:
-  - `lint-and-type-check`
-  - `build`
-  - `test`
+  - `ci-pipeline` (push時のメインCI)
+  - `quality-check` (PR時の品質チェック)
 
 #### ✅ Require conversation resolution before merging
 - ON: すべてのコメントが解決済みであることを必須
