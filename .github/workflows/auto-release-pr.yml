@@ -59,11 +59,11 @@ jobs:
           # Get the latest commit from main branch
           git fetch origin main:main
 
-          # Get commits between main and develop
+          # Get commits between main and develop (always get latest changes)
           echo "## 📝 Changes for Release" > release_notes.md
           echo "" >> release_notes.md
 
-          # Get commit messages since main
+          # Get commit messages since main (including all recent changes)
           git log --oneline --no-merges main..develop >> commits.tmp
 
           if [ -s commits.tmp ]; then
@@ -147,6 +147,7 @@ jobs:
         run: |
           # Create label if it doesn't exist
           gh label create "release" --description "Release PR" --color "0366d6" --repo "${{ github.repository }}" || true
+          gh label create "release" --description "Release PR" --color "0366d6" --repo "${{ github.repository }}" || true
 
           # Create PR from develop to main
           gh pr create \
@@ -155,7 +156,6 @@ jobs:
             --title "🚀 Release" \
             --body "$RELEASE_BODY" \
             --label "release" \
-            --assignee "${{ github.actor }}" \
             --repo "${{ github.repository }}"
 
           echo "✅ Release PR created successfully!"
@@ -171,11 +171,20 @@ jobs:
           # Update existing PR description
           gh pr edit $PR_NUMBER --body "$RELEASE_BODY" --repo "${{ github.repository }}"
 
-          # Add comment about the update
+          # Add comment about the update with latest changes summary
+          latest_commit=$(git log --oneline --no-merges main..develop | head -n1)
+          total_commits=$(git rev-list --count main..develop)
+
           gh pr comment $PR_NUMBER --body "🔄 **Release PR Updated**
 
-          New changes have been merged to develop branch. The release notes above have been updated to reflect the latest changes.
+          New changes have been merged to develop branch:
 
+          **Latest commit**: \`$latest_commit\`
+          **Total commits ready for release**: $total_commits
+
+          The release notes above have been updated to reflect all latest changes.
+
+          _Updated: $(date '+%Y-%m-%d %H:%M:%S UTC')_" --repo "${{ github.repository }}"
           _Updated: $(date '+%Y-%m-%d %H:%M:%S UTC')_" --repo "${{ github.repository }}"
 
           echo "✅ Release PR #$PR_NUMBER updated successfully!"
