@@ -61,35 +61,8 @@ jobs:
           # Get the latest commit from main branch
           git fetch origin main:main
 
-          # Create release notes focusing on PR history
-          echo "## 🚀 Release Summary" > release_notes.md
-          echo "" >> release_notes.md
-
-          # Get merged PRs from commit messages (extract PR numbers)
-          git log --oneline --no-merges main..develop | grep -E '\(#[0-9]+\)' > pr_commits.tmp || echo "No PR commits found"
-
-          if [ -s pr_commits.tmp ]; then
-            echo "### 📋 Pull Requests Included:" >> release_notes.md
-            echo "" >> release_notes.md
-            while read line; do
-              # Extract PR title and number
-              pr_title=$(echo "$line" | sed 's/^[a-f0-9]* //')
-              echo "- $pr_title" >> release_notes.md
-            done < pr_commits.tmp
-            echo "" >> release_notes.md
-          fi
-
-          # Get total commit count and file changes summary
-          total_commits=$(git rev-list --count main..develop)
-          changed_files_count=$(git diff --name-only main..develop | wc -l)
-
-          echo "### 📊 Change Summary:" >> release_notes.md
-          echo "- **Commits**: $total_commits" >> release_notes.md
-          echo "- **Files Changed**: $changed_files_count" >> release_notes.md
-          echo "" >> release_notes.md
-
-          # Add deployment checklist
-          echo "## ✅ Pre-deployment Checklist" >> release_notes.md
+          # Create minimal release notes (detailed analysis will be added by pr-description.yml)
+          echo "## ✅ Pre-deployment Checklist" > release_notes.md
           echo "" >> release_notes.md
           echo "- [ ] All CI checks passing" >> release_notes.md
           echo "- [ ] Tests passing" >> release_notes.md
@@ -121,15 +94,18 @@ jobs:
             -d '{"name":"release","description":"Release PR","color":"0366d6"}' || true
 
           # Create PR from develop to main
+          # Prepare JSON payload with proper escaping
+          release_body_json=$(echo "$RELEASE_BODY" | jq -Rs .)
+
           pr_response=$(curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/${{ github.repository }}/pulls" \
-            -d '{
-              "title": "🚀 Release",
-              "head": "develop",
-              "base": "main",
-              "body": "'"$(echo "$RELEASE_BODY" | sed 's/"/\\"/g' | tr '\n' ' ')"'"
-            }')
+            -d "{
+              \"title\": \"🚀 Release\",
+              \"head\": \"develop\",
+              \"base\": \"main\",
+              \"body\": $release_body_json
+            }")
 
           pr_number=$(echo "$pr_response" | jq -r '.number')
 
@@ -149,13 +125,15 @@ jobs:
           # yamllint disable-line rule:truthy
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          # Update existing PR description
+          # Update existing PR description with proper JSON escaping
+          release_body_json=$(echo "$RELEASE_BODY" | jq -Rs .)
+
           curl -s -X PATCH -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER" \
-            -d '{
-              "body": "'"$(echo "$RELEASE_BODY" | sed 's/"/\\"/g' | tr '\n' ' ')"'"
-            }'
+            -d "{
+              \"body\": $release_body_json
+            }"
 
           # Add comment about the update with latest changes summary
           latest_commit=$(git log --oneline --no-merges main..develop | head -n1)
@@ -172,11 +150,13 @@ jobs:
 
           _Updated: $(date '+%Y-%m-%d %H:%M:%S UTC')_"
 
+          comment_body_json=$(echo "$comment_body" | jq -Rs .)
+
           curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/${{ github.repository }}/issues/$PR_NUMBER/comments" \
-            -d '{
-              "body": "'"$(echo "$comment_body" | sed 's/"/\\"/g' | tr '\n' ' ')"'"
-            }'
+            -d "{
+              \"body\": $comment_body_json
+            }"
 
           echo "✅ Release PR #$PR_NUMBER updated successfully!"
