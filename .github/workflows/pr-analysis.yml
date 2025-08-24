@@ -99,10 +99,10 @@ jobs:
           fi
         fi
         
-        # Set output
+        # Set output - escape for JSON
         {
           echo 'analysis_content<<EOF'
-          cat analysis.md
+          cat analysis.md | sed 's/`/\\`/g' | sed 's/\$/\\$/g'
           echo EOF
         } >> $GITHUB_OUTPUT
         
@@ -121,7 +121,7 @@ jobs:
         
         {
           echo 'typecheck_content<<EOF'
-          cat typecheck.md
+          cat typecheck.md | sed 's/`/\\`/g' | sed 's/\$/\\$/g'
           echo EOF
         } >> $GITHUB_OUTPUT
         
@@ -140,22 +140,23 @@ jobs:
         
         {
           echo 'test_content<<EOF'
-          cat test_results.md
+          cat test_results.md | sed 's/`/\\`/g' | sed 's/\$/\\$/g'
           echo EOF
         } >> $GITHUB_OUTPUT
         
     - name: Comment analysis results
       uses: actions/github-script@v7
+      env:
+        ANALYSIS_CONTENT: ${{ steps.complexity.outputs.analysis_content }}
+        TYPECHECK_CONTENT: ${{ steps.typecheck.outputs.typecheck_content }}
+        TEST_CONTENT: ${{ steps.tests.outputs.test_content }}
       with:
         script: |
-          const analysisContent = `${{ steps.complexity.outputs.analysis_content }}`;
-          const typecheckContent = `${{ steps.typecheck.outputs.typecheck_content }}`;
-          const testContent = `${{ steps.tests.outputs.test_content }}`;
+          const analysisContent = process.env.ANALYSIS_CONTENT;
+          const typecheckContent = process.env.TYPECHECK_CONTENT;
+          const testContent = process.env.TEST_CONTENT;
           
-          const comment = `${analysisContent}\n${typecheckContent}\n${testContent}
-          
----
-*🤖 Automated analysis - Updated on every push*`;
+          const comment = `${analysisContent}\n${typecheckContent}\n${testContent}\n\n---\n*🤖 Automated analysis - Updated on every push*`;
           
           // Find existing analysis comment
           const { data: comments } = await github.rest.issues.listComments({

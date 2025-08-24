@@ -156,18 +156,20 @@ jobs:
         echo "" >> pr_description.md
         echo "*🤖 This description was automatically generated from code changes*" >> pr_description.md
         
-        # Set output for next step
+        # Set output for next step - escape for JSON
         {
           echo 'pr_body<<EOF'
-          cat pr_description.md
+          cat pr_description.md | sed 's/`/\\`/g' | sed 's/\$/\\$/g'
           echo EOF
         } >> $GITHUB_OUTPUT
         
     - name: Update PR description
       uses: actions/github-script@v7
+      env:
+        PR_BODY: ${{ steps.generate-description.outputs.pr_body }}
       with:
         script: |
-          const prBody = `${{ steps.generate-description.outputs.pr_body }}`;
+          const prBody = process.env.PR_BODY;
           
           // Get current PR
           const { data: pr } = await github.rest.pulls.get({

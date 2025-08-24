@@ -66,6 +66,7 @@ npm run dev
 - **開発環境**: TypeScript, Next.js, Tailwind CSS, Biome
 - **テスト環境**: Jest設定完了（34テスト実装・全合格）
 - **CI/CD**: GitHub Actions・pre-commit hooks・品質チェック自動化
+- **PR自動化**: 説明自動生成・コード分析・レビュー支援（GitHub Actions構文修正済み）
 - **ゲームロジック**: 52枚デッキ・4人プレイ・基本ルール・スコア計算
 
 ### 🚧 進行中
