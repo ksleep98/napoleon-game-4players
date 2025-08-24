@@ -38,7 +38,7 @@ jobs:
           echo "has_changes=true" >> $GITHUB_OUTPUT
 
           # Check if there's already an open PR from develop to main
-          existing_pr=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number // empty' --repo "${{ github.repository }}")
+          existing_pr=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number // empty')
 
           if [ -n "$existing_pr" ]; then
             echo "pr_exists=true" >> $GITHUB_OUTPUT
@@ -146,8 +146,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           # Create label if it doesn't exist
-          gh label create "release" --description "Release PR" --color "0366d6" --repo "${{ github.repository }}" || true
-          gh label create "release" --description "Release PR" --color "0366d6" --repo "${{ github.repository }}" || true
+          gh label create "release" --description "Release PR" --color "0366d6" || true
 
           # Create PR from develop to main
           gh pr create \
@@ -155,8 +154,7 @@ jobs:
             --head develop \
             --title "🚀 Release" \
             --body "$RELEASE_BODY" \
-            --label "release" \
-            --repo "${{ github.repository }}"
+            --label "release"
 
           echo "✅ Release PR created successfully!"
 
@@ -169,7 +167,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           # Update existing PR description
-          gh pr edit $PR_NUMBER --body "$RELEASE_BODY" --repo "${{ github.repository }}"
+          gh pr edit $PR_NUMBER --body "$RELEASE_BODY"
 
           # Add comment about the update with latest changes summary
           latest_commit=$(git log --oneline --no-merges main..develop | head -n1)
@@ -184,7 +182,6 @@ jobs:
 
           The release notes above have been updated to reflect all latest changes.
 
-          _Updated: $(date '+%Y-%m-%d %H:%M:%S UTC')_" --repo "${{ github.repository }}"
-          _Updated: $(date '+%Y-%m-%d %H:%M:%S UTC')_" --repo "${{ github.repository }}"
+          _Updated: $(date '+%Y-%m-%d %H:%M:%S UTC')_"
 
           echo "✅ Release PR #$PR_NUMBER updated successfully!"
