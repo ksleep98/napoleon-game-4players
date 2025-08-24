@@ -11,29 +11,29 @@ permissions:
 jobs:
   update-pr-description:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-        
+
     - name: Get changed files
       id: changed-files
       uses: tj-actions/changed-files@v42
       with:
         files_separator: ','
-        
+
     - name: Generate PR description
       id: generate-description
       run: |
         echo "🤖 **Auto-generated PR Summary**" > pr_description.md
         echo "" >> pr_description.md
-        
+
         # Get commit messages since base branch
         echo "## 📝 Changes Summary" >> pr_description.md
         git log --oneline --no-merges origin/${{ github.base_ref }}..${{ github.sha }} >> commits.tmp
-        
+
         if [ -s commits.tmp ]; then
           echo "" >> pr_description.md
           echo "### Recent Commits:" >> pr_description.md
@@ -42,18 +42,18 @@ jobs:
           done < commits.tmp
           echo "" >> pr_description.md
         fi
-        
+
         # Changed files analysis
         echo "## 📁 Files Changed" >> pr_description.md
         echo "" >> pr_description.md
-        
+
         # Count file types
         js_ts_count=0
         test_count=0
         config_count=0
         doc_count=0
         other_count=0
-        
+
         IFS=',' read -ra FILES <<< "${{ steps.changed-files.outputs.all_changed_files }}"
         for file in "${FILES[@]}"; do
           if [[ $file == *.ts || $file == *.tsx || $file == *.js || $file == *.jsx ]]; then
@@ -70,11 +70,11 @@ jobs:
             other_count=$((other_count + 1))
           fi
         done
-        
+
         total_files=${{ steps.changed-files.outputs.all_changed_files_count }}
         echo "**Total files changed: $total_files**" >> pr_description.md
         echo "" >> pr_description.md
-        
+
         if [ $js_ts_count -gt 0 ]; then
           echo "- 🔧 **Source Code**: $js_ts_count files" >> pr_description.md
         fi
@@ -91,12 +91,12 @@ jobs:
           echo "- 📄 **Other**: $other_count files" >> pr_description.md
         fi
         echo "" >> pr_description.md
-        
+
         # Detailed file list
         echo "<details>" >> pr_description.md
         echo "<summary>📋 Detailed File List</summary>" >> pr_description.md
         echo "" >> pr_description.md
-        
+
         for file in "${FILES[@]}"; do
           if [[ $file == *.ts || $file == *.tsx || $file == *.js || $file == *.jsx ]]; then
             echo "- 🔧 \`$file\`" >> pr_description.md
@@ -110,15 +110,15 @@ jobs:
             echo "- 📄 \`$file\`" >> pr_description.md
           fi
         done
-        
+
         echo "" >> pr_description.md
         echo "</details>" >> pr_description.md
         echo "" >> pr_description.md
-        
+
         # Add change type classification
         echo "## 🏷️ Change Type" >> pr_description.md
         echo "" >> pr_description.md
-        
+
         if [ $js_ts_count -gt 0 ]; then
           if echo "$ts_js_files" | grep -q "test\\|spec"; then
             echo "- 🧪 **Tests** - Test files modified/added" >> pr_description.md
@@ -130,7 +130,7 @@ jobs:
             echo "- 💄 **UI/UX** - User interface improvements" >> pr_description.md
           fi
         fi
-        
+
         if [ $config_count -gt 0 ]; then
           echo "- ⚙️ **Configuration** - Build/tool configuration changes" >> pr_description.md
         fi
@@ -138,7 +138,7 @@ jobs:
           echo "- 📝 **Documentation** - Documentation updates" >> pr_description.md
         fi
         echo "" >> pr_description.md
-        
+
         # Add quality check reminder
         echo "## ✅ Review Checklist" >> pr_description.md
         echo "" >> pr_description.md
@@ -149,7 +149,7 @@ jobs:
         echo "- [ ] All CI checks pass" >> pr_description.md
         echo "- [ ] Breaking changes are documented" >> pr_description.md
         echo "" >> pr_description.md
-        
+
         # Add testing instructions
         if [ $test_count -gt 0 ]; then
           echo "## 🧪 Testing" >> pr_description.md
@@ -162,7 +162,7 @@ jobs:
           echo "\`\`\`" >> pr_description.md
           echo "" >> pr_description.md
         fi
-        
+
         if [ $js_ts_count -gt 0 ]; then
           echo "## 🚀 Local Testing" >> pr_description.md
           echo "" >> pr_description.md
@@ -176,18 +176,18 @@ jobs:
           echo "\`\`\`" >> pr_description.md
           echo "" >> pr_description.md
         fi
-        
+
         echo "---" >> pr_description.md
         echo "" >> pr_description.md
         echo "*🤖 This description was automatically generated from code changes*" >> pr_description.md
-        
+
         # Set output for next step - escape for JSON
         {
           echo 'pr_body<<EOF'
           cat pr_description.md | sed 's/`/\\`/g' | sed 's/\$/\\$/g'
           echo EOF
         } >> $GITHUB_OUTPUT
-        
+
     - name: Update PR description
       uses: actions/github-script@v7
       env:
@@ -195,17 +195,17 @@ jobs:
       with:
         script: |
           const prBody = process.env.PR_BODY;
-          
+
           // Get current PR
           const { data: pr } = await github.rest.pulls.get({
             owner: context.repo.owner,
             repo: context.repo.repo,
             pull_number: context.payload.pull_request.number
           });
-          
+
           // Check if PR already has auto-generated content
           const hasAutoContent = pr.body && pr.body.includes('🤖 This description was automatically generated');
-          
+
           let newBody;
           if (hasAutoContent) {
             // Replace existing auto-generated content
@@ -215,12 +215,12 @@ jobs:
             // Append to existing description
             newBody = pr.body ? `${pr.body}\n\n${prBody}` : prBody;
           }
-          
+
           await github.rest.pulls.update({
             owner: context.repo.owner,
             repo: context.repo.repo,
             pull_number: context.payload.pull_request.number,
             body: newBody
           });
-          
+
           console.log('PR description updated successfully!');
