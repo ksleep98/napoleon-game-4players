@@ -17,10 +17,12 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '22.14.0'
-        cache: 'npm'
         
-    - name: Install dependencies
-      run: npm ci
+    - name: Clean install dependencies
+      run: |
+        npm ci --no-cache
+        # Verify Biome installation
+        npx @biomejs/biome --version || npm install @biomejs/biome --force
       
     - name: Run linter
       run: |
