@@ -11,19 +11,19 @@ permissions:
 jobs:
   create-release-pr:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-        
+
     - name: Check if PR already exists
       id: check-pr
       run: |
         # Check if there's already an open PR from develop to main
         existing_pr=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number // empty')
-        
+
         if [ -n "$existing_pr" ]; then
           echo "pr_exists=true" >> $GITHUB_OUTPUT
           echo "pr_number=$existing_pr" >> $GITHUB_OUTPUT
@@ -32,20 +32,20 @@ jobs:
         fi
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
+
     - name: Get changes since last release
       id: changes
       run: |
         # Get the latest commit from main branch
         git fetch origin main:main
-        
+
         # Get commits between main and develop
         echo "## 📝 Changes for Release" > release_notes.md
         echo "" >> release_notes.md
-        
+
         # Get commit messages since main
         git log --oneline --no-merges main..develop >> commits.tmp
-        
+
         if [ -s commits.tmp ]; then
           echo "### Recent Changes:" >> release_notes.md
           while read line; do
@@ -53,22 +53,22 @@ jobs:
           done < commits.tmp
           echo "" >> release_notes.md
         fi
-        
+
         # Get file changes
         changed_files=$(git diff --name-only main..develop)
         file_count=$(echo "$changed_files" | wc -l)
-        
+
         echo "## 📁 Files Changed" >> release_notes.md
         echo "" >> release_notes.md
         echo "**Total files changed: $file_count**" >> release_notes.md
         echo "" >> release_notes.md
-        
+
         # Categorize changes
         js_ts_count=0
         test_count=0
         config_count=0
         doc_count=0
-        
+
         while read file; do
           if [[ $file == *.ts || $file == *.tsx || $file == *.js || $file == *.jsx ]]; then
             if [[ $file == *test* || $file == *spec* ]]; then
@@ -82,7 +82,7 @@ jobs:
             doc_count=$((doc_count + 1))
           fi
         done <<< "$changed_files"
-        
+
         if [ $js_ts_count -gt 0 ]; then
           echo "- 🔧 **Source Code**: $js_ts_count files" >> release_notes.md
         fi
@@ -96,7 +96,7 @@ jobs:
           echo "- 📚 **Documentation**: $doc_count files" >> release_notes.md
         fi
         echo "" >> release_notes.md
-        
+
         # Add deployment checklist
         echo "## ✅ Release Checklist" >> release_notes.md
         echo "" >> release_notes.md
@@ -106,18 +106,18 @@ jobs:
         echo "- [ ] Documentation is up to date" >> release_notes.md
         echo "- [ ] Ready for production deployment" >> release_notes.md
         echo "" >> release_notes.md
-        
+
         echo "---" >> release_notes.md
         echo "" >> release_notes.md
         echo "*🤖 Auto-generated release PR - Ready for production deployment*" >> release_notes.md
-        
+
         # Set output for next step
         {
           echo 'release_body<<EOF'
           cat release_notes.md
           echo EOF
         } >> $GITHUB_OUTPUT
-        
+
     - name: Create or update release PR
       if: steps.check-pr.outputs.pr_exists == 'false'
       env:
@@ -126,7 +126,7 @@ jobs:
       run: |
         # Generate version-based title
         current_date=$(date +"%Y.%m.%d")
-        
+
         # Create PR from develop to main
         gh pr create \
           --base main \
@@ -135,9 +135,9 @@ jobs:
           --body "$RELEASE_BODY" \
           --label "release" \
           --assignee "${{ github.actor }}"
-          
+
         echo "✅ Release PR created successfully!"
-        
+
     - name: Update existing release PR
       if: steps.check-pr.outputs.pr_exists == 'true'
       env:
@@ -147,12 +147,12 @@ jobs:
       run: |
         # Update existing PR description
         gh pr edit $PR_NUMBER --body "$RELEASE_BODY"
-        
+
         # Add comment about the update
         gh pr comment $PR_NUMBER --body "🔄 **Release PR Updated**
-        
+
         New changes have been merged to develop branch. The release notes above have been updated to reflect the latest changes.
-        
+
         _Updated: $(date '+%Y-%m-%d %H:%M:%S UTC')_"
-        
+
         echo "✅ Release PR #$PR_NUMBER updated successfully!"
