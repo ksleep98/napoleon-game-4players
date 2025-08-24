@@ -38,7 +38,9 @@ jobs:
           echo "has_changes=true" >> $GITHUB_OUTPUT
 
           # Check if there's already an open PR from develop to main
-          existing_pr=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number // empty')
+          existing_pr=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls?base=main&head=${{ github.repository_owner }}:develop&state=open" \
+            | jq -r '.[0].number // empty')
 
           if [ -n "$existing_pr" ]; then
             echo "pr_exists=true" >> $GITHUB_OUTPUT
@@ -146,17 +148,31 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           # Create label if it doesn't exist
-          gh label create "release" --description "Release PR" --color "0366d6" || true
+          curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/labels" \
+            -d '{"name":"release","description":"Release PR","color":"0366d6"}' || true
 
           # Create PR from develop to main
-          gh pr create \
-            --base main \
-            --head develop \
-            --title "🚀 Release" \
-            --body "$RELEASE_BODY" \
-            --label "release"
+          pr_response=$(curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls" \
+            -d '{
+              "title": "🚀 Release",
+              "head": "develop",
+              "base": "main",
+              "body": "'"$(echo "$RELEASE_BODY" | sed 's/"/\\"/g' | tr '\n' ' ')"'"
+            }')
 
-          echo "✅ Release PR created successfully!"
+          pr_number=$(echo "$pr_response" | jq -r '.number')
+
+          # Add release label to PR
+          curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/$pr_number/labels" \
+            -d '["release"]' || true
+
+          echo "✅ Release PR #$pr_number created successfully!"
 
       - name: Update existing release PR
         if: steps.check-changes.outputs.has_changes == 'true' && steps.check-changes.outputs.pr_exists == 'true'
@@ -167,13 +183,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           # Update existing PR description
-          gh pr edit $PR_NUMBER --body "$RELEASE_BODY"
+          curl -s -X PATCH -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER" \
+            -d '{
+              "body": "'"$(echo "$RELEASE_BODY" | sed 's/"/\\"/g' | tr '\n' ' ')"'"
+            }'
 
           # Add comment about the update with latest changes summary
           latest_commit=$(git log --oneline --no-merges main..develop | head -n1)
           total_commits=$(git rev-list --count main..develop)
 
-          gh pr comment $PR_NUMBER --body "🔄 **Release PR Updated**
+          comment_body="🔄 **Release PR Updated**
 
           New changes have been merged to develop branch:
 
@@ -183,5 +204,12 @@ jobs:
           The release notes above have been updated to reflect all latest changes.
 
           _Updated: $(date '+%Y-%m-%d %H:%M:%S UTC')_"
+
+          curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/$PR_NUMBER/comments" \
+            -d '{
+              "body": "'"$(echo "$comment_body" | sed 's/"/\\"/g' | tr '\n' ' ')"'"
+            }'
 
           echo "✅ Release PR #$PR_NUMBER updated successfully!"
