@@ -1,0 +1,163 @@
+name: Auto Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate version tag
+        id: version
+        run: |
+          # Generate semantic version based on date
+          current_date=$(date +"%Y.%m.%d")
+
+          # Check if tag already exists for today
+          counter=1
+          version_tag="v$current_date"
+
+          while git tag -l | grep -q "^$version_tag$"; do
+            version_tag="v$current_date.$counter"
+            counter=$((counter + 1))
+          done
+
+          echo "version_tag=$version_tag" >> $GITHUB_OUTPUT
+          echo "version_name=Release" >> $GITHUB_OUTPUT
+
+      - name: Get recent changes
+        id: changes
+        run: |
+          # Get the previous release tag
+          previous_tag=$(git tag -l "v*" --sort=-version:refname | head -n1)
+
+          if [ -z "$previous_tag" ]; then
+            # If no previous tag, get all commits
+            commit_range="HEAD"
+          else
+            commit_range="$previous_tag..HEAD"
+          fi
+
+          echo "## 🎉 What's New" > release_notes.md
+          echo "" >> release_notes.md
+
+          # Get commit messages
+          git log --oneline --no-merges $commit_range >> commits.tmp
+
+          if [ -s commits.tmp ]; then
+            echo "### Changes in this release:" >> release_notes.md
+            while read line; do
+              # Format commit message
+              commit_hash=$(echo "$line" | cut -d' ' -f1)
+              commit_msg=$(echo "$line" | cut -d' ' -f2-)
+
+              # Categorize commit by prefix
+              if [[ $commit_msg == feat:* ]]; then
+                echo "- ✨ **New Feature**: ${commit_msg#feat: } (\`$commit_hash\`)" >> release_notes.md
+              elif [[ $commit_msg == fix:* ]]; then
+                echo "- 🐛 **Bug Fix**: ${commit_msg#fix: } (\`$commit_hash\`)" >> release_notes.md
+              elif [[ $commit_msg == docs:* ]]; then
+                echo "- 📚 **Documentation**: ${commit_msg#docs: } (\`$commit_hash\`)" >> release_notes.md
+              elif [[ $commit_msg == test:* ]]; then
+                echo "- 🧪 **Testing**: ${commit_msg#test: } (\`$commit_hash\`)" >> release_notes.md
+              elif [[ $commit_msg == ci:* ]]; then
+                echo "- 🚀 **CI/CD**: ${commit_msg#ci: } (\`$commit_hash\`)" >> release_notes.md
+              elif [[ $commit_msg == refactor:* ]]; then
+                echo "- ♻️ **Refactor**: ${commit_msg#refactor: } (\`$commit_hash\`)" >> release_notes.md
+              else
+                echo "- 🔧 **Other**: $commit_msg (\`$commit_hash\`)" >> release_notes.md
+              fi
+            done < commits.tmp
+            echo "" >> release_notes.md
+          fi
+
+          # Add technical details
+          if [ -n "$previous_tag" ]; then
+            echo "## 📊 Technical Details" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "- **Previous Version**: \`$previous_tag\`" >> release_notes.md
+            echo "- **Commits**: $(git rev-list --count $commit_range)" >> release_notes.md
+            echo "- **Files Changed**: $(git diff --name-only $commit_range | wc -l)" >> release_notes.md
+            echo "" >> release_notes.md
+          fi
+
+          # Add deployment info
+          echo "## 🚀 Deployment" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "This release has been automatically deployed to production." >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### Quick Start" >> release_notes.md
+          echo "\`\`\`bash" >> release_notes.md
+          echo "git clone https://github.com/${{ github.repository }}.git" >> release_notes.md
+          echo "cd napoleon-game-4players" >> release_notes.md
+          echo "npm install" >> release_notes.md
+          echo "npm run dev" >> release_notes.md
+          echo "\`\`\`" >> release_notes.md
+          echo "" >> release_notes.md
+
+          echo "---" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$previous_tag...${{ steps.version.outputs.version_tag }}" >> release_notes.md
+
+          # Set output for next step
+          {
+            echo 'release_notes<<EOF'
+            cat release_notes.md
+            echo EOF
+          } >> $GITHUB_OUTPUT
+
+      - name: Create Git tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git tag -a "${{ steps.version.outputs.version_tag }}" -m "Release ${{ steps.version.outputs.version_name }}"
+          git push origin "${{ steps.version.outputs.version_tag }}"
+
+          echo "✅ Created and pushed tag: ${{ steps.version.outputs.version_tag }}"
+
+      - name: Create GitHub Release
+        env:
+          RELEASE_NOTES: ${{ steps.changes.outputs.release_notes }}
+          # yamllint disable-line rule:truthy
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.version.outputs.version_tag }}" \
+            --title "🎉 ${{ steps.version.outputs.version_name }}" \
+            --notes "$RELEASE_NOTES" \
+            --latest
+
+          echo "✅ GitHub Release created: ${{ steps.version.outputs.version_tag }}"
+
+      - name: Close completed release PR
+        env:
+          # yamllint disable-line rule:truthy
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          # Find and close the release PR that was just merged
+          merged_pr=$(gh pr list --base main --state merged --limit 5 --json number,title,mergedAt --jq '.[] | select(.title | startswith("🚀 Release")) | select(.mergedAt != null) | .number' | head -n1)
+
+          if [ -n "$merged_pr" ]; then
+            gh pr comment $merged_pr --body "🎉 **Release Completed!**
+
+          This release PR has been successfully merged and deployed.
+
+          - **Release Tag**: \`${{ steps.version.outputs.version_tag }}\`
+          - **Release Notes**: [View Release](https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version_tag }})
+          - **Deployment**: Production
+
+          Thank you for contributing to this release! 🚀"
+
+            echo "✅ Added completion comment to PR #$merged_pr"
+          fi

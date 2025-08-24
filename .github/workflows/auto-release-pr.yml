@@ -1,0 +1,182 @@
+name: Auto Release PR
+
+on:
+  push:
+    branches: [develop]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  create-release-pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for changes and existing PR
+        id: check-changes
+        run: |
+          # Get the latest commit from main branch
+          git fetch origin main:main
+
+          # Check if there are any changes between main and develop
+          changes_count=$(git rev-list --count main..develop)
+
+          if [ "$changes_count" -eq 0 ]; then
+            echo "No changes between main and develop branches. Skipping release PR creation."
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "pr_exists=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "Found $changes_count changes between main and develop"
+          echo "has_changes=true" >> $GITHUB_OUTPUT
+
+          # Check if there's already an open PR from develop to main
+          existing_pr=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls?base=main&head=${{ github.repository_owner }}:develop&state=open" \
+            | jq -r '.[0].number // empty')
+
+          if [ -n "$existing_pr" ]; then
+            echo "pr_exists=true" >> $GITHUB_OUTPUT
+            echo "pr_number=$existing_pr" >> $GITHUB_OUTPUT
+            echo "Found existing release PR #$existing_pr"
+          else
+            echo "pr_exists=false" >> $GITHUB_OUTPUT
+            echo "No existing release PR found"
+          fi
+        env:
+          # yamllint disable-line rule:truthy
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Get changes since last release
+        id: changes
+        if: steps.check-changes.outputs.has_changes == 'true'
+        run: |
+          # Get the latest commit from main branch
+          git fetch origin main:main
+
+          # Create release notes focusing on PR history
+          echo "## 🚀 Release Summary" > release_notes.md
+          echo "" >> release_notes.md
+
+          # Get merged PRs from commit messages (extract PR numbers)
+          git log --oneline --no-merges main..develop | grep -E '\(#[0-9]+\)' > pr_commits.tmp || echo "No PR commits found"
+
+          if [ -s pr_commits.tmp ]; then
+            echo "### 📋 Pull Requests Included:" >> release_notes.md
+            echo "" >> release_notes.md
+            while read line; do
+              # Extract PR title and number
+              pr_title=$(echo "$line" | sed 's/^[a-f0-9]* //')
+              echo "- $pr_title" >> release_notes.md
+            done < pr_commits.tmp
+            echo "" >> release_notes.md
+          fi
+
+          # Get total commit count and file changes summary
+          total_commits=$(git rev-list --count main..develop)
+          changed_files_count=$(git diff --name-only main..develop | wc -l)
+
+          echo "### 📊 Change Summary:" >> release_notes.md
+          echo "- **Commits**: $total_commits" >> release_notes.md
+          echo "- **Files Changed**: $changed_files_count" >> release_notes.md
+          echo "" >> release_notes.md
+
+          # Add deployment checklist
+          echo "## ✅ Pre-deployment Checklist" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "- [ ] All CI checks passing" >> release_notes.md
+          echo "- [ ] Tests passing" >> release_notes.md
+          echo "- [ ] No breaking changes" >> release_notes.md
+          echo "- [ ] Ready for production" >> release_notes.md
+          echo "" >> release_notes.md
+
+          echo "---" >> release_notes.md
+          echo "*🤖 Auto-generated release PR*" >> release_notes.md
+
+          # Set output for next step
+          {
+            echo 'release_body<<EOF'
+            cat release_notes.md
+            echo EOF
+          } >> $GITHUB_OUTPUT
+
+      - name: Create or update release PR
+        if: steps.check-changes.outputs.has_changes == 'true' && steps.check-changes.outputs.pr_exists == 'false'
+        env:
+          RELEASE_BODY: ${{ steps.changes.outputs.release_body }}
+          # yamllint disable-line rule:truthy
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          # Create label if it doesn't exist
+          curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/labels" \
+            -d '{"name":"release","description":"Release PR","color":"0366d6"}' || true
+
+          # Create PR from develop to main
+          pr_response=$(curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls" \
+            -d '{
+              "title": "🚀 Release",
+              "head": "develop",
+              "base": "main",
+              "body": "'"$(echo "$RELEASE_BODY" | sed 's/"/\\"/g' | tr '\n' ' ')"'"
+            }')
+
+          pr_number=$(echo "$pr_response" | jq -r '.number')
+
+          # Add release label to PR
+          curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/$pr_number/labels" \
+            -d '["release"]' || true
+
+          echo "✅ Release PR #$pr_number created successfully!"
+
+      - name: Update existing release PR
+        if: steps.check-changes.outputs.has_changes == 'true' && steps.check-changes.outputs.pr_exists == 'true'
+        env:
+          RELEASE_BODY: ${{ steps.changes.outputs.release_body }}
+          PR_NUMBER: ${{ steps.check-changes.outputs.pr_number }}
+          # yamllint disable-line rule:truthy
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          # Update existing PR description
+          curl -s -X PATCH -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER" \
+            -d '{
+              "body": "'"$(echo "$RELEASE_BODY" | sed 's/"/\\"/g' | tr '\n' ' ')"'"
+            }'
+
+          # Add comment about the update with latest changes summary
+          latest_commit=$(git log --oneline --no-merges main..develop | head -n1)
+          total_commits=$(git rev-list --count main..develop)
+
+          comment_body="🔄 **Release PR Updated**
+
+          New changes have been merged to develop branch:
+
+          **Latest commit**: \`$latest_commit\`
+          **Total commits ready for release**: $total_commits
+
+          The release notes above have been updated to reflect all latest changes.
+
+          _Updated: $(date '+%Y-%m-%d %H:%M:%S UTC')_"
+
+          curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/$PR_NUMBER/comments" \
+            -d '{
+              "body": "'"$(echo "$comment_body" | sed 's/"/\\"/g' | tr '\n' ' ')"'"
+            }'
+
+          echo "✅ Release PR #$PR_NUMBER updated successfully!"

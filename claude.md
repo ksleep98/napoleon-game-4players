@@ -48,21 +48,27 @@ npm run dev
 ## 詳細ドキュメント
 
 ### 📋 セットアップ・環境構築
+
 - [プロジェクトセットアップ](./docs/setup/PROJECT_SETUP.md) - 技術スタック・初期設定
 - [開発コマンド一覧](./docs/development/COMMANDS.md) - npm scripts・使い方
+- [フォーマット設定](./docs/development/FORMATTING_SETUP.md) - Biome/Prettier統合・VSCode設定
 
 ### 🧪 テスト・品質管理
+
 - [Jest テスト設定](./docs/testing/JEST_SETUP.md) - テスト環境・34テスト実装状況
 - [GitHub Actions](./docs/ci-cd/GITHUB_ACTIONS.md) - CI/CDパイプライン・自動品質チェック
 - [Pre-commit Hooks](./docs/ci-cd/PRE_COMMIT_HOOKS.md) - Husky・自動修正・品質チェック
 - [PR自動化](./docs/ci-cd/PR_AUTOMATION.md) - PR説明自動生成・コード分析
+- [自動リリース](./docs/ci-cd/AUTO_RELEASE.md) - develop→main自動PR・リリース管理
 
 ### 🎮 ゲーム実装
+
 - [実装状況](./docs/game-logic/IMPLEMENTATION_STATUS.md) - Napoleon Game機能・UI・データ管理
 
 ## 現在のステータス
 
 ### ✅ 完了
+
 - **開発環境**: TypeScript, Next.js, Tailwind CSS, Biome
 - **テスト環境**: Jest設定完了（34テスト実装・全合格）
 - **CI/CD**: GitHub Actions・pre-commit hooks・品質チェック自動化
@@ -70,10 +76,12 @@ npm run dev
 - **ゲームロジック**: 52枚デッキ・4人プレイ・基本ルール・スコア計算
 
 ### 🚧 進行中
+
 - **Supabase統合**: データベース・リアルタイム同期
 - **UI改善**: アニメーション・レスポンシブ対応
 
 ### 📋 予定
+
 - **マルチプレイヤー**: リアルタイム対戦
 - **AI対戦**: コンピュータ対戦相手
 - **統計機能**: プレイヤー履歴・戦績
@@ -81,12 +89,14 @@ npm run dev
 ## 開発ルール
 
 ### コード規約
+
 - **言語**: 英語中心、重要ロジックは日本語コメント
 - **品質**: Biome linting・formatting 必須
 - **型安全**: TypeScript strict mode
 - **テスト**: 新機能にはJestテスト追加
 
 ### 開発フロー
+
 1. `feature/xxx` ブランチで開発
 2. `npm run ci-check` で品質確認
 3. `git commit` で自動チェック実行
@@ -94,6 +104,7 @@ npm run dev
 5. `develop` → `main` へマージ
 
 ### Pre-commit 自動チェック
+
 - Biome linting・formatting 自動修正
 - TypeScript型チェック
 - Jest テスト実行
