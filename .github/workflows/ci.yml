@@ -1,4 +1,4 @@
-name: Fast CI
+name: CI
 
 on:
   push:
@@ -9,51 +9,49 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout
       uses: actions/checkout@v4
       with:
         fetch-depth: 1
-        
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '22.14.0'
         cache: 'npm'
-        
+
     - name: Install dependencies
-      run: npm ci --prefer-offline --no-audit --no-fund
-        
-    - name: Quality checks (parallel)
       run: |
-        echo "🚀 Running quality checks in parallel..."
-        
-        # Start all checks in background
-        npm run lint:fast &
-        LINT_PID=$!
-        
-        npm run type-check:fast &
-        TYPE_PID=$!
-        
-        npm run format:check &
-        FORMAT_PID=$!
-        
-        # Wait and collect results
-        wait $LINT_PID; LINT_CODE=$?
-        wait $TYPE_PID; TYPE_CODE=$?
-        wait $FORMAT_PID; FORMAT_CODE=$?
-        
-        # Report results
-        [ $LINT_CODE -eq 0 ] && echo "✅ Lint: PASS" || echo "❌ Lint: FAIL"
-        [ $TYPE_CODE -eq 0 ] && echo "✅ Types: PASS" || echo "❌ Types: FAIL"
-        [ $FORMAT_CODE -eq 0 ] && echo "✅ Format: PASS" || echo "❌ Format: FAIL"
-        
-        # Exit with error if any failed
-        if [ $LINT_CODE -ne 0 ] || [ $TYPE_CODE -ne 0 ] || [ $FORMAT_CODE -ne 0 ]; then
-          exit 1
+        npm ci --prefer-offline --no-audit --no-fund
+
+    - name: Verify Biome installation
+      run: |
+        echo "🔧 Verifying Biome installation..."
+        if ! npx @biomejs/biome --version 2>/dev/null; then
+          echo "⚠️  Biome binary issue detected, reinstalling..."
+          rm -rf node_modules/@biomejs
+          npm install @biomejs/biome@latest --force
+          echo "✅ Biome reinstalled"
         fi
-        
+        npx @biomejs/biome --version
+
+    - name: TypeScript check
+      run: |
+        echo "🔧 Running TypeScript type check..."
+        npx tsc --noEmit --skipLibCheck
+
+    - name: Biome lint check
+      run: |
+        echo "🔍 Running Biome lint check..."
+        npx @biomejs/biome check . --reporter=compact
+
+    - name: Biome format check
+      run: |
+        echo "📝 Running Biome format check..."
+        npx @biomejs/biome format . --check
+
     - name: Build check
       if: success()
       env:
