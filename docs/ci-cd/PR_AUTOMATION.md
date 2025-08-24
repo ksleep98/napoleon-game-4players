@@ -77,6 +77,23 @@ GitHub ActionsによるPull Request自動化機能の設定完了。
 - 変更種別は自動判定に統合
 - PRテンプレート + 自動生成の二重表示問題を解決
 
+## 🔑 権限設定
+
+### Personal Access Token (PAT) 設定
+
+mainブランチへのPR作成には**Personal Access Token**が必要です。
+
+- 📋 **設定手順**: [GitHub PAT設定ガイド](./GITHUB_PAT_SETUP.md)
+- ⚙️ **必要権限**: `repo`, `workflow`
+- 🔒 **Secrets設定**: `PAT_TOKEN` as repository secret
+
+**権限エラー解決**:
+
+```bash
+# エラー: "GitHub Actions is not permitted to create or approve pull requests"
+# 解決: PAT_TOKEN設定により権限問題を解決
+```
+
 ## 🔄 ワークフロー
 
 ### PR作成時

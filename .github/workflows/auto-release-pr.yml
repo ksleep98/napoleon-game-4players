@@ -31,7 +31,8 @@ jobs:
             echo "pr_exists=false" >> $GITHUB_OUTPUT
           fi
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # yamllint disable-line rule:truthy
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Get changes since last release
         id: changes
@@ -122,7 +123,8 @@ jobs:
         if: steps.check-pr.outputs.pr_exists == 'false'
         env:
           RELEASE_BODY: ${{ steps.changes.outputs.release_body }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # yamllint disable-line rule:truthy
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           # Generate version-based title
           current_date=$(date +"%Y.%m.%d")
@@ -146,7 +148,8 @@ jobs:
         env:
           RELEASE_BODY: ${{ steps.changes.outputs.release_body }}
           PR_NUMBER: ${{ steps.check-pr.outputs.pr_number }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # yamllint disable-line rule:truthy
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           # Update existing PR description
           gh pr edit $PR_NUMBER --body "$RELEASE_BODY"
