@@ -53,7 +53,7 @@
       "npx @biomejs/biome check --write",
       "npx @biomejs/biome format --write"
     ],
-    "*.{json,md,css}": [
+    "*.json": [
       "npx @biomejs/biome format --write"
     ]
   }
