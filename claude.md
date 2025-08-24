@@ -1,57 +1,110 @@
-# プロジェクト概要
+# Napoleon Game (4 Players) - プロジェクト指示書
 
-このプロジェクトは以下の仕様で進めます。
+## プロジェクト概要
 
-- Project: Napoleon Game (4 Players)
-- Location: /Users/kk/napoleon-game-4players
+- **Project**: Napoleon Game (4 Players)
+- **Location**: /Users/kk/napoleon-game-4players
+- **Repository**: https://github.com/ksleep98/napoleon-game-4players
 
-# プロジェクトルート構成
+## 技術スタック
 
-- /src : ソースコードディレクトリ
-- /tests : テストコードディレクトリ
-- /docs : ドキュメント
-- readme.md : プロジェクト概要説明
-- claude.md : プロジェクト指示ファイル（このファイル）
-- .gitignore : Git 管理除外ファイル設定
+- **Language**: TypeScript
+- **Framework**: Next.js 15.4 (App Router)
+- **UI Library**: React 19.x
+- **Styling**: Tailwind CSS
+- **Database**: Prisma ORM (SQLite)
+- **Testing**: Jest + React Testing Library
+- **Code Quality**: Biome (Linter + Formatter)
+- **Pre-commit**: Husky + lint-staged
 
-# 使用言語・技術スタック
+## ブランチ戦略
 
-- 言語: React
-- 言語: TypeScript
-- フレームワーク: Next.js 15.4
-- その他: Tailwind CSS, Prisma, Jest (テストフレームワーク)
+- `main` - 本番リリース
+- `develop` - 開発統合
+- `feature/xxx` - 機能別ブランチ
+- **Conventional Commits** 規約準拠
 
-# GitHub 登録
+## 開発環境
 
-- GitHub リポジトリは「napoleon-game-4players」を想定
-- ブランチ戦略は Git Flow に準拠
-  - main（本番リリース）
-  - develop（開発用）
-  - feature/xxxx（機能単位ブランチ）
-- コミットメッセージは「Conventional Commits」規約に従うこと
+- Node.js 22.14.0
+- npm (package manager)
+- VSCode推奨 + Biome拡張
 
-# 必要なインストール・環境設定
+## クイック スタート
 
-- Node.js 20.x（推奨）
-- yarn または npm（どちらかを使用）
-- VSCode エディタ推奨
-- 推奨 VSCode 拡張
-  - Biome
-  - Tailwind CSS IntelliSense
+```bash
+# 1. リポジトリクローン
+git clone https://github.com/ksleep98/napoleon-game-4players.git
+cd napoleon-game-4players
 
-# 作業の進め方
+# 2. 依存関係インストール
+npm install
 
-1. まずはプロジェクトルートにて `yarn install` を実行し依存関係を解決すること。
-2. 主要なディレクトリ構成を作成し、readme.md を編集。
-3. 必要に応じて GitHub リポジトリ作成と初期セットアップを行う。
-4. 以降の機能は feature ブランチを使い細かく分けて開発。
+# 3. 開発サーバー起動
+npm run dev
+# → http://localhost:3000
+```
 
-# 注意事項
+## 詳細ドキュメント
 
-- コードはなるべく日本語コメントは控え英語中心で記述する
-- 重要なロジックには日本語説明コメントを補足する
-- コーディング規約は ESLint ルールに準ずること
+### 📋 セットアップ・環境構築
+- [プロジェクトセットアップ](./docs/setup/PROJECT_SETUP.md) - 技術スタック・初期設定
+- [開発コマンド一覧](./docs/development/COMMANDS.md) - npm scripts・使い方
 
-# 更新履歴
+### 🧪 テスト・品質管理
+- [Jest テスト設定](./docs/testing/JEST_SETUP.md) - テスト環境・34テスト実装状況
+- [GitHub Actions](./docs/ci-cd/GITHUB_ACTIONS.md) - CI/CDパイプライン・自動品質チェック
+- [Pre-commit Hooks](./docs/ci-cd/PRE_COMMIT_HOOKS.md) - Husky・自動修正・品質チェック
+- [PR自動化](./docs/ci-cd/PR_AUTOMATION.md) - PR説明自動生成・コード分析
 
-- 2025-08-23: 初版作成
+### 🎮 ゲーム実装
+- [実装状況](./docs/game-logic/IMPLEMENTATION_STATUS.md) - Napoleon Game機能・UI・データ管理
+
+## 現在のステータス
+
+### ✅ 完了
+- **開発環境**: TypeScript, Next.js, Tailwind CSS, Biome
+- **テスト環境**: Jest設定完了（34テスト実装・全合格）
+- **CI/CD**: GitHub Actions・pre-commit hooks・品質チェック自動化
+- **PR自動化**: 説明自動生成・コード分析・レビュー支援（GitHub Actions構文修正済み）
+- **ゲームロジック**: 52枚デッキ・4人プレイ・基本ルール・スコア計算
+
+### 🚧 進行中
+- **Supabase統合**: データベース・リアルタイム同期
+- **UI改善**: アニメーション・レスポンシブ対応
+
+### 📋 予定
+- **マルチプレイヤー**: リアルタイム対戦
+- **AI対戦**: コンピュータ対戦相手
+- **統計機能**: プレイヤー履歴・戦績
+
+## 開発ルール
+
+### コード規約
+- **言語**: 英語中心、重要ロジックは日本語コメント
+- **品質**: Biome linting・formatting 必須
+- **型安全**: TypeScript strict mode
+- **テスト**: 新機能にはJestテスト追加
+
+### 開発フロー
+1. `feature/xxx` ブランチで開発
+2. `npm run ci-check` で品質確認
+3. `git commit` で自動チェック実行
+4. Pull Request作成・レビュー
+5. `develop` → `main` へマージ
+
+### Pre-commit 自動チェック
+- Biome linting・formatting 自動修正
+- TypeScript型チェック
+- Jest テスト実行
+- 全チェック合格でコミット可能
+
+## 次のステップ
+
+1. **Supabaseプロジェクト設定** - データベース・環境変数
+2. **4人対戦実装** - COM3人との対戦モード
+3. **UI/UX改善** - ゲーム体験向上
+
+---
+
+> 詳細な技術情報・実装状況は `docs/` フォルダ内の各ドキュメントを参照してください。

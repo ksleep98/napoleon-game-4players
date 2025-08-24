@@ -1,0 +1,191 @@
+name: PR Code Analysis
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  analyze-changes:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22.14.0'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci --prefer-offline
+      
+    - name: Get changed files
+      id: changed-files
+      uses: tj-actions/changed-files@v42
+      with:
+        files_separator: ' '
+        
+    - name: Analyze code complexity
+      id: complexity
+      run: |
+        echo "## 🔍 Code Analysis Results" > analysis.md
+        echo "" >> analysis.md
+        
+        # Count lines of code changes
+        added_lines=0
+        removed_lines=0
+        
+        # Get diff stats
+        git diff --stat origin/${{ github.base_ref }}..${{ github.sha }} > diff_stats.tmp
+        
+        if [ -s diff_stats.tmp ]; then
+          echo "### 📊 Change Statistics" >> analysis.md
+          echo "" >> analysis.md
+          echo "\`\`\`" >> analysis.md
+          cat diff_stats.tmp >> analysis.md
+          echo "\`\`\`" >> analysis.md
+          echo "" >> analysis.md
+        fi
+        
+        # Analyze TypeScript/JavaScript files
+        ts_js_files="${{ steps.changed-files.outputs.all_changed_files }}"
+        ts_js_count=0
+        
+        for file in $ts_js_files; do
+          if [[ $file == *.ts || $file == *.tsx || $file == *.js || $file == *.jsx ]]; then
+            if [[ -f $file ]]; then
+              ts_js_count=$((ts_js_count + 1))
+            fi
+          fi
+        done
+        
+        if [ $ts_js_count -gt 0 ]; then
+          echo "### 🎯 Impact Analysis" >> analysis.md
+          echo "" >> analysis.md
+          
+          # Check if core game logic is modified
+          if echo "$ts_js_files" | grep -q "src/lib/gameLogic.ts\|src/lib/scoring.ts\|src/utils/cardUtils.ts"; then
+            echo "⚠️ **Core Game Logic Modified** - Extra care needed during review" >> analysis.md
+            echo "" >> analysis.md
+          fi
+          
+          # Check if tests are modified/added
+          if echo "$ts_js_files" | grep -q "test\|spec"; then
+            echo "✅ **Tests Updated** - Good practice!" >> analysis.md
+            echo "" >> analysis.md
+          elif [ $ts_js_count -gt 0 ]; then
+            echo "⚠️ **No Test Changes** - Consider adding tests for new functionality" >> analysis.md
+            echo "" >> analysis.md
+          fi
+          
+          # Check for configuration changes
+          if echo "$ts_js_files" | grep -q "package.json\|tsconfig.json\|biome.json\|jest.config.js"; then
+            echo "⚙️ **Configuration Changes** - Review build/quality tool impacts" >> analysis.md
+            echo "" >> analysis.md
+          fi
+          
+          # Check for CI/CD changes
+          if echo "$ts_js_files" | grep -q ".github/workflows"; then
+            echo "🚀 **CI/CD Changes** - Review automation pipeline impacts" >> analysis.md
+            echo "" >> analysis.md
+          fi
+        fi
+        
+        # Set output - escape for JSON
+        {
+          echo 'analysis_content<<EOF'
+          cat analysis.md | sed 's/`/\\`/g' | sed 's/\$/\\$/g'
+          echo EOF
+        } >> $GITHUB_OUTPUT
+        
+    - name: Run type check on changed files
+      id: typecheck
+      run: |
+        echo "### 🔧 TypeScript Analysis" > typecheck.md
+        echo "" >> typecheck.md
+        
+        if npm run type-check; then
+          echo "✅ **TypeScript Check**: All types are valid" >> typecheck.md
+        else
+          echo "❌ **TypeScript Check**: Type errors found" >> typecheck.md
+        fi
+        echo "" >> typecheck.md
+        
+        {
+          echo 'typecheck_content<<EOF'
+          cat typecheck.md | sed 's/`/\\`/g' | sed 's/\$/\\$/g'
+          echo EOF
+        } >> $GITHUB_OUTPUT
+        
+    - name: Run tests
+      id: tests
+      run: |
+        echo "### 🧪 Test Results" > test_results.md
+        echo "" >> test_results.md
+        
+        if npm test -- --passWithNoTests; then
+          echo "✅ **Tests**: All tests passing" >> test_results.md
+        else
+          echo "❌ **Tests**: Some tests are failing" >> test_results.md
+        fi
+        echo "" >> test_results.md
+        
+        {
+          echo 'test_content<<EOF'
+          cat test_results.md | sed 's/`/\\`/g' | sed 's/\$/\\$/g'
+          echo EOF
+        } >> $GITHUB_OUTPUT
+        
+    - name: Comment analysis results
+      uses: actions/github-script@v7
+      env:
+        ANALYSIS_CONTENT: ${{ steps.complexity.outputs.analysis_content }}
+        TYPECHECK_CONTENT: ${{ steps.typecheck.outputs.typecheck_content }}
+        TEST_CONTENT: ${{ steps.tests.outputs.test_content }}
+      with:
+        script: |
+          const analysisContent = process.env.ANALYSIS_CONTENT;
+          const typecheckContent = process.env.TYPECHECK_CONTENT;
+          const testContent = process.env.TEST_CONTENT;
+          
+          const comment = `${analysisContent}\n${typecheckContent}\n${testContent}\n\n---\n*🤖 Automated analysis - Updated on every push*`;
+          
+          // Find existing analysis comment
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.payload.pull_request.number
+          });
+          
+          const botComment = comments.find(comment => 
+            comment.user.type === 'Bot' && 
+            comment.body.includes('🔍 Code Analysis Results')
+          );
+          
+          if (botComment) {
+            // Update existing comment
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: comment
+            });
+          } else {
+            // Create new comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: comment
+            });
+          }
+          
+          console.log('Analysis comment posted successfully!');

@@ -1,0 +1,201 @@
+name: Auto PR Description
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  update-pr-description:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Get changed files
+      id: changed-files
+      uses: tj-actions/changed-files@v42
+      with:
+        files_separator: ','
+        
+    - name: Generate PR description
+      id: generate-description
+      run: |
+        echo "🤖 **Auto-generated PR Summary**" > pr_description.md
+        echo "" >> pr_description.md
+        
+        # Get commit messages since base branch
+        echo "## 📝 Changes Summary" >> pr_description.md
+        git log --oneline --no-merges origin/${{ github.base_ref }}..${{ github.sha }} >> commits.tmp
+        
+        if [ -s commits.tmp ]; then
+          echo "" >> pr_description.md
+          echo "### Recent Commits:" >> pr_description.md
+          while read line; do
+            echo "- $line" >> pr_description.md
+          done < commits.tmp
+          echo "" >> pr_description.md
+        fi
+        
+        # Changed files analysis
+        echo "## 📁 Files Changed" >> pr_description.md
+        echo "" >> pr_description.md
+        
+        # Count file types
+        js_ts_count=0
+        test_count=0
+        config_count=0
+        doc_count=0
+        other_count=0
+        
+        IFS=',' read -ra FILES <<< "${{ steps.changed-files.outputs.all_changed_files }}"
+        for file in "${FILES[@]}"; do
+          if [[ $file == *.ts || $file == *.tsx || $file == *.js || $file == *.jsx ]]; then
+            if [[ $file == *test* || $file == *spec* ]]; then
+              test_count=$((test_count + 1))
+            else
+              js_ts_count=$((js_ts_count + 1))
+            fi
+          elif [[ $file == *.json || $file == *.yml || $file == *.yaml || $file == *config* ]]; then
+            config_count=$((config_count + 1))
+          elif [[ $file == *.md ]]; then
+            doc_count=$((doc_count + 1))
+          else
+            other_count=$((other_count + 1))
+          fi
+        done
+        
+        total_files=${{ steps.changed-files.outputs.all_changed_files_count }}
+        echo "**Total files changed: $total_files**" >> pr_description.md
+        echo "" >> pr_description.md
+        
+        if [ $js_ts_count -gt 0 ]; then
+          echo "- 🔧 **Source Code**: $js_ts_count files" >> pr_description.md
+        fi
+        if [ $test_count -gt 0 ]; then
+          echo "- 🧪 **Tests**: $test_count files" >> pr_description.md
+        fi
+        if [ $config_count -gt 0 ]; then
+          echo "- ⚙️ **Configuration**: $config_count files" >> pr_description.md
+        fi
+        if [ $doc_count -gt 0 ]; then
+          echo "- 📚 **Documentation**: $doc_count files" >> pr_description.md
+        fi
+        if [ $other_count -gt 0 ]; then
+          echo "- 📄 **Other**: $other_count files" >> pr_description.md
+        fi
+        echo "" >> pr_description.md
+        
+        # Detailed file list
+        echo "<details>" >> pr_description.md
+        echo "<summary>📋 Detailed File List</summary>" >> pr_description.md
+        echo "" >> pr_description.md
+        
+        for file in "${FILES[@]}"; do
+          if [[ $file == *.ts || $file == *.tsx || $file == *.js || $file == *.jsx ]]; then
+            echo "- 🔧 \`$file\`" >> pr_description.md
+          elif [[ $file == *test* || $file == *spec* ]]; then
+            echo "- 🧪 \`$file\`" >> pr_description.md
+          elif [[ $file == *.json || $file == *.yml || $file == *.yaml ]]; then
+            echo "- ⚙️ \`$file\`" >> pr_description.md
+          elif [[ $file == *.md ]]; then
+            echo "- 📚 \`$file\`" >> pr_description.md
+          else
+            echo "- 📄 \`$file\`" >> pr_description.md
+          fi
+        done
+        
+        echo "" >> pr_description.md
+        echo "</details>" >> pr_description.md
+        echo "" >> pr_description.md
+        
+        # Add quality check reminder
+        echo "## ✅ Quality Checklist" >> pr_description.md
+        echo "" >> pr_description.md
+        echo "- [ ] Code follows project conventions (Biome linting)" >> pr_description.md
+        echo "- [ ] TypeScript types are properly defined" >> pr_description.md
+        echo "- [ ] Tests are added/updated for new functionality" >> pr_description.md
+        echo "- [ ] Documentation is updated if necessary" >> pr_description.md
+        echo "- [ ] All CI checks pass" >> pr_description.md
+        echo "" >> pr_description.md
+        
+        # Add testing instructions
+        if [ $test_count -gt 0 ]; then
+          echo "## 🧪 Testing" >> pr_description.md
+          echo "" >> pr_description.md
+          echo "Tests have been modified/added. Run the test suite:" >> pr_description.md
+          echo "" >> pr_description.md
+          echo "\`\`\`bash" >> pr_description.md
+          echo "npm test" >> pr_description.md
+          echo "npm run test:coverage" >> pr_description.md
+          echo "\`\`\`" >> pr_description.md
+          echo "" >> pr_description.md
+        fi
+        
+        if [ $js_ts_count -gt 0 ]; then
+          echo "## 🚀 Local Testing" >> pr_description.md
+          echo "" >> pr_description.md
+          echo "To test these changes locally:" >> pr_description.md
+          echo "" >> pr_description.md
+          echo "\`\`\`bash" >> pr_description.md
+          echo "git checkout ${{ github.head_ref }}" >> pr_description.md
+          echo "npm install" >> pr_description.md
+          echo "npm run dev" >> pr_description.md
+          echo "# Visit http://localhost:3000" >> pr_description.md
+          echo "\`\`\`" >> pr_description.md
+          echo "" >> pr_description.md
+        fi
+        
+        echo "---" >> pr_description.md
+        echo "" >> pr_description.md
+        echo "*🤖 This description was automatically generated from code changes*" >> pr_description.md
+        
+        # Set output for next step - escape for JSON
+        {
+          echo 'pr_body<<EOF'
+          cat pr_description.md | sed 's/`/\\`/g' | sed 's/\$/\\$/g'
+          echo EOF
+        } >> $GITHUB_OUTPUT
+        
+    - name: Update PR description
+      uses: actions/github-script@v7
+      env:
+        PR_BODY: ${{ steps.generate-description.outputs.pr_body }}
+      with:
+        script: |
+          const prBody = process.env.PR_BODY;
+          
+          // Get current PR
+          const { data: pr } = await github.rest.pulls.get({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: context.payload.pull_request.number
+          });
+          
+          // Check if PR already has auto-generated content
+          const hasAutoContent = pr.body && pr.body.includes('🤖 This description was automatically generated');
+          
+          let newBody;
+          if (hasAutoContent) {
+            // Replace existing auto-generated content
+            const userContent = pr.body.split('🤖 **Auto-generated PR Summary**')[0].trim();
+            newBody = userContent ? `${userContent}\n\n${prBody}` : prBody;
+          } else {
+            // Append to existing description
+            newBody = pr.body ? `${pr.body}\n\n${prBody}` : prBody;
+          }
+          
+          await github.rest.pulls.update({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: context.payload.pull_request.number,
+            body: newBody
+          });
+          
+          console.log('PR description updated successfully!');
