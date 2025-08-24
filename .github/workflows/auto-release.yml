@@ -34,7 +34,7 @@ jobs:
           done
 
           echo "version_tag=$version_tag" >> $GITHUB_OUTPUT
-          echo "version_name=$current_date Release" >> $GITHUB_OUTPUT
+          echo "version_name=Release" >> $GITHUB_OUTPUT
 
       - name: Get recent changes
         id: changes

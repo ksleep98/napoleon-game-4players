@@ -18,17 +18,35 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check if PR already exists
-        id: check-pr
+      - name: Check for changes and existing PR
+        id: check-changes
         run: |
+          # Get the latest commit from main branch
+          git fetch origin main:main
+
+          # Check if there are any changes between main and develop
+          changes_count=$(git rev-list --count main..develop)
+
+          if [ "$changes_count" -eq 0 ]; then
+            echo "No changes between main and develop branches. Skipping release PR creation."
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "pr_exists=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "Found $changes_count changes between main and develop"
+          echo "has_changes=true" >> $GITHUB_OUTPUT
+
           # Check if there's already an open PR from develop to main
           existing_pr=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number // empty')
 
           if [ -n "$existing_pr" ]; then
             echo "pr_exists=true" >> $GITHUB_OUTPUT
             echo "pr_number=$existing_pr" >> $GITHUB_OUTPUT
+            echo "Found existing release PR #$existing_pr"
           else
             echo "pr_exists=false" >> $GITHUB_OUTPUT
+            echo "No existing release PR found"
           fi
         env:
           # yamllint disable-line rule:truthy
@@ -36,6 +54,7 @@ jobs:
 
       - name: Get changes since last release
         id: changes
+        if: steps.check-changes.outputs.has_changes == 'true'
         run: |
           # Get the latest commit from main branch
           git fetch origin main:main
@@ -120,15 +139,12 @@ jobs:
           } >> $GITHUB_OUTPUT
 
       - name: Create or update release PR
-        if: steps.check-pr.outputs.pr_exists == 'false'
+        if: steps.check-changes.outputs.has_changes == 'true' && steps.check-changes.outputs.pr_exists == 'false'
         env:
           RELEASE_BODY: ${{ steps.changes.outputs.release_body }}
           # yamllint disable-line rule:truthy
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          # Generate version-based title
-          current_date=$(date +"%Y.%m.%d")
-
           # Create label if it doesn't exist
           gh label create "release" --description "Release PR" --color "0366d6" || true
 
@@ -136,7 +152,7 @@ jobs:
           gh pr create \
             --base main \
             --head develop \
-            --title "🚀 Release $current_date" \
+            --title "🚀 Release" \
             --body "$RELEASE_BODY" \
             --label "release" \
             --assignee "${{ github.actor }}"
@@ -144,10 +160,10 @@ jobs:
           echo "✅ Release PR created successfully!"
 
       - name: Update existing release PR
-        if: steps.check-pr.outputs.pr_exists == 'true'
+        if: steps.check-changes.outputs.has_changes == 'true' && steps.check-changes.outputs.pr_exists == 'true'
         env:
           RELEASE_BODY: ${{ steps.changes.outputs.release_body }}
-          PR_NUMBER: ${{ steps.check-pr.outputs.pr_number }}
+          PR_NUMBER: ${{ steps.check-changes.outputs.pr_number }}
           # yamllint disable-line rule:truthy
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
