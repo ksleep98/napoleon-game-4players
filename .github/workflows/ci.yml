@@ -7,78 +7,72 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  ci:
+  ci-pipeline:
     runs-on: ubuntu-latest
-    
+    # Optimized CI pipeline for fast feedback
+
     steps:
-    - name: Checkout
+    - name: Checkout code
       uses: actions/checkout@v4
       with:
+        # Only fetch current commit for speed
         fetch-depth: 1
 
-    - name: Setup Node.js
+    - name: Setup Node.js with cache
       uses: actions/setup-node@v4
       with:
         node-version: '22.14.0'
-        registry-url: 'https://registry.npmjs.org'
+        cache: 'npm'
 
-    - name: Get npm cache directory
-      id: npm-cache-dir
-      run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
-      
-    - name: Cache npm dependencies
-      uses: actions/cache@v3
-      with:
-        path: ${{ steps.npm-cache-dir.outputs.dir }}
-        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-node-
+    - name: Install dependencies (cached)
+      run: npm ci --prefer-offline --no-audit --no-fund
 
-    - name: Install dependencies (robust)
+    - name: Run quality checks in parallel
       run: |
-        echo "📦 Installing dependencies with fallback strategies..."
-        
-        # Strategy 1: Try npm ci with cache
-        if npm ci --prefer-offline --no-audit --no-fund; then
-          echo "✅ npm ci with cache successful"
-        # Strategy 2: Try npm ci without offline
-        elif npm ci --no-audit --no-fund; then
-          echo "✅ npm ci without offline successful"  
-        # Strategy 3: Try with yarn as fallback
-        elif command -v yarn >/dev/null && yarn install --frozen-lockfile --silent; then
-          echo "✅ yarn install successful"
-        # Strategy 4: Last resort - npm install
-        else
-          echo "⚠️  Trying npm install as last resort..."
-          rm -f package-lock.json
-          npm install --no-audit --no-fund
-          echo "✅ npm install completed"
+        # Run multiple checks in parallel using background processes
+        echo "🚀 Starting parallel quality checks..."
+
+        # Start all checks in parallel
+        npm run lint &
+        PID_LINT=$!
+
+        npm run type-check &
+        PID_TYPE=$!
+
+        npm run format:check &
+        PID_FORMAT=$!
+
+        # Wait for all processes and capture exit codes
+        wait $PID_LINT
+        LINT_RESULT=$?
+
+        wait $PID_TYPE
+        TYPE_RESULT=$?
+
+        wait $PID_FORMAT
+        FORMAT_RESULT=$?
+
+        # Report results
+        echo "✅ Lint check: $([ $LINT_RESULT -eq 0 ] && echo "PASSED" || echo "FAILED")"
+        echo "✅ Type check: $([ $TYPE_RESULT -eq 0 ] && echo "PASSED" || echo "FAILED")"
+        echo "✅ Format check: $([ $FORMAT_RESULT -eq 0 ] && echo "PASSED" || echo "FAILED")"
+
+        # Exit with error if any check failed
+        if [ $LINT_RESULT -ne 0 ] || [ $TYPE_RESULT -ne 0 ] || [ $FORMAT_RESULT -ne 0 ]; then
+          echo "❌ One or more quality checks failed"
+          exit 1
         fi
 
-    - name: TypeScript type check
-      run: |
-        echo "🔧 Running TypeScript type check..."
-        npx tsc --noEmit --skipLibCheck
+        echo "🎉 All quality checks passed!"
 
-    - name: Code quality check
-      run: |
-        echo "🔍 Running code quality checks..."
-        
-        # Try Biome, fallback to basic checks
-        if npx @biomejs/biome --version >/dev/null 2>&1; then
-          echo "✅ Using Biome for quality checks"
-          npx @biomejs/biome check . --reporter=compact
-          npx @biomejs/biome format . --check
-        else
-          echo "⚠️  Biome not available, running basic TypeScript check"
-          npx tsc --noEmit --pretty
-        fi
-
-    - name: Build verification
+    - name: Fast build check
       env:
         NEXT_PUBLIC_SUPABASE_URL: "https://mock.supabase.co"
         NEXT_PUBLIC_SUPABASE_ANON_KEY: "mock_anon_key"
+        SUPABASE_SERVICE_ROLE_KEY: "mock_service_role_key"
+        # Optimize build for CI
+        NODE_ENV: "production"
         NEXT_TELEMETRY_DISABLED: "1"
       run: |
-        echo "🏗️ Verifying build..."
+        echo "🏗️ Fast build verification..."
         npm run build
