@@ -115,14 +115,39 @@ jobs:
         echo "</details>" >> pr_description.md
         echo "" >> pr_description.md
         
+        # Add change type classification
+        echo "## 🏷️ Change Type" >> pr_description.md
+        echo "" >> pr_description.md
+        
+        if [ $js_ts_count -gt 0 ]; then
+          if echo "$ts_js_files" | grep -q "test\\|spec"; then
+            echo "- 🧪 **Tests** - Test files modified/added" >> pr_description.md
+          fi
+          if echo "$ts_js_files" | grep -q "src/lib/gameLogic.ts\\|src/lib/scoring.ts"; then
+            echo "- 🎮 **Game Logic** - Core game functionality updated" >> pr_description.md
+          fi
+          if echo "$ts_js_files" | grep -q "component\\|ui\\|page"; then
+            echo "- 💄 **UI/UX** - User interface improvements" >> pr_description.md
+          fi
+        fi
+        
+        if [ $config_count -gt 0 ]; then
+          echo "- ⚙️ **Configuration** - Build/tool configuration changes" >> pr_description.md
+        fi
+        if [ $doc_count -gt 0 ]; then
+          echo "- 📝 **Documentation** - Documentation updates" >> pr_description.md
+        fi
+        echo "" >> pr_description.md
+        
         # Add quality check reminder
-        echo "## ✅ Quality Checklist" >> pr_description.md
+        echo "## ✅ Review Checklist" >> pr_description.md
         echo "" >> pr_description.md
         echo "- [ ] Code follows project conventions (Biome linting)" >> pr_description.md
         echo "- [ ] TypeScript types are properly defined" >> pr_description.md
         echo "- [ ] Tests are added/updated for new functionality" >> pr_description.md
         echo "- [ ] Documentation is updated if necessary" >> pr_description.md
         echo "- [ ] All CI checks pass" >> pr_description.md
+        echo "- [ ] Breaking changes are documented" >> pr_description.md
         echo "" >> pr_description.md
         
         # Add testing instructions
