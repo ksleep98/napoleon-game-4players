@@ -41,6 +41,10 @@ jobs:
         npm run type-check
         
     - name: Build application
+      env:
+        NEXT_PUBLIC_SUPABASE_URL: "https://mock.supabase.co"
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: "mock_anon_key"
+        SUPABASE_SERVICE_ROLE_KEY: "mock_service_role_key"
       run: |
         echo "🏗️ Building application..."
         npm run build
