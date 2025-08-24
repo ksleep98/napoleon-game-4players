@@ -12,7 +12,9 @@ export default function Home() {
   const handleQuickGame = () => {
     // 4人のテスト用プレイヤーでクイックスタート
     const testPlayers = ['Alice', 'Bob', 'Charlie', 'Diana']
-    const gameId = `quick_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`
+    const gameId = `quick_${Date.now()}_${Math.random()
+      .toString(36)
+      .substr(2, 6)}`
 
     // テスト用のプレイヤーIDを保存
     localStorage.setItem('playerId', 'player_1')

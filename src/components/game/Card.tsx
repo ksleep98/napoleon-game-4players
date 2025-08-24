@@ -39,25 +39,27 @@ export function Card({
   }
 
   return (
-    <div
-      role="button"
-      tabIndex={isPlayable ? 0 : -1}
+    <button
+      type="button"
+      disabled={!isPlayable}
       className={`
         bg-white border-2 rounded-lg shadow-md flex flex-col items-center justify-center
         transition-all duration-200 select-none
         ${sizeClasses[size]}
-        ${isPlayable ? 'cursor-pointer hover:bg-gray-50 hover:shadow-lg hover:-translate-y-1' : 'cursor-default'}
-        ${isSelected ? 'border-blue-500 bg-blue-50 -translate-y-2 shadow-lg' : 'border-gray-300'}
+        ${
+          isPlayable
+            ? 'cursor-pointer hover:bg-gray-50 hover:shadow-lg hover:-translate-y-1'
+            : 'cursor-default'
+        }
+        ${
+          isSelected
+            ? 'border-blue-500 bg-blue-50 -translate-y-2 shadow-lg'
+            : 'border-gray-300'
+        }
         ${suitColors[card.suit]}
         ${className}
       `}
       onClick={handleClick}
-      onKeyDown={(e) => {
-        if ((e.key === 'Enter' || e.key === ' ') && isPlayable) {
-          e.preventDefault()
-          handleClick()
-        }
-      }}
     >
       <div className="font-bold">{card.rank}</div>
       <div className="text-lg">
@@ -66,6 +68,6 @@ export function Card({
         {card.suit === 'clubs' && '♣'}
         {card.suit === 'spades' && '♠'}
       </div>
-    </div>
+    </button>
   )
 }
