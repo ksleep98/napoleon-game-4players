@@ -9,7 +9,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "npx @biomejs/biome check .",
-    "lint:fix": "npx @biomejs/biome check --apply .",
+    "lint:fix": "npx @biomejs/biome check --write .",
     "format": "npx @biomejs/biome format --write .",
     "format:check": "npx @biomejs/biome format .",
     "check": "npx @biomejs/biome check .",
@@ -19,7 +19,7 @@
     "type-check": "tsc --noEmit",
     "type-check:fast": "tsc --noEmit --skipLibCheck",
     "lint:fast": "npx @biomejs/biome check . --reporter=compact",
-    "ci-check": "npm run lint && npm run type-check && npm run format:check && npm run build",
+    "ci-check": "npm run lint && npm run type-check && npm run format:check && npm test && npm run build",
     "prepare": "husky"
   },
   "dependencies": {
@@ -50,7 +50,7 @@
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
-      "npx @biomejs/biome check --apply",
+      "npx @biomejs/biome check --write",
       "npx @biomejs/biome format --write"
     ],
     "*.{json,md,css}": [

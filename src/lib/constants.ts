@@ -45,8 +45,8 @@ export const SUIT_ORDER: Record<Suit, number> = {
 
 export const GAME_CONFIG = {
   PLAYERS_COUNT: 4,
-  CARDS_PER_PLAYER: 12,
-  TOTAL_CARDS_USED: 48, // 52枚から4枚除く
+  CARDS_PER_PLAYER: 12, // 52枚（Joker除外）から4人に12枚ずつ配って残り4枚
+  TOTAL_CARDS_USED: 52, // Jokerを除外した52枚使用
   HIDDEN_CARDS: 4,
   TARGET_TRICKS: 8, // ナポレオンが取る必要があるトリック数
 } as const
@@ -58,7 +58,7 @@ export const NAPOLEON_RULES = {
   ADJUTANT_BONUS: 50,
 } as const
 
-// 全52枚のカードデッキを生成
+// Jokerを除外した52枚のトランプカードデッキを生成（スペード・ハート・ダイヤ・クラブ各13枚）
 export const createDeck = (): Card[] => {
   const deck: Card[] = []
 

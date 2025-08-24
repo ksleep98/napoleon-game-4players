@@ -7,7 +7,7 @@ echo "🚀 Pre-commit checks starting..."
 echo "📝 Running automatic fixes on staged files..."
 npx lint-staged
 
-# Additional comprehensive checks
+# Check if there are any remaining issues
 echo "🔍 Running comprehensive quality checks..."
 
 # Run type check on entire project
@@ -21,6 +21,13 @@ fi
 echo "🧪 Running tests..."
 if ! npm test -- --passWithNoTests; then
   echo "❌ Tests failed. Please fix failing tests before committing."
+  exit 1
+fi
+
+# Run lint check (read-only)
+echo "🔍 Final lint check..."
+if ! npm run lint; then
+  echo "❌ Lint issues found. Please run 'npm run lint:fix' to resolve."
   exit 1
 fi
 

@@ -1,4 +1,4 @@
-import { createGameDeck, GAME_CONFIG } from '@/lib/constants'
+import { createDeck, GAME_CONFIG } from '@/lib/constants'
 import type { Card, Player } from '@/types/game'
 
 /**
@@ -29,10 +29,10 @@ export function dealCards(players: Player[]): {
     )
   }
 
-  const deck = createGameDeck()
+  const deck = createDeck() // 全52枚を使用
   const shuffledDeck = shuffleDeck(deck)
 
-  // 48枚から4枚を隠しカードとして取り除く
+  // 52枚から4枚を隠しカードとして取り除く
   const hiddenCards = shuffledDeck.slice(0, GAME_CONFIG.HIDDEN_CARDS)
   const playingCards = shuffledDeck.slice(GAME_CONFIG.HIDDEN_CARDS)
 
