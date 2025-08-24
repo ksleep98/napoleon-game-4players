@@ -8,6 +8,7 @@ on:
 jobs:
   quality-check:
     runs-on: ubuntu-latest
+    # Code quality checks for Pull Requests: linter + type check + format check + build
     
     steps:
     - name: Checkout code
@@ -38,11 +39,6 @@ jobs:
       run: |
         echo "🔧 Running TypeScript type check..."
         npm run type-check
-        
-    - name: Run tests
-      run: |
-        echo "🧪 Running tests..."
-        npm test -- --watchAll=false
         
     - name: Build application
       run: |

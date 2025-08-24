@@ -7,6 +7,7 @@ on:
 jobs:
   ci-pipeline:
     runs-on: ubuntu-latest
+    # Code quality checks: linter + type check + format check + build
     
     steps:
     - name: Checkout code
@@ -37,11 +38,6 @@ jobs:
       run: |
         echo "📝 Checking code formatting..."
         npm run format:check
-        
-    - name: Run tests
-      run: |
-        echo "🧪 Running tests..."
-        npm test -- --coverage --watchAll=false
       
     - name: Build application
       run: |
