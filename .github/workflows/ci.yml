@@ -5,11 +5,14 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+    types: [opened, synchronize, reopened]
 
 jobs:
   ci-pipeline:
     runs-on: ubuntu-latest
     # Optimized CI pipeline for fast feedback
+    # Skip CI for release PRs since they already run on push to develop
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && !contains(github.event.pull_request.title, '🚀 Release'))
 
     steps:
       - name: Checkout code
