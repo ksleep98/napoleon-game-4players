@@ -55,6 +55,7 @@ npm run dev
 - [Jest テスト設定](./docs/testing/JEST_SETUP.md) - テスト環境・34テスト実装状況
 - [GitHub Actions](./docs/ci-cd/GITHUB_ACTIONS.md) - CI/CDパイプライン・自動品質チェック
 - [Pre-commit Hooks](./docs/ci-cd/PRE_COMMIT_HOOKS.md) - Husky・自動修正・品質チェック
+- [PR自動化](./docs/ci-cd/PR_AUTOMATION.md) - PR説明自動生成・コード分析
 
 ### 🎮 ゲーム実装
 - [実装状況](./docs/game-logic/IMPLEMENTATION_STATUS.md) - Napoleon Game機能・UI・データ管理
@@ -65,6 +66,7 @@ npm run dev
 - **開発環境**: TypeScript, Next.js, Tailwind CSS, Biome
 - **テスト環境**: Jest設定完了（34テスト実装・全合格）
 - **CI/CD**: GitHub Actions・pre-commit hooks・品質チェック自動化
+- **PR自動化**: 説明自動生成・コード分析・レビュー支援（GitHub Actions構文修正済み）
 - **ゲームロジック**: 52枚デッキ・4人プレイ・基本ルール・スコア計算
 
 ### 🚧 進行中

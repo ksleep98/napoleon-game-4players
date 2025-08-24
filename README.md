@@ -152,6 +152,7 @@ Napoleon is a trick-taking card game for 4 players using a 52-card deck (no Joke
 - **Testing Suite**: Jest tests covering game logic, utilities, and constants
 - **Code Quality**: Biome linting, formatting, and pre-commit hooks
 - **CI/CD Pipeline**: GitHub Actions with automated quality checks
+- **PR Automation**: Auto-generated descriptions and code analysis
 - **UI Components**: Card display, game board, player hands (basic implementation)
 
 ### 🚧 In Progress
