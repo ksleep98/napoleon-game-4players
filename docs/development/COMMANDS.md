@@ -37,14 +37,17 @@ npm run lint:fast     # 高速lintチェック（compact reporter）
 ## 使い分けガイド
 
 ### 開発中
+
 - `npm run dev` - 開発サーバー起動
 - `npm run test:watch` - テスト監視モード
 
 ### コミット前
+
 - `npm run ci-check` - 全チェック実行（推奨）
 - `npm run lint:fix` - 自動修正
 
 ### CI/CD環境
+
 - GitHub Actionsが自動実行
 - 並列処理で高速化
 - 全チェック合格がマージ必須条件
