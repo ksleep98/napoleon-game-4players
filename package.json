@@ -19,7 +19,8 @@
     "type-check": "tsc --noEmit",
     "type-check:fast": "tsc --noEmit --skipLibCheck",
     "lint:fast": "npx @biomejs/biome check . --reporter=compact",
-    "ci-check": "npm run lint && npm run type-check && npm run format:check && npm run format:other && npm test && npm run build",
+    "ci-check": "npm run lint && npm run type-check && npm run format:check && npm run format:other:check && npm test && npm run build",
+    "ci-fix": "npm run lint:fix && npm run format && npm run format:other && npm run type-check && npm test",
     "format:other": "npx prettier --write \"**/*.{yml,yaml,md}\" --ignore-path .gitignore",
     "format:other:check": "npx prettier --check \"**/*.{yml,yaml,md}\" --ignore-path .gitignore",
     "prepare": "husky"

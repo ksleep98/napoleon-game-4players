@@ -55,28 +55,28 @@ jobs:
           # Check if Biome is available, otherwise skip lint/format checks
           if [ "$BIOME_FAILED" = "true" ]; then
             echo "⚠️ Biome unavailable, running TypeScript and test checks..."
-            
+
             # Run type check and tests when Biome is not available
             npm run type-check &
             PID_TYPE=$!
-            
+
             npm test &
             PID_TEST=$!
-            
+
             wait $PID_TYPE
             TYPE_RESULT=$?
-            
+
             wait $PID_TEST
             TEST_RESULT=$?
-            
+
             echo "✅ Type check: $([ $TYPE_RESULT -eq 0 ] && echo "PASSED" || echo "FAILED")"
             echo "✅ Tests: $([ $TEST_RESULT -eq 0 ] && echo "PASSED" || echo "FAILED")"
-            
+
             if [ $TYPE_RESULT -ne 0 ] || [ $TEST_RESULT -ne 0 ]; then
               echo "❌ One or more checks failed"
               exit 1
             fi
-            
+
             echo "🎉 Type check and tests passed! (Biome checks skipped)"
           else
             # Run full quality checks in parallel
@@ -88,7 +88,7 @@ jobs:
 
             npm run format:check &
             PID_FORMAT=$!
-            
+
             npm test &
             PID_TEST=$!
 
@@ -101,7 +101,7 @@ jobs:
 
             wait $PID_FORMAT
             FORMAT_RESULT=$?
-            
+
             wait $PID_TEST
             TEST_RESULT=$?
 

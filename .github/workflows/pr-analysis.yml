@@ -70,13 +70,13 @@ jobs:
           if [ $ts_js_count -gt 0 ]; then
             echo "### 🎯 Impact Analysis" >> analysis.md
             echo "" >> analysis.md
-            
+
             # Check if core game logic is modified
             if echo "$ts_js_files" | grep -q "src/lib/gameLogic.ts\|src/lib/scoring.ts\|src/utils/cardUtils.ts"; then
               echo "⚠️ **Core Game Logic Modified** - Extra care needed during review" >> analysis.md
               echo "" >> analysis.md
             fi
-            
+
             # Check if tests are modified/added
             if echo "$ts_js_files" | grep -q "test\|spec"; then
               echo "✅ **Tests Updated** - Good practice!" >> analysis.md
@@ -85,13 +85,13 @@ jobs:
               echo "⚠️ **No Test Changes** - Consider adding tests for new functionality" >> analysis.md
               echo "" >> analysis.md
             fi
-            
+
             # Check for configuration changes
             if echo "$ts_js_files" | grep -q "package.json\|tsconfig.json\|biome.json\|jest.config.js"; then
               echo "⚙️ **Configuration Changes** - Review build/quality tool impacts" >> analysis.md
               echo "" >> analysis.md
             fi
-            
+
             # Check for CI/CD changes
             if echo "$ts_js_files" | grep -q ".github/workflows"; then
               echo "🚀 **CI/CD Changes** - Review automation pipeline impacts" >> analysis.md
@@ -165,8 +165,8 @@ jobs:
               issue_number: context.payload.pull_request.number
             });
 
-            const botComment = comments.find(comment => 
-              comment.user.type === 'Bot' && 
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
               comment.body.includes('🔍 Code Analysis Results')
             );
 
