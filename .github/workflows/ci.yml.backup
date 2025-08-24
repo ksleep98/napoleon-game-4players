@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  ci-pipeline:
+    runs-on: ubuntu-latest
+    # Optimized CI pipeline for fast feedback
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        # Only fetch current commit for speed
+        fetch-depth: 1
+        
+    - name: Setup Node.js with cache
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22.14.0'
+        cache: 'npm'
+        
+    - name: Install dependencies (cached)
+      run: npm ci --prefer-offline --no-audit --no-fund
+        
+    - name: Run quality checks in parallel
+      run: |
+        # Run multiple checks in parallel using background processes
+        echo "🚀 Starting parallel quality checks..."
+        
+        # Start all checks in parallel
+        npm run lint &
+        PID_LINT=$!
+        
+        npm run type-check &
+        PID_TYPE=$!
+        
+        npm run format:check &
+        PID_FORMAT=$!
+        
+        # Wait for all processes and capture exit codes
+        wait $PID_LINT
+        LINT_RESULT=$?
+        
+        wait $PID_TYPE  
+        TYPE_RESULT=$?
+        
+        wait $PID_FORMAT
+        FORMAT_RESULT=$?
+        
+        # Report results
+        echo "✅ Lint check: $([ $LINT_RESULT -eq 0 ] && echo "PASSED" || echo "FAILED")"
+        echo "✅ Type check: $([ $TYPE_RESULT -eq 0 ] && echo "PASSED" || echo "FAILED")" 
+        echo "✅ Format check: $([ $FORMAT_RESULT -eq 0 ] && echo "PASSED" || echo "FAILED")"
+        
+        # Exit with error if any check failed
+        if [ $LINT_RESULT -ne 0 ] || [ $TYPE_RESULT -ne 0 ] || [ $FORMAT_RESULT -ne 0 ]; then
+          echo "❌ One or more quality checks failed"
+          exit 1
+        fi
+        
+        echo "🎉 All quality checks passed!"
+      
+    - name: Fast build check
+      env:
+        NEXT_PUBLIC_SUPABASE_URL: "https://mock.supabase.co"
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: "mock_anon_key"
+        SUPABASE_SERVICE_ROLE_KEY: "mock_service_role_key"
+        # Optimize build for CI
+        NODE_ENV: "production"
+        NEXT_TELEMETRY_DISABLED: "1"
+      run: |
+        echo "🏗️ Fast build verification..."
+        npm run build

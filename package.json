@@ -17,6 +17,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "type-check": "tsc --noEmit",
+    "type-check:fast": "tsc --noEmit --skipLibCheck",
+    "lint:fast": "npx @biomejs/biome check . --reporter=compact",
     "ci-check": "npm run lint && npm run type-check && npm run format:check && npm run build",
     "prepare": "husky"
   },

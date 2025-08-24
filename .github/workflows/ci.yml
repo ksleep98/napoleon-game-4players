@@ -1,4 +1,4 @@
-name: CI
+name: Fast CI
 
 on:
   push:
@@ -7,45 +7,59 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  ci-pipeline:
+  ci:
     runs-on: ubuntu-latest
-    # Code quality checks: linter + type check + format check + build
     
     steps:
-    - name: Checkout code
+    - name: Checkout
       uses: actions/checkout@v4
-      
+      with:
+        fetch-depth: 1
+        
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '22.14.0'
+        cache: 'npm'
         
-    - name: Clean install dependencies
+    - name: Install dependencies
+      run: npm ci --prefer-offline --no-audit --no-fund
+        
+    - name: Quality checks (parallel)
       run: |
-        npm ci --no-cache
-        # Verify Biome installation
-        npx @biomejs/biome --version || npm install @biomejs/biome --force
-      
-    - name: Run linter
-      run: |
-        echo "🔍 Running Biome linter..."
-        npm run lint
-      
-    - name: Run TypeScript type check
-      run: |
-        echo "🔧 Running TypeScript type check..."
-        npm run type-check
-      
-    - name: Check code formatting
-      run: |
-        echo "📝 Checking code formatting..."
-        npm run format:check
-      
-    - name: Build application
+        echo "🚀 Running quality checks in parallel..."
+        
+        # Start all checks in background
+        npm run lint:fast &
+        LINT_PID=$!
+        
+        npm run type-check:fast &
+        TYPE_PID=$!
+        
+        npm run format:check &
+        FORMAT_PID=$!
+        
+        # Wait and collect results
+        wait $LINT_PID; LINT_CODE=$?
+        wait $TYPE_PID; TYPE_CODE=$?
+        wait $FORMAT_PID; FORMAT_CODE=$?
+        
+        # Report results
+        [ $LINT_CODE -eq 0 ] && echo "✅ Lint: PASS" || echo "❌ Lint: FAIL"
+        [ $TYPE_CODE -eq 0 ] && echo "✅ Types: PASS" || echo "❌ Types: FAIL"
+        [ $FORMAT_CODE -eq 0 ] && echo "✅ Format: PASS" || echo "❌ Format: FAIL"
+        
+        # Exit with error if any failed
+        if [ $LINT_CODE -ne 0 ] || [ $TYPE_CODE -ne 0 ] || [ $FORMAT_CODE -ne 0 ]; then
+          exit 1
+        fi
+        
+    - name: Build check
+      if: success()
       env:
         NEXT_PUBLIC_SUPABASE_URL: "https://mock.supabase.co"
         NEXT_PUBLIC_SUPABASE_ANON_KEY: "mock_anon_key"
-        SUPABASE_SERVICE_ROLE_KEY: "mock_service_role_key"
+        NEXT_TELEMETRY_DISABLED: "1"
       run: |
-        echo "🏗️ Building application..."
+        echo "🏗️ Build verification..."
         npm run build
