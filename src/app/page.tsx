@@ -12,7 +12,9 @@ export default function Home() {
   const handleQuickGame = () => {
     // 4人のテスト用プレイヤーでクイックスタート
     const testPlayers = ['Alice', 'Bob', 'Charlie', 'Diana']
-    const gameId = `quick_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`
+    const gameId = `quick_${Date.now()}_${Math.random()
+      .toString(36)
+      .substring(2, 8)}`
 
     // テスト用のプレイヤーIDを保存
     localStorage.setItem('playerId', 'player_1')
@@ -76,6 +78,7 @@ export default function Home() {
           <div className="text-center space-y-6">
             <div className="space-x-6">
               <button
+                type="button"
                 onClick={handleStartGame}
                 className="inline-block bg-yellow-500 hover:bg-yellow-600 text-yellow-900 font-bold py-4 px-8 rounded-lg text-xl transition-colors shadow-lg"
               >
@@ -83,6 +86,7 @@ export default function Home() {
               </button>
 
               <button
+                type="button"
                 onClick={handleQuickGame}
                 className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-lg text-xl transition-colors shadow-lg"
               >

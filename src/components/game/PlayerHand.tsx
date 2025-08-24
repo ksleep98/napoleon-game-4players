@@ -1,8 +1,8 @@
 'use client'
 
-import { Card as CardType, Player } from '@/types/game'
-import { Card } from './Card'
+import type { Player } from '@/types/game'
 import { sortHand } from '@/utils/cardUtils'
+import { Card } from './Card'
 
 interface PlayerHandProps {
   player: Player
@@ -27,9 +27,9 @@ export function PlayerHand({
     // 他のプレイヤーの手札は裏面で表示
     return (
       <div className="flex flex-wrap gap-1">
-        {player.hand.map((_, index) => (
+        {player.hand.map((card) => (
           <div
-            key={index}
+            key={card.id}
             className="w-12 h-16 bg-blue-900 border border-blue-800 rounded-lg shadow-md flex items-center justify-center"
           >
             <div className="text-blue-400 text-xs">🂠</div>

@@ -1,5 +1,5 @@
-import { Card, Player } from '@/types/game'
 import { createGameDeck, GAME_CONFIG } from '@/lib/constants'
+import type { Card, Player } from '@/types/game'
 
 /**
  * Fisher-Yatesアルゴリズムを使ってカードをシャッフル
@@ -110,12 +110,12 @@ export function getCardDisplay(card: Card): string {
  * ランダムなプレイヤーIDを生成
  */
 export function generatePlayerId(): string {
-  return `player_${Math.random().toString(36).substr(2, 9)}`
+  return `player_${Math.random().toString(36).substring(2, 11)}`
 }
 
 /**
  * ランダムなゲームIDを生成
  */
 export function generateGameId(): string {
-  return `game_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  return `game_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
 }

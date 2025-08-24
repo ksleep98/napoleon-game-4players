@@ -1,18 +1,17 @@
-import {
+import type {
   Card,
+  GamePhase,
   GameState,
+  PlayedCard,
   Player,
   Trick,
-  PlayedCard,
-  GamePhase,
 } from '@/types/game'
 import {
-  dealCards,
-  removeCardFromHand,
   canFollowSuit,
+  dealCards,
   generateGameId,
+  removeCardFromHand,
 } from '@/utils/cardUtils'
-import { NAPOLEON_RULES } from '@/lib/constants'
 
 /**
  * 新しいゲームを初期化
@@ -51,7 +50,7 @@ export function initializeGame(playerNames: string[]): GameState {
  */
 export function createNewTrick(): Trick {
   return {
-    id: `trick_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+    id: `trick_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
     cards: [],
     completed: false,
   }

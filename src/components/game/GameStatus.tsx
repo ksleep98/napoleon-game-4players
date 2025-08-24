@@ -1,7 +1,7 @@
 'use client'
 
-import { GameState } from '@/types/game'
 import { getGameProgress, getPlayerStats } from '@/lib/scoring'
+import type { GameState } from '@/types/game'
 
 interface GameStatusProps {
   gameState: GameState

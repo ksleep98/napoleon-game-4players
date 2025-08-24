@@ -1,15 +1,15 @@
 'use client'
 
-import { GameState, PlayedCard } from '@/types/game'
-import { Card } from './Card'
 import { getGameProgress } from '@/lib/scoring'
+import type { GameState, PlayedCard } from '@/types/game'
+import { Card } from './Card'
 
 interface GameBoardProps {
   gameState: GameState
   currentPlayerId?: string
 }
 
-export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
+export function GameBoard({ gameState }: GameBoardProps) {
   const currentTrick = gameState.currentTrick
   const progress = getGameProgress(gameState)
 

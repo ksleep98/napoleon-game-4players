@@ -1,5 +1,5 @@
-import { GameState, GameResult, PlayerScore } from '@/types/game'
 import { NAPOLEON_RULES } from '@/lib/constants'
+import type { GameResult, GameState, PlayerScore } from '@/types/game'
 
 /**
  * ゲーム結果を計算して判定する
@@ -146,8 +146,7 @@ export function isGameDecided(gameState: GameState): {
   napoleonWon?: boolean
   reason?: string
 } {
-  const { napoleonTeamTricks, tricksRemaining, napoleonNeedsToWin } =
-    getGameProgress(gameState)
+  const { napoleonTeamTricks, tricksRemaining } = getGameProgress(gameState)
 
   // ナポレオン側が既に必要なトリック数を達成
   if (napoleonTeamTricks >= NAPOLEON_RULES.TARGET_TRICKS) {

@@ -1,10 +1,18 @@
 import { createClient } from '@supabase/supabase-js'
+import type { GameState } from '@/types/game'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseUrl =
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mock.supabase.co'
+const supabaseAnonKey =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'mock_anon_key'
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables')
+// Only throw error in production runtime (not during build)
+if (
+  typeof window !== 'undefined' &&
+  (!process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+) {
+  console.warn('Missing Supabase environment variables - using mock values')
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
@@ -15,7 +23,7 @@ export type Database = {
       games: {
         Row: {
           id: string
-          state: any // JSONBオブジェクトとしてゲームの状態全体を保存
+          state: GameState // JSONBオブジェクトとしてゲームの状態全体を保存
           created_at: string
           updated_at: string
           phase: string
@@ -23,7 +31,7 @@ export type Database = {
         }
         Insert: {
           id: string
-          state: any
+          state: GameState
           created_at?: string
           updated_at?: string
           phase: string
@@ -31,7 +39,7 @@ export type Database = {
         }
         Update: {
           id?: string
-          state?: any
+          state?: GameState
           created_at?: string
           updated_at?: string
           phase?: string
@@ -101,7 +109,7 @@ export type Database = {
           napoleon_player_id: string
           adjutant_player_id: string | null
           tricks_won: number
-          scores: any // JSON array of PlayerScore
+          scores: unknown // JSON array of PlayerScore
           created_at: string
         }
         Insert: {
@@ -111,7 +119,7 @@ export type Database = {
           napoleon_player_id: string
           adjutant_player_id?: string | null
           tricks_won: number
-          scores: any
+          scores: unknown
           created_at?: string
         }
         Update: {
@@ -121,7 +129,7 @@ export type Database = {
           napoleon_player_id?: string
           adjutant_player_id?: string | null
           tricks_won?: number
-          scores?: any
+          scores?: unknown
           created_at?: string
         }
       }
