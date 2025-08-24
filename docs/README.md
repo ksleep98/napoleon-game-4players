@@ -17,6 +17,7 @@ docs/
 ## 📋 ドキュメント一覧
 
 ### セットアップ・環境構築
+
 - **[PROJECT_SETUP.md](./setup/PROJECT_SETUP.md)**
   - 技術スタック詳細
   - 環境要件・VSCode拡張
@@ -24,12 +25,14 @@ docs/
   - 設定ファイル一覧
 
 ### 開発ツール
+
 - **[COMMANDS.md](./development/COMMANDS.md)**
   - npm scripts 全一覧
   - 使い分けガイド
   - パフォーマンス情報
 
 ### テスト環境
+
 - **[JEST_SETUP.md](./testing/JEST_SETUP.md)**
   - Jest設定詳細
   - 34テスト実装状況
@@ -37,6 +40,7 @@ docs/
   - 実行方法
 
 ### CI/CD・品質管理
+
 - **[GITHUB_ACTIONS.md](./ci-cd/GITHUB_ACTIONS.md)**
   - GitHub Actions設定
   - 並列実行・パフォーマンス最適化
@@ -50,6 +54,7 @@ docs/
   - 実行例・パフォーマンス
 
 ### ゲーム実装
+
 - **[IMPLEMENTATION_STATUS.md](./game-logic/IMPLEMENTATION_STATUS.md)**
   - Napoleon Game実装完了状況
   - Core Logic, UI, Database統合
@@ -59,15 +64,18 @@ docs/
 ## 🚀 クイックナビゲーション
 
 ### 初めて開発に参加する場合
+
 1. [PROJECT_SETUP.md](./setup/PROJECT_SETUP.md) - 環境構築
 2. [COMMANDS.md](./development/COMMANDS.md) - 開発コマンド習得
 3. [PRE_COMMIT_HOOKS.md](./ci-cd/PRE_COMMIT_HOOKS.md) - 品質チェック理解
 
 ### テスト・CI/CDを理解したい場合
+
 1. [JEST_SETUP.md](./testing/JEST_SETUP.md) - テスト環境
 2. [GITHUB_ACTIONS.md](./ci-cd/GITHUB_ACTIONS.md) - CI/CD詳細
 
 ### ゲーム実装状況を確認したい場合
+
 1. [IMPLEMENTATION_STATUS.md](./game-logic/IMPLEMENTATION_STATUS.md) - 全体状況
 
 ## 📝 更新履歴

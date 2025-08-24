@@ -54,7 +54,7 @@ export default function GamePage() {
 // Async components for data fetching
 export default async function GameRoom({ params }: { params: { id: string } }) {
   const gameData = await fetchGameData(params.id)
-  
+
   return (
     <div>
       <GameBoard data={gameData} />
@@ -77,7 +77,7 @@ interface GameBoardProps {
 
 export function GameBoard({ initialCards, playerId }: GameBoardProps) {
   const [cards, setCards] = useState<Card[]>(initialCards)
-  
+
   return (
     <div className="game-board">
       {cards.map((card) => (
@@ -95,22 +95,22 @@ export function GameBoard({ initialCards, playerId }: GameBoardProps) {
 ```typescript
 // Props は常に interface で定義
 interface CardProps {
-  card: Card
-  isSelected?: boolean
-  onClick: (cardId: string) => void
+  card: Card;
+  isSelected?: boolean;
+  onClick: (cardId: string) => void;
 }
 
 // 複雑な Props は分割
 interface GameState {
-  players: Player[]
-  currentPlayer: string
-  phase: GamePhase
+  players: Player[];
+  currentPlayer: string;
+  phase: GamePhase;
 }
 
 interface GameBoardProps {
-  gameState: GameState
-  onCardPlay: (card: Card) => void
-  onGameEnd: () => void
+  gameState: GameState;
+  onCardPlay: (card: Card) => void;
+  onGameEnd: () => void;
 }
 ```
 
@@ -119,18 +119,18 @@ interface GameBoardProps {
 ```typescript
 // types/game.ts
 export interface Player {
-  id: string
-  name: string
-  cards: Card[]
+  id: string;
+  name: string;
+  cards: Card[];
 }
 
 export interface Card {
-  id: string
-  suit: 'hearts' | 'diamonds' | 'clubs' | 'spades'
-  rank: number
+  id: string;
+  suit: 'hearts' | 'diamonds' | 'clubs' | 'spades';
+  rank: number;
 }
 
-export type GamePhase = 'setup' | 'bidding' | 'playing' | 'finished'
+export type GamePhase = 'setup' | 'bidding' | 'playing' | 'finished';
 ```
 
 ### スタイリング規約
@@ -164,14 +164,14 @@ export type GamePhase = 'setup' | 'bidding' | 'playing' | 'finished'
 
 ```typescript
 // 単純な状態
-const [isLoading, setIsLoading] = useState<boolean>(false)
+const [isLoading, setIsLoading] = useState<boolean>(false);
 
 // オブジェクト状態は個別に分離
-const [player, setPlayer] = useState<Player | null>(null)
-const [gamePhase, setGamePhase] = useState<GamePhase>('setup')
+const [player, setPlayer] = useState<Player | null>(null);
+const [gamePhase, setGamePhase] = useState<GamePhase>('setup');
 
 // 複雑な状態は useReducer を検討
-const [gameState, dispatch] = useReducer(gameReducer, initialGameState)
+const [gameState, dispatch] = useReducer(gameReducer, initialGameState);
 ```
 
 #### Custom Hooks
@@ -179,18 +179,21 @@ const [gameState, dispatch] = useReducer(gameReducer, initialGameState)
 ```typescript
 // hooks/useGameLogic.ts
 export function useGameLogic(gameId: string) {
-  const [gameState, setGameState] = useState<GameState | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  
-  const playCard = useCallback((card: Card) => {
-    // Game logic here
-  }, [gameState])
-  
+  const [gameState, setGameState] = useState<GameState | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const playCard = useCallback(
+    (card: Card) => {
+      // Game logic here
+    },
+    [gameState]
+  );
+
   return {
     gameState,
     isLoading,
     playCard,
-  }
+  };
 }
 ```
 
@@ -198,30 +201,30 @@ export function useGameLogic(gameId: string) {
 
 ```typescript
 // app/api/games/route.ts
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
-    const games = await getGames()
-    return NextResponse.json(games)
+    const games = await getGames();
+    return NextResponse.json(games);
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to fetch games' },
       { status: 500 }
-    )
+    );
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const newGame = await createGame(body)
-    return NextResponse.json(newGame, { status: 201 })
+    const body = await request.json();
+    const newGame = await createGame(body);
+    return NextResponse.json(newGame, { status: 201 });
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to create game' },
       { status: 400 }
-    )
+    );
   }
 }
 ```
@@ -232,14 +235,17 @@ export async function POST(request: NextRequest) {
 
 ```typescript
 // components/ui/ErrorBoundary.tsx
-'use client'
+'use client';
 
 interface ErrorBoundaryProps {
-  children: React.ReactNode
-  fallback?: React.ComponentType<{ error: Error }>
+  children: React.ReactNode;
+  fallback?: React.ComponentType<{ error: Error }>;
 }
 
-export function ErrorBoundary({ children, fallback: Fallback }: ErrorBoundaryProps) {
+export function ErrorBoundary({
+  children,
+  fallback: Fallback,
+}: ErrorBoundaryProps) {
   // Error boundary implementation
 }
 ```
@@ -294,14 +300,14 @@ export async function removeCardFromPlayer(
 // 1. 基本点数は取ったトリック数 × 10点
 // 2. ナポレオン宣言が成功した場合は追加ボーナス
 const calculateScore = (tricks: number, isNapoleon: boolean) => {
-  let score = tricks * 10
-  
+  let score = tricks * 10;
+
   if (isNapoleon && tricks >= 13) {
-    score += 100 // ナポレオン成功ボーナス
+    score += 100; // ナポレオン成功ボーナス
   }
-  
-  return score
-}
+
+  return score;
+};
 ```
 
 ## テスト規約
@@ -322,7 +328,7 @@ describe('Card Component', () => {
 
   it('renders card correctly', () => {
     render(<Card card={mockCard} />)
-    
+
     expect(screen.getByRole('button')).toBeInTheDocument()
     expect(screen.getByText('10')).toBeInTheDocument()
   })
@@ -330,7 +336,7 @@ describe('Card Component', () => {
   it('calls onClick when clicked', () => {
     const mockOnClick = jest.fn()
     render(<Card card={mockCard} onClick={mockOnClick} />)
-    
+
     fireEvent.click(screen.getByRole('button'))
     expect(mockOnClick).toHaveBeenCalledWith(mockCard.id)
   })
@@ -375,15 +381,15 @@ import Image from 'next/image'
 
 ```typescript
 // 入力値検証例
-import { z } from 'zod'
+import { z } from 'zod';
 
 const GameSchema = z.object({
   playerName: z.string().min(1).max(20),
   roomId: z.string().uuid(),
-})
+});
 
 export async function createGame(input: unknown) {
-  const validated = GameSchema.parse(input)
+  const validated = GameSchema.parse(input);
   // Process validated input
 }
 ```

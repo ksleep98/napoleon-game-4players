@@ -3,6 +3,7 @@
 ## Husky + lint-staged セットアップ完了
 
 ### 設定ファイル
+
 - ✅ `.husky/pre-commit` - メインpre-commitフック
 - ✅ `.husky/pre-commit-light` - 軽量版（フォーマットのみ）
 - ✅ `.husky/pre-commit-enhanced` - 拡張版（詳細フィードバック付き）
@@ -13,6 +14,7 @@
 ### git commit 実行時の自動処理
 
 **1. lint-staged（ステージファイル対象）:**
+
 ```bash
 # TypeScript/JavaScript files
 npx @biomejs/biome check --write   # 自動修正
@@ -23,6 +25,7 @@ npx @biomejs/biome format --write  # フォーマット
 ```
 
 **2. プロジェクト全体チェック:**
+
 ```bash
 npm run type-check  # TypeScript型チェック
 npm test           # Jest テスト実行
@@ -31,18 +34,21 @@ npm test           # Jest テスト実行
 ## Pre-commit バリエーション
 
 ### デフォルト（包括的チェック）
+
 ```bash
 git commit -m "message"
 # → 自動修正 + 型チェック + テスト実行
 ```
 
 ### 軽量版に切り替え
+
 ```bash
 cp .husky/pre-commit-light .husky/pre-commit
 # → フォーマット・lint のみ
 ```
 
 ### 緊急時スキップ
+
 ```bash
 git commit -m "message" --no-verify
 # → 全チェック無効化
@@ -80,9 +86,7 @@ Tests:       34 passed, 34 total
       "npx @biomejs/biome check --write",
       "npx @biomejs/biome format --write"
     ],
-    "*.json": [
-      "npx @biomejs/biome format --write"
-    ]
+    "*.json": ["npx @biomejs/biome format --write"]
   }
 }
 ```
@@ -90,16 +94,19 @@ Tests:       34 passed, 34 total
 ## 注意事項
 
 ### Husky 非推奨警告
+
 ```
 husky - DEPRECATED
 Please remove the following two lines from .husky/pre-commit:
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 ```
+
 - 動作には影響なし
 - v10.0.0 で修正予定
 
 ### 推奨ワークフロー
+
 1. コード変更
 2. `npm run ci-check` で事前確認
 3. `git add .`
