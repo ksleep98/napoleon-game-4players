@@ -8,7 +8,7 @@ A web-based Napoleon card game implementation built with modern web technologies
 - **Language**: TypeScript
 - **UI Library**: React 19.x
 - **Styling**: Tailwind CSS
-- **Database**: Prisma ORM with SQLite
+- **Database**: Supabase (PostgreSQL)
 - **Testing**: Jest + React Testing Library
 - **Code Quality**: Biome (Linter + Formatter)
 - **Pre-commit**: Husky + lint-staged
@@ -35,14 +35,21 @@ cd napoleon-game-4players
 npm install
 ```
 
-3. Set up the database (when ready):
+3. Set up environment variables:
 
 ```bash
-npx prisma migrate dev
-npx prisma generate
+cp .env.local.example .env.local
+# Edit .env.local with your Supabase credentials
 ```
 
-4. Start the development server:
+4. Set up Supabase database:
+
+```bash
+# Follow the comprehensive setup guide
+# See docs/setup/SUPABASE_SETUP.md for full instructions
+```
+
+5. Start the development server:
 
 ```bash
 npm run dev
@@ -58,7 +65,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 │   └── components/   # React components
 ├── tests/            # Test files
 ├── docs/             # Documentation
-├── prisma/           # Database schema and migrations
+├── src/lib/supabase/ # Supabase integration
 └── public/           # Static assets
 ```
 
@@ -140,7 +147,7 @@ git commit -m "your message" --no-verify
 
 - **Biome** (biomejs.biome) - Integrated linting and formatting
 - **Tailwind CSS IntelliSense** (bradlc.vscode-tailwindcss)
-- **Prisma** (Prisma.prisma) - Database schema support
+- **TypeScript** (typescript-language-server) - Enhanced TypeScript support
 
 ## Game Rules
 
@@ -166,15 +173,16 @@ Napoleon is a trick-taking card game for 4 players using a 52-card deck (no Joke
 
 - **Core Game Logic**: Card management, game state, scoring system
 - **TypeScript Types**: Comprehensive type definitions for all game entities
-- **Testing Suite**: Jest tests covering game logic, utilities, and constants
+- **Testing Suite**: Jest tests (75 tests) covering game logic, utilities, and Supabase integration
 - **Code Quality**: Biome linting, formatting, and pre-commit hooks
 - **CI/CD Pipeline**: GitHub Actions with automated quality checks
 - **PR Automation**: Auto-generated descriptions and code analysis
 - **UI Components**: Card display, game board, player hands (basic implementation)
+- **Supabase Integration**: Database setup, real-time sync, session management
+- **Quick Start**: Instant 4-player game functionality
 
 ### 🚧 In Progress
 
-- **Supabase Integration**: Database setup and real-time multiplayer
 - **Game UI Polish**: Enhanced animations and user experience
 - **AI Players**: Computer opponents for single-player mode
 

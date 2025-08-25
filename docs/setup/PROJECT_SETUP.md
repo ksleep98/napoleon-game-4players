@@ -6,7 +6,7 @@
 - フレームワーク: Next.js 15.4 (App Router)
 - UI ライブラリ: React 19.x
 - スタイリング: Tailwind CSS
-- データベース: Prisma ORM (SQLite)
+- データベース: Supabase (PostgreSQL)
 - テストフレームワーク: Jest + React Testing Library
 - コード品質: Biome (Linter + Formatter)
 - エディター設定: .editorconfig
@@ -37,10 +37,8 @@ npm install -D typescript @types/react @types/react-dom @types/node
 # Tailwind CSS セットアップ
 npm install -D tailwindcss postcss autoprefixer
 
-# Prisma ORM セットアップ
-npm install -D prisma
-npm install @prisma/client
-npx prisma init
+# Supabase セットアップ
+npm install @supabase/supabase-js
 
 # Jest テストセットアップ
 npm install -D jest @types/jest jest-environment-jsdom @testing-library/react @testing-library/jest-dom @testing-library/dom
@@ -66,7 +64,7 @@ npx husky init
 - ✅ .gitignore - Git 除外設定
 - ✅ docs/CODING_STANDARDS.md - コーディング規約
 - ✅ src/app/ - Next.js App Router 構成
-- ✅ prisma/schema.prisma - データベーススキーマ
+- ✅ src/lib/supabase/ - Supabase統合・リアルタイム同期・データベーススキーマ
 
 ## インストール手順
 

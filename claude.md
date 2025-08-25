@@ -12,7 +12,7 @@
 - **Framework**: Next.js 15.4 (App Router)
 - **UI Library**: React 19.x
 - **Styling**: Tailwind CSS
-- **Database**: Supabase (PostgreSQL) + Prisma ORM (SQLite)
+- **Database**: Supabase (PostgreSQL)
 - **Testing**: Jest + React Testing Library
 - **Code Quality**: Biome (Linter + Formatter)
 - **Pre-commit**: Husky + lint-staged
@@ -70,21 +70,24 @@ npm run dev
 ### ✅ 完了
 
 - **開発環境**: TypeScript, Next.js, Tailwind CSS, Biome
-- **テスト環境**: Jest設定完了（34テスト実装・全合格）
+- **テスト環境**: Jest設定完了（75テスト実装・全合格）
 - **CI/CD**: GitHub Actions・pre-commit hooks・品質チェック自動化
 - **PR自動化**: 説明自動生成・コード分析・レビュー支援（GitHub Actions構文修正済み）
 - **ゲームロジック**: 52枚デッキ・4人プレイ・基本ルール・スコア計算
+- **Supabase統合**: データベース接続・リアルタイム同期・セッション管理
+- **Quick Start**: 4人対戦ゲームの即座開始機能
+- **エラー修正**: 404/PGRST202エラー解消・RLS設定最適化
 
 ### 🚧 進行中
 
-- **Supabase統合**: データベース・リアルタイム同期
 - **UI改善**: アニメーション・レスポンシブ対応
+- **マルチプレイヤー**: リアルタイム対戦機能の拡張
 
 ### 📋 予定
 
-- **マルチプレイヤー**: リアルタイム対戦
 - **AI対戦**: コンピュータ対戦相手
 - **統計機能**: プレイヤー履歴・戦績
+- **本番環境**: RLS有効化・セキュリティ強化
 
 ## 開発ルール
 

@@ -181,6 +181,59 @@ await saveGameState(gameState);
 # - Realtime connections
 ```
 
+## ✅ 最新の修正・改善事項 (2024/08/25)
+
+### セッション管理の最適化
+
+**問題**: `set_config`関数の404/PGRST202エラー
+
+- 開発環境でRLS無効化時にSupabaseのRPC関数呼び出しエラー
+- Quick Start使用時のコンソールエラー
+
+**解決策**: 開発環境向けセッション管理の簡素化
+
+```typescript
+// 修正後: src/lib/supabase/client.ts
+export const setPlayerSession = async (playerId: string) => {
+  // ローカルストレージに保存
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('napoleon_player_id', playerId);
+  }
+
+  // 開発環境ではRLSが無効化されているため、RPC呼び出しをスキップ
+  // 本番環境でRLS有効化時は、コメントアウトされたコードを有効にする
+};
+```
+
+### Quick Start機能の実装
+
+**追加機能**:
+
+- 即座にゲーム開始できる機能
+- 4人プレイヤーの自動設定
+- エラーのないシームレスな体験
+
+**実装場所**:
+
+- `src/hooks/useGameState.ts`: 初期化処理の最適化
+- `src/app/game/[gameId]/page.tsx`: URLパラメータ処理
+
+### テストカバレッジの拡張
+
+**追加されたテスト**: 41個の新しいテスト（合計75個）
+
+- `tests/lib/supabase/client.test.ts`: 基本セッション管理
+- `tests/lib/supabase/client-functions.test.ts`: 実関数テスト
+- `tests/lib/supabase/session-management.test.ts`: RLS修正確認
+- `tests/lib/supabase/environment.test.ts`: 環境設定テスト
+
+**カバー範囲**:
+
+- セッション管理（保存・取得・SSR対応）
+- エラーハンドリング
+- パフォーマンステスト
+- 型安全性確認
+
 ## 🚨 トラブルシューティング
 
 ### よくある問題
@@ -197,18 +250,32 @@ Error: Failed to connect to Supabase
 - ネットワーク接続確認
 - Supabaseプロジェクトの状態確認
 
-#### 2. RLSエラー
+#### 2. RLS エラー (解決済み)
 
 ```
-Error: Row Level Security policy violation
+Error: new row violates row-level security policy for table 'games'
 ```
 
-**解決策**:
+**修正内容**:
 
-- プレイヤーセッション設定確認
-- RLSポリシーの確認・修正
+- 開発環境でのRLS一時無効化: `ALTER TABLE games DISABLE ROW LEVEL SECURITY`
+- セッション管理のローカルストレージベース化
+- Quick Start機能での安全な初期化
 
-#### 3. リアルタイム未動作
+#### 3. セッション設定エラー (解決済み)
+
+```
+GET .../rpc/set_config:1 404 (Not Acceptable)
+PGRST202: Could not find function public.set_config
+```
+
+**修正内容**:
+
+- 開発環境でのRPC呼び出し削除
+- `setPlayerSession`関数の簡素化
+- テスト環境での警告表示のみ（機能には影響なし）
+
+#### 4. リアルタイム未動作
 
 ```
 Realtime subscription not working
