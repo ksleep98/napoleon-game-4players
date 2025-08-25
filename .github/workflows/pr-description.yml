@@ -92,26 +92,73 @@ jobs:
           fi
           echo "" >> pr_description.md
 
-          # Detailed file list
+          # Detailed file list - カテゴリ別に整理
           echo "<details>" >> pr_description.md
           echo "<summary>📋 Detailed File List</summary>" >> pr_description.md
           echo "" >> pr_description.md
 
+          # ファイルをカテゴリ別に分類
+          source_files=()
+          test_files=()
+          config_files=()
+          doc_files=()
+          other_files=()
+
           for file in "${FILES[@]}"; do
-            if [[ $file == *.ts || $file == *.tsx || $file == *.js || $file == *.jsx ]]; then
-              echo "- 🔧 \`$file\`" >> pr_description.md
-            elif [[ $file == *test* || $file == *spec* ]]; then
-              echo "- 🧪 \`$file\`" >> pr_description.md
-            elif [[ $file == *.json || $file == *.yml || $file == *.yaml ]]; then
-              echo "- ⚙️ \`$file\`" >> pr_description.md
+            if [[ $file == *test* || $file == *spec* ]]; then
+              test_files+=("$file")
+            elif [[ $file == *.ts || $file == *.tsx || $file == *.js || $file == *.jsx ]]; then
+              source_files+=("$file")
+            elif [[ $file == *.json || $file == *.yml || $file == *.yaml || $file == *config* ]]; then
+              config_files+=("$file")
             elif [[ $file == *.md ]]; then
-              echo "- 📚 \`$file\`" >> pr_description.md
+              doc_files+=("$file")
             else
-              echo "- 📄 \`$file\`" >> pr_description.md
+              other_files+=("$file")
             fi
           done
 
-          echo "" >> pr_description.md
+          # カテゴリ別に表示
+          if [ ${#source_files[@]} -gt 0 ]; then
+            echo "### 🔧 Source Code" >> pr_description.md
+            for file in "${source_files[@]}"; do
+              echo "- \`$file\`" >> pr_description.md
+            done
+            echo "" >> pr_description.md
+          fi
+
+          if [ ${#test_files[@]} -gt 0 ]; then
+            echo "### 🧪 Tests" >> pr_description.md
+            for file in "${test_files[@]}"; do
+              echo "- \`$file\`" >> pr_description.md
+            done
+            echo "" >> pr_description.md
+          fi
+
+          if [ ${#config_files[@]} -gt 0 ]; then
+            echo "### ⚙️ Configuration" >> pr_description.md
+            for file in "${config_files[@]}"; do
+              echo "- \`$file\`" >> pr_description.md
+            done
+            echo "" >> pr_description.md
+          fi
+
+          if [ ${#doc_files[@]} -gt 0 ]; then
+            echo "### 📚 Documentation" >> pr_description.md
+            for file in "${doc_files[@]}"; do
+              echo "- \`$file\`" >> pr_description.md
+            done
+            echo "" >> pr_description.md
+          fi
+
+          if [ ${#other_files[@]} -gt 0 ]; then
+            echo "### 📄 Other Files" >> pr_description.md
+            for file in "${other_files[@]}"; do
+              echo "- \`$file\`" >> pr_description.md
+            done
+            echo "" >> pr_description.md
+          fi
+
           echo "</details>" >> pr_description.md
           echo "" >> pr_description.md
 
