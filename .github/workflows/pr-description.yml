@@ -8,6 +8,10 @@ permissions:
   pull-requests: write
   contents: read
 
+concurrency:
+  group: pr-description-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   update-pr-description:
     runs-on: ubuntu-latest
@@ -55,17 +59,21 @@ jobs:
           other_count=0
 
           IFS=',' read -ra FILES <<< "${{ steps.changed-files.outputs.all_changed_files }}"
+
+          # Debug: Show all files being processed
+          echo "Debug - Processing files:"
           for file in "${FILES[@]}"; do
-            if [[ $file == *.ts || $file == *.tsx || $file == *.js || $file == *.jsx ]]; then
-              if [[ $file == *test* || $file == *spec* ]]; then
-                test_count=$((test_count + 1))
-              else
-                js_ts_count=$((js_ts_count + 1))
-              fi
-            elif [[ $file == *.json || $file == *.yml || $file == *.yaml || $file == *config* ]]; then
-              config_count=$((config_count + 1))
+            echo "  - $file"
+          done
+          for file in "${FILES[@]}"; do
+            if [[ $file == tests/* || $file == *test.* || $file == *spec.* ]]; then
+              test_count=$((test_count + 1))
             elif [[ $file == *.md ]]; then
               doc_count=$((doc_count + 1))
+            elif [[ $file == *.ts || $file == *.tsx || $file == *.js || $file == *.jsx ]]; then
+              js_ts_count=$((js_ts_count + 1))
+            elif [[ $file == *.json || $file == *.yml || $file == *.yaml || $file == *config* || $file == *.lock ]]; then
+              config_count=$((config_count + 1))
             else
               other_count=$((other_count + 1))
             fi
@@ -105,14 +113,14 @@ jobs:
           other_files=()
 
           for file in "${FILES[@]}"; do
-            if [[ $file == *test* || $file == *spec* ]]; then
+            if [[ $file == tests/* || $file == *test.* || $file == *spec.* ]]; then
               test_files+=("$file")
-            elif [[ $file == *.ts || $file == *.tsx || $file == *.js || $file == *.jsx ]]; then
-              source_files+=("$file")
-            elif [[ $file == *.json || $file == *.yml || $file == *.yaml || $file == *config* ]]; then
-              config_files+=("$file")
             elif [[ $file == *.md ]]; then
               doc_files+=("$file")
+            elif [[ $file == *.ts || $file == *.tsx || $file == *.js || $file == *.jsx ]]; then
+              source_files+=("$file")
+            elif [[ $file == *.json || $file == *.yml || $file == *.yaml || $file == *config* || $file == *.lock ]]; then
+              config_files+=("$file")
             else
               other_files+=("$file")
             fi
