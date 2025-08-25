@@ -26,7 +26,8 @@ jobs:
         id: changed-files
         uses: tj-actions/changed-files@v42
         with:
-          files_separator: ","
+          files_separator: " "
+          safe_output: false
 
       - name: Generate PR description
         id: generate-description
@@ -58,13 +59,8 @@ jobs:
           doc_count=0
           other_count=0
 
-          IFS=',' read -ra FILES <<< "${{ steps.changed-files.outputs.all_changed_files }}"
+          IFS=' ' read -ra FILES <<< "${{ steps.changed-files.outputs.all_changed_files }}"
 
-          # Debug: Show all files being processed
-          echo "Debug - Processing files:"
-          for file in "${FILES[@]}"; do
-            echo "  - $file"
-          done
           for file in "${FILES[@]}"; do
             if [[ $file == tests/* || $file == *test.* || $file == *spec.* ]]; then
               test_count=$((test_count + 1))
@@ -105,72 +101,45 @@ jobs:
           echo "<summary>📋 Detailed File List</summary>" >> pr_description.md
           echo "" >> pr_description.md
 
-          # ファイルをカテゴリ別に分類
-          source_files=()
-          test_files=()
-          config_files=()
-          doc_files=()
-          other_files=()
-
-          for file in "${FILES[@]}"; do
-            if [[ $file == tests/* || $file == *test.* || $file == *spec.* ]]; then
-              test_files+=("$file")
-            elif [[ $file == *.md ]]; then
-              doc_files+=("$file")
-            elif [[ $file == *.ts || $file == *.tsx || $file == *.js || $file == *.jsx ]]; then
-              source_files+=("$file")
-            elif [[ $file == *.json || $file == *.yml || $file == *.yaml || $file == *config* || $file == *.lock ]]; then
-              config_files+=("$file")
-            else
-              other_files+=("$file")
-            fi
+          # Tests
+          echo "#### 🧪 Tests" >> pr_description.md
+          echo "" >> pr_description.md
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -E '^tests/|\.test\.|\.spec\.' | while read -r file; do
+            [ -n "$file" ] && echo "- \`$file\`" >> pr_description.md
           done
+          echo "" >> pr_description.md
 
-          # カテゴリ別に表示
-          if [ ${#source_files[@]} -gt 0 ]; then
-            echo "#### 🔧 Source Code" >> pr_description.md
-            echo "" >> pr_description.md
-            for file in "${source_files[@]}"; do
-              echo "- \`$file\`" >> pr_description.md
-            done
-            echo "" >> pr_description.md
-          fi
+          # Documentation
+          echo "#### 📚 Documentation" >> pr_description.md
+          echo "" >> pr_description.md
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep '\.md$' | while read -r file; do
+            [ -n "$file" ] && echo "- \`$file\`" >> pr_description.md
+          done
+          echo "" >> pr_description.md
 
-          if [ ${#test_files[@]} -gt 0 ]; then
-            echo "#### 🧪 Tests" >> pr_description.md
-            echo "" >> pr_description.md
-            for file in "${test_files[@]}"; do
-              echo "- \`$file\`" >> pr_description.md
-            done
-            echo "" >> pr_description.md
-          fi
+          # Source Code
+          echo "#### 🔧 Source Code" >> pr_description.md
+          echo "" >> pr_description.md
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -E '\.(ts|tsx|js|jsx)$' | grep -v -E '^tests/|\.test\.|\.spec\.' | while read -r file; do
+            [ -n "$file" ] && echo "- \`$file\`" >> pr_description.md
+          done
+          echo "" >> pr_description.md
 
-          if [ ${#config_files[@]} -gt 0 ]; then
-            echo "#### ⚙️ Configuration" >> pr_description.md
-            echo "" >> pr_description.md
-            for file in "${config_files[@]}"; do
-              echo "- \`$file\`" >> pr_description.md
-            done
-            echo "" >> pr_description.md
-          fi
+          # Configuration
+          echo "#### ⚙️ Configuration" >> pr_description.md
+          echo "" >> pr_description.md
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -E '\.(json|yml|yaml|lock)$|config' | while read -r file; do
+            [ -n "$file" ] && echo "- \`$file\`" >> pr_description.md
+          done
+          echo "" >> pr_description.md
 
-          if [ ${#doc_files[@]} -gt 0 ]; then
-            echo "#### 📚 Documentation" >> pr_description.md
-            echo "" >> pr_description.md
-            for file in "${doc_files[@]}"; do
-              echo "- \`$file\`" >> pr_description.md
-            done
-            echo "" >> pr_description.md
-          fi
-
-          if [ ${#other_files[@]} -gt 0 ]; then
-            echo "#### 📄 Other Files" >> pr_description.md
-            echo "" >> pr_description.md
-            for file in "${other_files[@]}"; do
-              echo "- \`$file\`" >> pr_description.md
-            done
-            echo "" >> pr_description.md
-          fi
+          # Other Files
+          echo "#### 📄 Other Files" >> pr_description.md
+          echo "" >> pr_description.md
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -v -E '\.(ts|tsx|js|jsx|md|json|yml|yaml|lock)$|config|^tests/|\.test\.|\.spec\.' | while read -r file; do
+            [ -n "$file" ] && echo "- \`$file\`" >> pr_description.md
+          done
+          echo "" >> pr_description.md
 
           echo "</details>" >> pr_description.md
           echo "" >> pr_description.md
