@@ -19,49 +19,80 @@ export function useGameState(gameId?: string, playerNames?: string[]) {
   const [gameState, setGameState] = useState<GameState | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [initialized, setInitialized] = useState(false) // 初期化完了フラグ
 
   // ゲームの初期化
   const initGame = useCallback(
     async (names: string[]) => {
+      if (loading || gameState || initialized) return // 既に処理中または完了済みの場合は何もしない
+
       try {
         setLoading(true)
         setError(null)
+        setInitialized(true)
+
+        // プレイヤーセッション設定（RLSポリシー用）
+        const playerId = 'player_1' // Quick Start用の固定プレイヤーID
+        try {
+          const { setPlayerSession } = await import('@/lib/supabase/client')
+          await setPlayerSession(playerId)
+        } catch (sessionError) {
+          console.warn('Player session setup failed:', sessionError)
+        }
 
         const newGame = initializeGame(names)
+        // gameIdが指定されている場合は設定
+        if (gameId) {
+          newGame.id = gameId
+        }
         setGameState(newGame)
 
         if (gameId) {
           await saveGameState(newGame)
         }
+
+        console.log('Game initialized successfully:', newGame.id)
       } catch (err) {
+        console.error('Failed to initialize game:', err)
         setError(
           err instanceof Error ? err.message : 'Failed to initialize game'
         )
+        setInitialized(false) // エラーの場合は再試行可能にする
       } finally {
         setLoading(false)
       }
     },
-    [gameId]
+    [gameId, loading, gameState, initialized]
   )
 
   // ゲームの読み込み
-  const loadGame = useCallback(async (id: string) => {
-    try {
-      setLoading(true)
-      setError(null)
+  const loadGame = useCallback(
+    async (id: string) => {
+      if (loading || gameState || initialized) return // 既に処理中または完了済みの場合は何もしない
 
-      const loadedGame = await loadGameState(id)
-      if (loadedGame) {
-        setGameState(loadedGame)
-      } else {
-        setError('Game not found')
+      try {
+        setLoading(true)
+        setError(null)
+        setInitialized(true)
+
+        const loadedGame = await loadGameState(id)
+        if (loadedGame) {
+          setGameState(loadedGame)
+          console.log('Game loaded successfully:', id)
+        } else {
+          setError('Game not found')
+          setInitialized(false)
+        }
+      } catch (err) {
+        console.error('Failed to load game:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load game')
+        setInitialized(false)
+      } finally {
+        setLoading(false)
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load game')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+    },
+    [loading, gameState, initialized]
+  )
 
   // カードをプレイ
   const handlePlayCard = useCallback(
@@ -167,12 +198,18 @@ export function useGameState(gameId?: string, playerNames?: string[]) {
 
   // 初期化処理
   useEffect(() => {
-    if (gameId) {
-      loadGame(gameId)
-    } else if (playerNames && playerNames.length === 4) {
+    if (gameState || loading || initialized) return // 既に処理済みの場合は何もしない
+
+    if (gameId && playerNames && playerNames.length === 4) {
+      // Quick Start の場合: 新しいゲームを作成
+      console.log('Creating new game for Quick Start:', gameId, playerNames)
       initGame(playerNames)
+    } else if (gameId && !playerNames) {
+      // 既存のゲームを読み込み
+      console.log('Loading existing game:', gameId)
+      loadGame(gameId)
     }
-  }, [gameId, playerNames, loadGame, initGame])
+  }, [gameId, gameState, initGame, initialized, loadGame, loading, playerNames]) // 依存関係を最小限に
 
   return {
     gameState,

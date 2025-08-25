@@ -12,7 +12,7 @@
 - **Framework**: Next.js 15.4 (App Router)
 - **UI Library**: React 19.x
 - **Styling**: Tailwind CSS
-- **Database**: Prisma ORM (SQLite)
+- **Database**: Supabase (PostgreSQL) + Prisma ORM (SQLite)
 - **Testing**: Jest + React Testing Library
 - **Code Quality**: Biome (Linter + Formatter)
 - **Pre-commit**: Husky + lint-staged

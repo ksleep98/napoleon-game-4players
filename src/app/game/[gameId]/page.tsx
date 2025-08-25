@@ -1,6 +1,6 @@
 'use client'
 
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { GameBoard } from '@/components/game/GameBoard'
 import { GameStatus } from '@/components/game/GameStatus'
@@ -12,11 +12,19 @@ import type { Card as CardType } from '@/types/game'
 
 export default function GamePage() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const gameId = params.gameId as string
   const [currentPlayerId, _setCurrentPlayerId] = useState<string>('player_1') // 実際の実装では認証から取得
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
 
-  const { gameState, loading, error, actions, utils } = useGameState(gameId)
+  // URLクエリパラメータからプレイヤー名を取得 (Quick Start用)
+  const playersParam = searchParams.get('players')
+  const playerNames = playersParam ? playersParam.split(',') : undefined
+
+  const { gameState, loading, error, actions, utils } = useGameState(
+    gameId,
+    playerNames
+  )
 
   if (loading) {
     return (
