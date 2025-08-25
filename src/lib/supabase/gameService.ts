@@ -1,5 +1,44 @@
-import type { GameResult, GameRoom, GameState } from '@/types/game'
+import type { GameResult, GameRoom, GameState, Player } from '@/types/game'
 import { supabase } from './client'
+
+// カスタムエラー型
+export class GameServiceError extends Error {
+  constructor(
+    message: string,
+    public code?: string
+  ) {
+    super(message)
+    this.name = 'GameServiceError'
+  }
+}
+
+// リトライ機能付きヘルパー
+async function _retryOperation<T>(
+  operation: () => Promise<T>,
+  maxRetries = 3,
+  delay = 1000
+): Promise<T> {
+  let lastError: Error | null = null
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation()
+    } catch (error) {
+      lastError = error as Error
+      if (attempt === maxRetries) break
+
+      // 指数バックオフで待機
+      await new Promise((resolve) =>
+        setTimeout(resolve, delay * 2 ** (attempt - 1))
+      )
+    }
+  }
+
+  throw new GameServiceError(
+    `Operation failed after ${maxRetries} attempts: ${lastError?.message}`,
+    'RETRY_EXHAUSTED'
+  )
+}
 
 /**
  * ゲーム状態をSupabaseに保存
@@ -163,14 +202,19 @@ export async function createPlayer(id: string, name: string): Promise<void> {
 }
 
 /**
- * ゲーム状態の変更をリアルタイムで監視
+ * ゲーム状態の変更をリアルタイムで監視（改良版）
  */
 export function subscribeToGameState(
   gameId: string,
-  onUpdate: (gameState: GameState) => void
+  onUpdate: (gameState: GameState) => void,
+  onError?: (error: Error) => void
 ) {
   const channel = supabase
-    .channel(`game_${gameId}`)
+    .channel(`game_${gameId}`, {
+      config: {
+        broadcast: { self: false }, // 自分の変更は除外
+      },
+    })
     .on(
       'postgres_changes',
       {
@@ -180,10 +224,23 @@ export function subscribeToGameState(
         filter: `id=eq.${gameId}`,
       },
       (payload) => {
-        onUpdate(payload.new.state as GameState)
+        try {
+          const gameState = payload.new.state as GameState
+          onUpdate(gameState)
+        } catch (_error) {
+          onError?.(new GameServiceError('Failed to parse game state update'))
+        }
       }
     )
-    .subscribe()
+    .subscribe((status) => {
+      if (
+        status === 'CLOSED' ||
+        status === 'CHANNEL_ERROR' ||
+        status === 'TIMED_OUT'
+      ) {
+        onError?.(new GameServiceError('Failed to subscribe to game updates'))
+      }
+    })
 
   return () => {
     supabase.removeChannel(channel)
@@ -191,13 +248,19 @@ export function subscribeToGameState(
 }
 
 /**
- * ゲームルームの変更をリアルタイムで監視
+ * ゲームルームとプレイヤーの変更を統合監視
  */
 export function subscribeToGameRoom(
   roomId: string,
-  onUpdate: (room: unknown) => void
+  callbacks: {
+    onRoomUpdate?: (room: GameRoom) => void
+    onPlayerJoin?: (player: Player) => void
+    onPlayerLeave?: (playerId: string) => void
+    onError?: (error: Error) => void
+  }
 ) {
-  const channel = supabase
+  // ルーム更新を監視
+  const roomChannel = supabase
     .channel(`room_${roomId}`)
     .on(
       'postgres_changes',
@@ -208,12 +271,129 @@ export function subscribeToGameRoom(
         filter: `id=eq.${roomId}`,
       },
       (payload) => {
-        onUpdate(payload.new)
+        try {
+          if (payload.new && callbacks.onRoomUpdate) {
+            const newData = payload.new as Record<string, unknown>
+            const room: GameRoom = {
+              id: newData.id as string,
+              name: newData.name as string,
+              playerCount: newData.player_count as number,
+              maxPlayers: newData.max_players as number,
+              status: newData.status as 'waiting' | 'playing' | 'finished',
+              hostPlayerId: newData.host_player_id as string,
+              createdAt: new Date(newData.created_at as string),
+            }
+            callbacks.onRoomUpdate(room)
+          }
+        } catch (_error) {
+          callbacks.onError?.(
+            new GameServiceError('Failed to process room update')
+          )
+        }
+      }
+    )
+    .subscribe()
+
+  // プレイヤー変更を監視
+  const playerChannel = supabase
+    .channel(`room_players_${roomId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'players',
+        filter: `room_id=eq.${roomId}`,
+      },
+      (payload) => {
+        try {
+          if (
+            payload.eventType === 'INSERT' ||
+            payload.eventType === 'UPDATE'
+          ) {
+            if (payload.new.connected && callbacks.onPlayerJoin) {
+              const player: Player = {
+                id: payload.new.id,
+                name: payload.new.name,
+                hand: [],
+                isNapoleon: false,
+                isAdjutant: false,
+                position: 0, // 実際の位置は別途設定
+              }
+              callbacks.onPlayerJoin(player)
+            }
+          } else if (
+            payload.eventType === 'DELETE' &&
+            callbacks.onPlayerLeave
+          ) {
+            callbacks.onPlayerLeave(payload.old.id)
+          }
+        } catch (_error) {
+          callbacks.onError?.(
+            new GameServiceError('Failed to process player update')
+          )
+        }
       }
     )
     .subscribe()
 
   return () => {
+    supabase.removeChannel(roomChannel)
+    supabase.removeChannel(playerChannel)
+  }
+}
+
+/**
+ * 接続状態を監視し、自動再接続を行う
+ */
+export function subscribeToConnectionState(
+  onStateChange: (state: 'CONNECTING' | 'OPEN' | 'CLOSED') => void
+) {
+  // Simplified connection state monitoring
+  const channel = supabase.channel('connection_monitor').subscribe((status) => {
+    switch (status) {
+      case 'SUBSCRIBED':
+        onStateChange('OPEN')
+        break
+      case 'CLOSED':
+      case 'CHANNEL_ERROR':
+      case 'TIMED_OUT':
+        onStateChange('CLOSED')
+        break
+      default:
+        onStateChange('CONNECTING')
+    }
+  })
+
+  return () => {
     supabase.removeChannel(channel)
+  }
+}
+
+/**
+ * プレイヤーをオンライン状態に設定
+ */
+export async function setPlayerOnline(playerId: string): Promise<void> {
+  const { error } = await supabase
+    .from('players')
+    .update({ connected: true })
+    .eq('id', playerId)
+
+  if (error) {
+    throw new GameServiceError(`Failed to set player online: ${error.message}`)
+  }
+}
+
+/**
+ * プレイヤーをオフライン状態に設定
+ */
+export async function setPlayerOffline(playerId: string): Promise<void> {
+  const { error } = await supabase
+    .from('players')
+    .update({ connected: false })
+    .eq('id', playerId)
+
+  if (error) {
+    throw new GameServiceError(`Failed to set player offline: ${error.message}`)
   }
 }

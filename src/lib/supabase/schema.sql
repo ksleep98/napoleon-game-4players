@@ -87,17 +87,70 @@ CREATE TRIGGER games_updated_at_trigger
     FOR EACH ROW
     EXECUTE FUNCTION update_games_updated_at();
 
+-- Realtime設定（リアルタイム更新のため）
+ALTER PUBLICATION supabase_realtime ADD TABLE game_rooms;
+ALTER PUBLICATION supabase_realtime ADD TABLE players;  
+ALTER PUBLICATION supabase_realtime ADD TABLE games;
+ALTER PUBLICATION supabase_realtime ADD TABLE game_results;
+
 -- Row Level Security (RLS) の設定
 ALTER TABLE game_rooms ENABLE ROW LEVEL SECURITY;
 ALTER TABLE players ENABLE ROW LEVEL SECURITY;
 ALTER TABLE games ENABLE ROW LEVEL SECURITY;
 ALTER TABLE game_results ENABLE ROW LEVEL SECURITY;
 
--- 基本的なポリシー（全員がread/writeできる - 本番環境では調整が必要）
-CREATE POLICY "Allow all operations on game_rooms" ON game_rooms FOR ALL USING (true);
-CREATE POLICY "Allow all operations on players" ON players FOR ALL USING (true);  
-CREATE POLICY "Allow all operations on games" ON games FOR ALL USING (true);
-CREATE POLICY "Allow all operations on game_results" ON game_results FOR ALL USING (true);
+-- セキュアなRLSポリシー
+-- ゲームルーム: 全員が読み取り可能、作成可能
+CREATE POLICY "Anyone can view game rooms" ON game_rooms FOR SELECT USING (true);
+CREATE POLICY "Anyone can create game rooms" ON game_rooms FOR INSERT WITH CHECK (true);
+CREATE POLICY "Host can update own room" ON game_rooms FOR UPDATE USING (host_player_id = current_setting('app.player_id', true));
+
+-- プレイヤー: 全員が読み取り可能、自分のレコードのみ更新可能
+CREATE POLICY "Anyone can view players" ON players FOR SELECT USING (true);
+CREATE POLICY "Anyone can create player" ON players FOR INSERT WITH CHECK (true);
+CREATE POLICY "Players can update own record" ON players FOR UPDATE USING (id = current_setting('app.player_id', true));
+
+-- ゲーム: ゲーム参加者のみアクセス可能
+CREATE POLICY "Game participants can view games" ON games FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM players p 
+    WHERE p.game_id = games.id 
+    AND p.id = current_setting('app.player_id', true)
+  )
+);
+CREATE POLICY "Anyone can create games" ON games FOR INSERT WITH CHECK (true);
+CREATE POLICY "Game participants can update games" ON games FOR UPDATE USING (
+  EXISTS (
+    SELECT 1 FROM players p 
+    WHERE p.game_id = games.id 
+    AND p.id = current_setting('app.player_id', true)
+  )
+);
+
+-- ゲーム結果: 参加者のみ閲覧可能
+CREATE POLICY "Game participants can view results" ON game_results FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM players p 
+    WHERE p.game_id = game_results.game_id 
+    AND p.id = current_setting('app.player_id', true)
+  )
+);
+CREATE POLICY "Anyone can create results" ON game_results FOR INSERT WITH CHECK (true);
+
+-- セッション設定用の関数（RLSポリシーで使用）
+CREATE OR REPLACE FUNCTION set_config(setting_name TEXT, setting_value TEXT, is_local BOOLEAN DEFAULT FALSE)
+RETURNS TEXT AS $$
+BEGIN
+  PERFORM pg_catalog.set_config(setting_name, setting_value, is_local);
+  RETURN setting_value;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 開発環境用：RLSを無効化（本番では削除）
+-- ALTER TABLE games DISABLE ROW LEVEL SECURITY;
+-- ALTER TABLE game_rooms DISABLE ROW LEVEL SECURITY;
+-- ALTER TABLE players DISABLE ROW LEVEL SECURITY;
+-- ALTER TABLE game_results DISABLE ROW LEVEL SECURITY;
 
 -- 環境変数設定のヒント
 -- NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
