@@ -120,7 +120,8 @@ jobs:
 
           # カテゴリ別に表示
           if [ ${#source_files[@]} -gt 0 ]; then
-            echo "### 🔧 Source Code" >> pr_description.md
+            echo "#### 🔧 Source Code" >> pr_description.md
+            echo "" >> pr_description.md
             for file in "${source_files[@]}"; do
               echo "- \`$file\`" >> pr_description.md
             done
@@ -128,7 +129,8 @@ jobs:
           fi
 
           if [ ${#test_files[@]} -gt 0 ]; then
-            echo "### 🧪 Tests" >> pr_description.md
+            echo "#### 🧪 Tests" >> pr_description.md
+            echo "" >> pr_description.md
             for file in "${test_files[@]}"; do
               echo "- \`$file\`" >> pr_description.md
             done
@@ -136,7 +138,8 @@ jobs:
           fi
 
           if [ ${#config_files[@]} -gt 0 ]; then
-            echo "### ⚙️ Configuration" >> pr_description.md
+            echo "#### ⚙️ Configuration" >> pr_description.md
+            echo "" >> pr_description.md
             for file in "${config_files[@]}"; do
               echo "- \`$file\`" >> pr_description.md
             done
@@ -144,7 +147,8 @@ jobs:
           fi
 
           if [ ${#doc_files[@]} -gt 0 ]; then
-            echo "### 📚 Documentation" >> pr_description.md
+            echo "#### 📚 Documentation" >> pr_description.md
+            echo "" >> pr_description.md
             for file in "${doc_files[@]}"; do
               echo "- \`$file\`" >> pr_description.md
             done
@@ -152,7 +156,8 @@ jobs:
           fi
 
           if [ ${#other_files[@]} -gt 0 ]; then
-            echo "### 📄 Other Files" >> pr_description.md
+            echo "#### 📄 Other Files" >> pr_description.md
+            echo "" >> pr_description.md
             for file in "${other_files[@]}"; do
               echo "- \`$file\`" >> pr_description.md
             done
@@ -228,10 +233,10 @@ jobs:
           echo "" >> pr_description.md
           echo "*🤖 This description was automatically generated from code changes*" >> pr_description.md
 
-          # Set output for next step - escape for JSON
+          # Set output for next step - proper JSON escaping
           {
             echo 'pr_body<<EOF'
-            cat pr_description.md | sed 's/`/\\`/g' | sed 's/\$/\\$/g'
+            cat pr_description.md
             echo EOF
           } >> $GITHUB_OUTPUT
 
