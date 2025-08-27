@@ -1,9 +1,8 @@
 import {
   createNewTrick,
-  determineTrickWinner,
+  determineWinner,
   getCurrentPlayer,
   initializeGame,
-  isCardStronger,
 } from '@/lib/gameLogic'
 import type { GameState, Trick } from '@/types/game'
 
@@ -57,43 +56,9 @@ describe('Game Logic', () => {
     })
   })
 
-  describe('isCardStronger', () => {
-    const cardA = {
-      id: 'hearts-A',
-      suit: 'hearts' as const,
-      rank: 'A' as const,
-      value: 14,
-    }
-    const cardB = {
-      id: 'hearts-K',
-      suit: 'hearts' as const,
-      rank: 'K' as const,
-      value: 13,
-    }
-    const spadeCard = {
-      id: 'spades-7',
-      suit: 'spades' as const,
-      rank: '7' as const,
-      value: 7,
-    }
+  // isCardStronger function removed - logic integrated into determineWinner
 
-    it('should compare cards of same suit by value', () => {
-      expect(isCardStronger(cardA, cardB, 'hearts')).toBe(true)
-      expect(isCardStronger(cardB, cardA, 'hearts')).toBe(false)
-    })
-
-    it('should favor leading suit over other suits', () => {
-      expect(isCardStronger(cardB, spadeCard, 'hearts')).toBe(true)
-      expect(isCardStronger(spadeCard, cardB, 'hearts')).toBe(false)
-    })
-
-    it('should favor trump suit over all others', () => {
-      expect(isCardStronger(spadeCard, cardA, 'hearts', 'spades')).toBe(true)
-      expect(isCardStronger(cardA, spadeCard, 'hearts', 'spades')).toBe(false)
-    })
-  })
-
-  describe('determineTrickWinner', () => {
+  describe('determineWinner', () => {
     it('should determine winner of a complete trick', () => {
       const trick: Trick = {
         id: 'test-trick',
@@ -143,20 +108,20 @@ describe('Game Logic', () => {
         leadingSuit: 'hearts',
       }
 
-      const winner = determineTrickWinner(trick)
-      expect(winner.playerId).toBe('p4') // Player with Ace of Hearts should win
+      const winner = determineWinner(trick)
+      expect(winner).not.toBeNull()
+      expect(winner?.playerId).toBe('p4') // Player with Ace of Hearts should win
     })
 
-    it('should throw error for empty trick', () => {
+    it('should return null for empty trick', () => {
       const emptyTrick: Trick = {
         id: 'empty-trick',
         cards: [],
         completed: false,
       }
 
-      expect(() => determineTrickWinner(emptyTrick)).toThrow(
-        'Cannot determine winner of empty trick'
-      )
+      const winner = determineWinner(emptyTrick)
+      expect(winner).toBeNull()
     })
   })
 })

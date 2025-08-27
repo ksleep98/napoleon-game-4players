@@ -319,6 +319,7 @@ export function subscribeToGameRoom(
                 isNapoleon: false,
                 isAdjutant: false,
                 position: 0, // 実際の位置は別途設定
+                isAI: false,
               }
               callbacks.onPlayerJoin(player)
             }

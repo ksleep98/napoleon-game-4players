@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useSearchParams } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { GameBoard } from '@/components/game/GameBoard'
 import { GameStatus } from '@/components/game/GameStatus'
 import { NapoleonSelector } from '@/components/game/NapoleonSelector'
@@ -14,17 +14,29 @@ export default function GamePage() {
   const params = useParams()
   const searchParams = useSearchParams()
   const gameId = params.gameId as string
-  const [currentPlayerId, _setCurrentPlayerId] = useState<string>('player_1') // 実際の実装では認証から取得
+  const [currentPlayerId, setCurrentPlayerId] = useState<string>('player_1') // 実際の実装では認証から取得
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
 
-  // URLクエリパラメータからプレイヤー名を取得 (Quick Start用)
+  // URLクエリパラメータを取得
   const playersParam = searchParams.get('players')
+  const isAI = searchParams.get('ai') === 'true'
   const playerNames = playersParam ? playersParam.split(',') : undefined
 
   const { gameState, loading, error, actions, utils } = useGameState(
     gameId,
-    playerNames
+    playerNames,
+    isAI
   )
+
+  // AIモードの場合、実際の人間プレイヤーIDを設定
+  useEffect(() => {
+    if (gameState && isAI) {
+      const humanPlayer = gameState.players.find((p) => !p.isAI)
+      if (humanPlayer && humanPlayer.id !== currentPlayerId) {
+        setCurrentPlayerId(humanPlayer.id)
+      }
+    }
+  }, [gameState, isAI, currentPlayerId])
 
   if (loading) {
     return (

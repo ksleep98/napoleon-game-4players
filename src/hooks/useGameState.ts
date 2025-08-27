@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import {
+  declareNapoleon,
   getCurrentPlayer,
+  initializeAIGame,
   initializeGame,
   playCard,
-  setAdjutant,
-  setNapoleon,
+  processAITurn,
 } from '@/lib/gameLogic'
 import {
   loadGameState,
@@ -15,7 +16,11 @@ import {
 } from '@/lib/supabase/gameService'
 import type { Card as CardType, GameState } from '@/types/game'
 
-export function useGameState(gameId?: string, playerNames?: string[]) {
+export function useGameState(
+  gameId?: string,
+  playerNames?: string[],
+  isAI?: boolean
+) {
   const [gameState, setGameState] = useState<GameState | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -40,7 +45,8 @@ export function useGameState(gameId?: string, playerNames?: string[]) {
           console.warn('Player session setup failed:', sessionError)
         }
 
-        const newGame = initializeGame(names)
+        // AI モードかどうかで初期化方法を変える
+        const newGame = isAI ? initializeAIGame('You') : initializeGame(names)
         // gameIdが指定されている場合は設定
         if (gameId) {
           newGame.id = gameId
@@ -62,7 +68,7 @@ export function useGameState(gameId?: string, playerNames?: string[]) {
         setLoading(false)
       }
     },
-    [gameId, loading, gameState, initialized]
+    [gameId, loading, gameState, initialized, isAI]
   )
 
   // ゲームの読み込み
@@ -123,7 +129,7 @@ export function useGameState(gameId?: string, playerNames?: string[]) {
       try {
         setError(null)
 
-        const updatedGame = setNapoleon(gameState, playerId, napoleonCard)
+        const updatedGame = declareNapoleon(gameState, playerId, napoleonCard)
         setGameState(updatedGame)
 
         if (gameId) {
@@ -136,26 +142,7 @@ export function useGameState(gameId?: string, playerNames?: string[]) {
     [gameState, gameId]
   )
 
-  // 副官設定
-  const handleSetAdjutant = useCallback(
-    async (adjutantCard: CardType) => {
-      if (!gameState) return
-
-      try {
-        setError(null)
-
-        const updatedGame = setAdjutant(gameState, adjutantCard)
-        setGameState(updatedGame)
-
-        if (gameId) {
-          await saveGameState(updatedGame)
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to set adjutant')
-      }
-    },
-    [gameState, gameId]
-  )
+  // 副官設定は自動的に処理される
 
   // プレイ可能なカードを取得
   const getPlayableCards = useCallback(
@@ -166,7 +153,7 @@ export function useGameState(gameId?: string, playerNames?: string[]) {
       if (!player) return []
 
       const currentPlayer = getCurrentPlayer(gameState)
-      if (currentPlayer.id !== playerId) return []
+      if (!currentPlayer || currentPlayer.id !== playerId) return []
 
       // フォロー義務をチェック
       if (gameState.leadingSuit) {
@@ -200,7 +187,11 @@ export function useGameState(gameId?: string, playerNames?: string[]) {
   useEffect(() => {
     if (gameState || loading || initialized) return // 既に処理済みの場合は何もしない
 
-    if (gameId && playerNames && playerNames.length === 4) {
+    if (gameId && isAI) {
+      // AI対戦モード: 新しいAIゲームを作成
+      console.log('Creating new AI game:', gameId)
+      initGame(['You']) // 人間プレイヤー名のみ渡す
+    } else if (gameId && playerNames && playerNames.length === 4) {
       // Quick Start の場合: 新しいゲームを作成
       console.log('Creating new game for Quick Start:', gameId, playerNames)
       initGame(playerNames)
@@ -209,7 +200,38 @@ export function useGameState(gameId?: string, playerNames?: string[]) {
       console.log('Loading existing game:', gameId)
       loadGame(gameId)
     }
-  }, [gameId, gameState, initGame, initialized, loadGame, loading, playerNames]) // 依存関係を最小限に
+  }, [
+    gameId,
+    gameState,
+    initGame,
+    initialized,
+    loadGame,
+    loading,
+    playerNames,
+    isAI,
+  ]) // 依存関係を最小限に
+
+  // AI ターン処理
+  useEffect(() => {
+    if (!gameState || !isAI) return
+
+    const processAI = async () => {
+      try {
+        if (gameState.phase === 'napoleon' || gameState.phase === 'adjutant') {
+          const updatedState = await processAITurn(gameState)
+          if (updatedState !== gameState) {
+            setGameState(updatedState)
+          }
+        }
+      } catch (error) {
+        console.error('AI processing error:', error)
+      }
+    }
+
+    // 少し遅延を入れてAIの動作を見せる
+    const timer = setTimeout(processAI, 1000)
+    return () => clearTimeout(timer)
+  }, [gameState, isAI])
 
   return {
     gameState,
@@ -220,7 +242,6 @@ export function useGameState(gameId?: string, playerNames?: string[]) {
       loadGame,
       playCard: handlePlayCard,
       setNapoleon: handleSetNapoleon,
-      setAdjutant: handleSetAdjutant,
     },
     utils: {
       getPlayableCards,

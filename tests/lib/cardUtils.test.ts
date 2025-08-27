@@ -29,6 +29,7 @@ describe('Card Utils', () => {
           isNapoleon: false,
           isAdjutant: false,
           position: 1,
+          isAI: false,
         },
         {
           id: 'p2',
@@ -37,6 +38,7 @@ describe('Card Utils', () => {
           isNapoleon: false,
           isAdjutant: false,
           position: 2,
+          isAI: false,
         },
         {
           id: 'p3',
@@ -45,6 +47,7 @@ describe('Card Utils', () => {
           isNapoleon: false,
           isAdjutant: false,
           position: 3,
+          isAI: false,
         },
         {
           id: 'p4',
@@ -53,6 +56,7 @@ describe('Card Utils', () => {
           isNapoleon: false,
           isAdjutant: false,
           position: 4,
+          isAI: false,
         },
       ]
 
