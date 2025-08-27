@@ -10,17 +10,16 @@ export default function Home() {
   }
 
   const handleQuickGame = () => {
-    // 4人のテスト用プレイヤーでクイックスタート
-    const testPlayers = ['Alice', 'Bob', 'Charlie', 'Diana']
-    const gameId = `quick_${Date.now()}_${Math.random()
+    // AI対戦用のクイックスタート（人間1人 + AI 3人）
+    const gameId = `ai_game_${Date.now()}_${Math.random()
       .toString(36)
       .substring(2, 8)}`
 
-    // テスト用のプレイヤーIDを保存
+    // プレイヤーIDを保存
     localStorage.setItem('playerId', 'player_1')
-    localStorage.setItem('playerName', 'Alice')
+    localStorage.setItem('playerName', 'You')
 
-    router.push(`/game/${gameId}?players=${testPlayers.join(',')}`)
+    router.push(`/game/${gameId}?ai=true`)
   }
 
   return (
@@ -90,13 +89,12 @@ export default function Home() {
                 onClick={handleQuickGame}
                 className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-lg text-xl transition-colors shadow-lg"
               >
-                Quick Start (Demo)
+                Play vs AI
               </button>
             </div>
 
             <p className="text-green-200 text-sm">
-              Join a room to play with others, or try the quick demo to learn
-              the game
+              Join a room to play with others, or play against AI to practice
             </p>
           </div>
 

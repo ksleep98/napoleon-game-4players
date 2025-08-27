@@ -28,6 +28,7 @@ export interface Player {
   isNapoleon: boolean
   isAdjutant: boolean // 副官
   position: number // 1-4
+  isAI: boolean // AI プレイヤーかどうか
 }
 
 export interface GameState {
