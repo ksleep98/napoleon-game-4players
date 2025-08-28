@@ -6,7 +6,7 @@ import { Card } from './Card'
 
 interface GameBoardProps {
   gameState: GameState
-  currentPlayerId?: string
+  currentPlayerId?: string | null
 }
 
 export function GameBoard({ gameState }: GameBoardProps) {
@@ -49,7 +49,7 @@ export function GameBoard({ gameState }: GameBoardProps) {
         <div className="font-semibold mb-1">Game Progress</div>
         <div>Tricks: {progress.tricksPlayed}/12</div>
         <div>Napoleon: {progress.napoleonTeamTricks}</div>
-        <div>Citizens: {progress.citizenTeamTricks}</div>
+        <div>Allied Forces: {progress.citizenTeamTricks}</div>
         <div className="mt-1 text-xs text-gray-600">
           Napoleon needs {progress.napoleonNeedsToWin} more
         </div>

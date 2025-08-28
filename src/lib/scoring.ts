@@ -180,10 +180,10 @@ export function getPlayerStats(
   cardsPlayed: number
   cardsInHand: number
   role: 'napoleon' | 'adjutant' | 'citizen'
-} {
+} | null {
   const player = gameState.players.find((p) => p.id === playerId)
   if (!player) {
-    throw new Error('Player not found')
+    return null
   }
 
   const tricksWon = getPlayerTrickCount(gameState, playerId)
