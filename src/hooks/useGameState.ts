@@ -3,18 +3,26 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   declareNapoleon,
+  declareNapoleonWithDeclaration,
+  exchangeCards,
   getCurrentPlayer,
   initializeAIGame,
   initializeGame,
+  passNapoleonDeclaration,
   playCard,
   processAITurn,
+  setAdjutant,
 } from '@/lib/gameLogic'
 import {
   loadGameState,
   saveGameState,
   subscribeToGameState,
 } from '@/lib/supabase/gameService'
-import type { Card as CardType, GameState } from '@/types/game'
+import type {
+  Card as CardType,
+  GameState,
+  NapoleonDeclaration,
+} from '@/types/game'
 
 export function useGameState(
   gameId?: string,
@@ -142,7 +150,96 @@ export function useGameState(
     [gameState, gameId]
   )
 
-  // 副官設定は自動的に処理される
+  // ナポレオン宣言（詳細版）
+  const handleDeclareNapoleonWithDeclaration = useCallback(
+    async (declaration: NapoleonDeclaration) => {
+      if (!gameState) return
+
+      try {
+        setError(null)
+
+        const updatedGame = declareNapoleonWithDeclaration(
+          gameState,
+          declaration
+        )
+        setGameState(updatedGame)
+
+        if (gameId) {
+          await saveGameState(updatedGame)
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : 'Failed to declare Napoleon'
+        )
+      }
+    },
+    [gameState, gameId]
+  )
+
+  // ナポレオンパス
+  const handlePassNapoleon = useCallback(
+    async (playerId: string) => {
+      if (!gameState) return
+
+      try {
+        setError(null)
+
+        const updatedGame = passNapoleonDeclaration(gameState, playerId)
+        setGameState(updatedGame)
+
+        if (gameId) {
+          await saveGameState(updatedGame)
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to pass Napoleon')
+      }
+    },
+    [gameState, gameId]
+  )
+
+  // 副官設定
+  const handleSetAdjutant = useCallback(
+    async (adjutantCard: CardType) => {
+      if (!gameState) return
+
+      try {
+        setError(null)
+
+        const updatedGame = setAdjutant(gameState, adjutantCard)
+        setGameState(updatedGame)
+
+        if (gameId && process.env.NODE_ENV === 'production') {
+          await saveGameState(updatedGame)
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to set adjutant')
+      }
+    },
+    [gameState, gameId]
+  )
+
+  // カード交換
+  const handleExchangeCards = useCallback(
+    async (playerId: string, cardsToDiscard: CardType[]) => {
+      if (!gameState) return
+
+      try {
+        setError(null)
+
+        const updatedGame = exchangeCards(gameState, playerId, cardsToDiscard)
+        setGameState(updatedGame)
+
+        if (gameId && process.env.NODE_ENV === 'production') {
+          await saveGameState(updatedGame)
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : 'Failed to exchange cards'
+        )
+      }
+    },
+    [gameState, gameId]
+  )
 
   // プレイ可能なカードを取得
   const getPlayableCards = useCallback(
@@ -217,21 +314,51 @@ export function useGameState(
 
     const processAI = async () => {
       try {
-        if (gameState.phase === 'napoleon' || gameState.phase === 'adjutant') {
+        // ナポレオンフェーズでは、次の宣言者がAIかチェック
+        if (gameState.phase === 'napoleon') {
+          const { getNextDeclarationPlayer } = await import(
+            '@/lib/napoleonRules'
+          )
+          const nextPlayer = getNextDeclarationPlayer(gameState)
+          if (!nextPlayer || !nextPlayer.isAI) {
+            return
+          }
+        }
+
+        if (
+          gameState.phase === 'napoleon' ||
+          gameState.phase === 'adjutant' ||
+          gameState.phase === 'card_exchange'
+        ) {
           const updatedState = await processAITurn(gameState)
-          if (updatedState !== gameState) {
+          if (
+            updatedState !== gameState &&
+            JSON.stringify(updatedState) !== JSON.stringify(gameState)
+          ) {
             setGameState(updatedState)
+            // ローカル開発では保存をスキップ（データベース制約エラー回避）
+            if (gameId && process.env.NODE_ENV === 'production') {
+              try {
+                await saveGameState(updatedState)
+              } catch (saveError) {
+                console.error(
+                  'Failed to save game state, but continuing:',
+                  saveError
+                )
+              }
+            }
           }
         }
       } catch (error) {
         console.error('AI processing error:', error)
+        // エラーが発生してもループを停止しない
       }
     }
 
     // 少し遅延を入れてAIの動作を見せる
-    const timer = setTimeout(processAI, 1000)
+    const timer = setTimeout(processAI, 1500) // 少し長めに設定
     return () => clearTimeout(timer)
-  }, [gameState, isAI])
+  }, [gameState, isAI, gameId])
 
   return {
     gameState,
@@ -242,6 +369,10 @@ export function useGameState(
       loadGame,
       playCard: handlePlayCard,
       setNapoleon: handleSetNapoleon,
+      declareNapoleonWithDeclaration: handleDeclareNapoleonWithDeclaration,
+      passNapoleon: handlePassNapoleon,
+      setAdjutant: handleSetAdjutant,
+      exchangeCards: handleExchangeCards,
     },
     utils: {
       getPlayableCards,

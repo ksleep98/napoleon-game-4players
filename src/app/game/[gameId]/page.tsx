@@ -2,19 +2,21 @@
 
 import { useParams, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { AdjutantSelector } from '@/components/game/AdjutantSelector'
+import { CardExchangeSelector } from '@/components/game/CardExchangeSelector'
 import { GameBoard } from '@/components/game/GameBoard'
 import { GameStatus } from '@/components/game/GameStatus'
 import { NapoleonSelector } from '@/components/game/NapoleonSelector'
 import { PlayerHand } from '@/components/game/PlayerHand'
 import { useGameState } from '@/hooks/useGameState'
 import { calculateGameResult } from '@/lib/scoring'
-import type { Card as CardType } from '@/types/game'
+import type { Card as CardType, NapoleonDeclaration } from '@/types/game'
 
 export default function GamePage() {
   const params = useParams()
   const searchParams = useSearchParams()
   const gameId = params.gameId as string
-  const [currentPlayerId, setCurrentPlayerId] = useState<string>('player_1') // 実際の実装では認証から取得
+  const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null) // 実際の実装では認証から取得
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
 
   // URLクエリパラメータを取得
@@ -28,12 +30,17 @@ export default function GamePage() {
     isAI
   )
 
-  // AIモードの場合、実際の人間プレイヤーIDを設定
+  // プレイヤーIDを設定（AIモードでは人間プレイヤー、通常モードでは最初のプレイヤー）
   useEffect(() => {
-    if (gameState && isAI) {
-      const humanPlayer = gameState.players.find((p) => !p.isAI)
-      if (humanPlayer && humanPlayer.id !== currentPlayerId) {
-        setCurrentPlayerId(humanPlayer.id)
+    if (gameState && gameState.players.length > 0) {
+      if (isAI) {
+        const humanPlayer = gameState.players.find((p) => !p.isAI)
+        if (humanPlayer && humanPlayer.id !== currentPlayerId) {
+          setCurrentPlayerId(humanPlayer.id)
+        }
+      } else if (!currentPlayerId) {
+        // 通常モードでは最初のプレイヤーを選択
+        setCurrentPlayerId(gameState.players[0].id)
       }
     }
   }, [gameState, isAI, currentPlayerId])
@@ -75,9 +82,15 @@ export default function GamePage() {
     )
   }
 
-  const currentPlayer = gameState.players.find((p) => p.id === currentPlayerId)
-  const isCurrentTurn = utils.getCurrentPlayer()?.id === currentPlayerId
-  const playableCards = utils.getPlayableCards(currentPlayerId)
+  const currentPlayer = currentPlayerId
+    ? gameState.players.find((p) => p.id === currentPlayerId)
+    : null
+  const isCurrentTurn = currentPlayerId
+    ? utils.getCurrentPlayer()?.id === currentPlayerId
+    : false
+  const playableCards = currentPlayerId
+    ? utils.getPlayableCards(currentPlayerId)
+    : []
 
   const handleCardClick = (cardId: string) => {
     if (!isCurrentTurn || !playableCards.includes(cardId)) return
@@ -86,14 +99,30 @@ export default function GamePage() {
   }
 
   const handlePlayCard = () => {
-    if (!selectedCardId || !isCurrentTurn) return
+    if (!selectedCardId || !isCurrentTurn || !currentPlayerId) return
 
     actions.playCard(currentPlayerId, selectedCardId)
     setSelectedCardId(null)
   }
 
-  const handleNapoleonSelect = (playerId: string, napoleonCard?: CardType) => {
-    actions.setNapoleon(playerId, napoleonCard)
+  const handleNapoleonSelect = (
+    _playerId: string,
+    declaration: NapoleonDeclaration
+  ) => {
+    actions.declareNapoleonWithDeclaration(declaration)
+  }
+
+  const handleNapoleonPass = (playerId: string) => {
+    actions.passNapoleon(playerId)
+  }
+
+  const handleAdjutantSelect = (adjutantCard: CardType) => {
+    actions.setAdjutant(adjutantCard)
+  }
+
+  const handleCardExchange = (cardsToDiscard: CardType[]) => {
+    if (!currentPlayerId) return
+    actions.exchangeCards(currentPlayerId, cardsToDiscard)
   }
 
   // ゲーム終了時の結果表示
@@ -112,7 +141,9 @@ export default function GamePage() {
                   result.napoleonWon ? 'text-yellow-600' : 'text-blue-600'
                 }`}
               >
-                {result.napoleonWon ? 'Napoleon Team Wins!' : 'Citizens Win!'}
+                {result.napoleonWon
+                  ? 'Napoleon Team Wins!'
+                  : 'Allied Forces Win!'}
               </div>
               <p className="text-gray-600">
                 Napoleon team won {result.tricksWon} out of 12 tricks
@@ -135,7 +166,9 @@ export default function GamePage() {
                     <div className="text-sm text-gray-600">
                       {player?.isNapoleon && 'Napoleon'}
                       {player?.isAdjutant && 'Adjutant'}
-                      {!player?.isNapoleon && !player?.isAdjutant && 'Citizen'}
+                      {!player?.isNapoleon &&
+                        !player?.isAdjutant &&
+                        'Allied Forces'}
                     </div>
                     <div
                       className={`text-lg font-bold ${
@@ -168,7 +201,20 @@ export default function GamePage() {
   return (
     <div className="min-h-screen bg-gray-100 py-4">
       <div className="max-w-7xl mx-auto px-4">
-        <h1 className="text-2xl font-bold text-center mb-6">Napoleon Game</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">Napoleon Game</h1>
+          {isAI && (
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = '/'
+              }}
+              className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              ← Home
+            </button>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* メインゲームエリア */}
@@ -178,9 +224,35 @@ export default function GamePage() {
               <NapoleonSelector
                 players={gameState.players}
                 currentPlayerId={currentPlayerId}
+                currentDeclaration={gameState.napoleonDeclaration}
                 onNapoleonSelect={handleNapoleonSelect}
+                onPass={handleNapoleonPass}
               />
             )}
+
+            {/* 副官選択フェーズ */}
+            {gameState.phase === 'adjutant' &&
+              currentPlayerId &&
+              gameState.napoleonDeclaration &&
+              gameState.napoleonDeclaration.playerId === currentPlayerId && (
+                <AdjutantSelector
+                  gameState={gameState}
+                  napoleonPlayerId={gameState.napoleonDeclaration.playerId}
+                  onAdjutantSelect={handleAdjutantSelect}
+                />
+              )}
+
+            {/* カード交換フェーズ */}
+            {gameState.phase === 'card_exchange' &&
+              currentPlayerId &&
+              gameState.napoleonDeclaration &&
+              gameState.napoleonDeclaration.playerId === currentPlayerId && (
+                <CardExchangeSelector
+                  gameState={gameState}
+                  napoleonPlayerId={gameState.napoleonDeclaration.playerId}
+                  onCardExchange={handleCardExchange}
+                />
+              )}
 
             {/* ゲームボード */}
             {gameState.phase === 'playing' && (

@@ -23,6 +23,12 @@ export function PlayerHand({
 }: PlayerHandProps) {
   const sortedHand = sortHand(player.hand)
 
+  // デバッグ: 手札枚数をログ出力
+  console.log(
+    `Player ${player.name} has ${player.hand.length} cards:`,
+    player.hand.map((c) => `${c.rank}${c.suit}`).join(', ')
+  )
+
   if (!showCards) {
     // 他のプレイヤーの手札は裏面で表示
     return (
@@ -58,6 +64,12 @@ export function PlayerHand({
             Your Turn
           </span>
         )}
+        <span
+          className={`px-2 py-1 rounded-full text-xs font-bold ${player.hand.length !== 12 ? 'bg-red-200 text-red-800' : 'bg-gray-200 text-gray-600'}`}
+        >
+          {player.hand.length} cards
+          {player.hand.length !== 12 && ' ⚠️'}
+        </span>
       </div>
 
       <div className="flex flex-wrap gap-2">

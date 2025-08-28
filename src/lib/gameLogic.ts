@@ -1,5 +1,12 @@
 import { processAllAIPhases } from '@/lib/ai/gamePhases'
-import type { Card, GameState, PlayedCard, Player, Trick } from '@/types/game'
+import type {
+  Card,
+  GameState,
+  NapoleonDeclaration,
+  PlayedCard,
+  Player,
+  Trick,
+} from '@/types/game'
 import { createPlayersWithAI } from '@/utils/aiPlayerUtils'
 import {
   canFollowSuit,
@@ -7,6 +14,13 @@ import {
   generateGameId,
   removeCardFromHand,
 } from '@/utils/cardUtils'
+import {
+  advanceNapoleonPhase,
+  canDeclareNapoleon,
+  findAdjutant,
+  isValidNapoleonDeclaration,
+  shouldRedeal,
+} from './napoleonRules'
 
 /**
  * 新しいゲームを初期化
@@ -36,6 +50,9 @@ export function initializeGame(playerNames: string[]): GameState {
     currentPlayerIndex: 0,
     phase: 'napoleon',
     hiddenCards,
+    passedPlayers: [],
+    declarationTurn: 0,
+    needsRedeal: false,
     createdAt: new Date(),
     updatedAt: new Date(),
   }
@@ -56,6 +73,9 @@ export function initializeAIGame(humanPlayerName: string): GameState {
     currentPlayerIndex: 0,
     phase: 'napoleon',
     hiddenCards,
+    passedPlayers: [],
+    declarationTurn: 0,
+    needsRedeal: false,
     createdAt: new Date(),
     updatedAt: new Date(),
   }
@@ -73,7 +93,44 @@ export function createNewTrick(): Trick {
 }
 
 /**
- * ナポレオンを宣言
+ * ナポレオンを宣言（詳細版）
+ */
+export function declareNapoleonWithDeclaration(
+  gameState: GameState,
+  declaration: NapoleonDeclaration
+): GameState {
+  if (!canDeclareNapoleon(gameState, declaration.playerId)) {
+    throw new Error('Cannot declare Napoleon at this time')
+  }
+
+  if (!isValidNapoleonDeclaration(declaration, gameState.napoleonDeclaration)) {
+    throw new Error('Invalid Napoleon declaration')
+  }
+
+  // プレイヤーをナポレオンに設定
+  const updatedPlayers = gameState.players.map((player) => {
+    if (player.id === declaration.playerId) {
+      return { ...player, isNapoleon: true }
+    }
+    // 前のナポレオンがいる場合は解除
+    return { ...player, isNapoleon: false }
+  })
+
+  const newGameState = {
+    ...gameState,
+    players: updatedPlayers,
+    napoleonDeclaration: declaration,
+    // 互換性のため古い形式も保持
+    napoleonCard: declaration.adjutantCard,
+    updatedAt: new Date(),
+  }
+
+  // 次のフェーズに進行
+  return advanceNapoleonPhase(newGameState)
+}
+
+/**
+ * ナポレオンを宣言（簡単版 - 後方互換性のため）
  */
 export function declareNapoleon(
   gameState: GameState,
@@ -96,6 +153,171 @@ export function declareNapoleon(
     players: updatedPlayers,
     phase: 'adjutant',
     napoleonCard: selectedCard,
+    currentPlayerIndex: gameState.players.findIndex((p) => p.id === playerId),
+    updatedAt: new Date(),
+  }
+}
+
+/**
+ * ナポレオン宣言をパス
+ */
+export function passNapoleonDeclaration(
+  gameState: GameState,
+  playerId: string
+): GameState {
+  if (!canDeclareNapoleon(gameState, playerId)) {
+    throw new Error('Cannot pass Napoleon declaration at this time')
+  }
+
+  const updatedPassedPlayers = [...gameState.passedPlayers, playerId]
+
+  const newGameState = {
+    ...gameState,
+    passedPlayers: updatedPassedPlayers,
+    updatedAt: new Date(),
+  }
+
+  // 配り直しが必要かチェック
+  if (shouldRedeal(newGameState)) {
+    return {
+      ...newGameState,
+      needsRedeal: true,
+    }
+  }
+
+  // 次のフェーズに進行
+  return advanceNapoleonPhase(newGameState)
+}
+
+/**
+ * 配り直しを実行
+ */
+export function redealCards(gameState: GameState): GameState {
+  if (!gameState.needsRedeal) {
+    throw new Error('Redeal is not needed')
+  }
+
+  // カードを再配布
+  const { players: playersWithCards, hiddenCards } = dealCards(
+    gameState.players
+  )
+
+  return {
+    ...gameState,
+    players: playersWithCards,
+    hiddenCards,
+    passedPlayers: [],
+    declarationTurn: 0,
+    needsRedeal: false,
+    napoleonDeclaration: undefined,
+    napoleonCard: undefined,
+    phase: 'napoleon',
+    currentPlayerIndex: 0,
+    updatedAt: new Date(),
+  }
+}
+
+/**
+ * 副官を設定（副官カードを持つプレイヤーを特定）
+ */
+export function setAdjutant(
+  gameState: GameState,
+  adjutantCard: Card
+): GameState {
+  if (gameState.phase !== 'adjutant') {
+    throw new Error('Adjutant can only be set during adjutant phase')
+  }
+
+  const adjutantPlayer = findAdjutant(gameState, adjutantCard)
+
+  const updatedPlayers = gameState.players.map((player) => {
+    if (adjutantPlayer && player.id === adjutantPlayer.id) {
+      return { ...player, isAdjutant: true }
+    }
+    return { ...player, isAdjutant: false }
+  })
+
+  // ナポレオンプレイヤーに隠しカード4枚を追加（隠しカードフラグ付き）
+  const finalPlayers = updatedPlayers.map((player) => {
+    if (player.isNapoleon) {
+      console.log(
+        `Adding ${gameState.hiddenCards.length} hidden cards to Napoleon ${player.name}. Current hand: ${player.hand.length} cards`
+      )
+      const hiddenCardsWithFlag = gameState.hiddenCards.map((card) => ({
+        ...card,
+        wasHidden: true,
+      }))
+      return {
+        ...player,
+        hand: [...player.hand, ...hiddenCardsWithFlag],
+      }
+    }
+    return player
+  })
+
+  return {
+    ...gameState,
+    players: finalPlayers,
+    phase: 'card_exchange',
+    napoleonCard: adjutantCard,
+    updatedAt: new Date(),
+  }
+}
+
+/**
+ * 埋まっているカードとの交換
+ */
+export function exchangeCards(
+  gameState: GameState,
+  playerId: string,
+  cardsToDiscard: Card[]
+): GameState {
+  if (gameState.phase !== 'card_exchange') {
+    throw new Error('Card exchange can only be done during card exchange phase')
+  }
+
+  if (
+    !gameState.napoleonDeclaration ||
+    gameState.napoleonDeclaration.playerId !== playerId
+  ) {
+    throw new Error('Only Napoleon can exchange cards')
+  }
+
+  if (cardsToDiscard.length !== 4) {
+    throw new Error('Must discard exactly 4 cards')
+  }
+
+  const player = gameState.players.find((p) => p.id === playerId)
+  if (!player) {
+    throw new Error('Player not found')
+  }
+
+  // ナポレオンプレイヤーの手札は既に16枚（元の12枚+隠しカード4枚）になっている
+  // 捨てるカード4枚を除いた残り12枚が新しい手札
+  const newHand = player.hand.filter(
+    (card) => !cardsToDiscard.some((discard) => discard.id === card.id)
+  )
+
+  // 念のため手札数をチェック
+  if (newHand.length !== 12) {
+    throw new Error(
+      `Expected 12 cards after exchange, got ${newHand.length}. Player had ${player.hand.length} cards, discarded ${cardsToDiscard.length}`
+    )
+  }
+
+  const updatedPlayers = gameState.players.map((p) => {
+    if (p.id === playerId) {
+      return { ...p, hand: newHand }
+    }
+    return p
+  })
+
+  return {
+    ...gameState,
+    players: updatedPlayers,
+    exchangedCards: cardsToDiscard,
+    phase: 'playing',
+    currentPlayerIndex: gameState.players.findIndex((p) => p.id === playerId),
     updatedAt: new Date(),
   }
 }
@@ -104,7 +326,11 @@ export function declareNapoleon(
  * AI フェーズを処理してゲーム状態を更新
  */
 export async function processAITurn(gameState: GameState): Promise<GameState> {
-  if (gameState.phase === 'napoleon' || gameState.phase === 'adjutant') {
+  if (
+    gameState.phase === 'napoleon' ||
+    gameState.phase === 'adjutant' ||
+    gameState.phase === 'card_exchange'
+  ) {
     return await processAllAIPhases(gameState)
   }
 

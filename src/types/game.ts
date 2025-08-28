@@ -19,6 +19,7 @@ export interface Card {
   suit: Suit
   rank: Rank
   value: number // ナポレオンでの実際の強さ
+  wasHidden?: boolean // 隠しカードだったかどうか
 }
 
 export interface Player {
@@ -31,6 +32,14 @@ export interface Player {
   isAI: boolean // AI プレイヤーかどうか
 }
 
+// ナポレオン宣言の詳細
+export interface NapoleonDeclaration {
+  playerId: string
+  targetTricks: number // 取る予定のトリック数（13, 14, 15...20）
+  suit: Suit // 宣言したスート
+  adjutantCard?: Card // 指定する副官カード
+}
+
 export interface GameState {
   id: string
   players: Player[]
@@ -38,10 +47,15 @@ export interface GameState {
   tricks: Trick[]
   currentPlayerIndex: number
   phase: GamePhase
-  napoleonCard?: Card // ナポレオンが指定したカード
+  napoleonDeclaration?: NapoleonDeclaration // ナポレオン宣言の詳細
+  napoleonCard?: Card // ナポレオンが指定したカード（旧形式、互換性のため残す）
   leadingSuit?: Suit // そのトリックで最初に出されたスート
   trumpSuit?: Suit // 切り札のスート
   hiddenCards: Card[] // 伏せられた4枚
+  passedPlayers: string[] // ナポレオン宣言をパスしたプレイヤー
+  declarationTurn: number // 現在の宣言ターン（0から開始）
+  needsRedeal: boolean // 配り直しが必要かどうか
+  exchangedCards?: Card[] // ナポレオンが交換で捨てたカード
   createdAt: Date
   updatedAt: Date
 }
@@ -65,6 +79,7 @@ export type GamePhase =
   | 'dealing' // カード配布
   | 'napoleon' // ナポレオン宣言
   | 'adjutant' // 副官選択
+  | 'card_exchange' // 埋まっている4枚との交換
   | 'playing' // ゲームプレイ
   | 'finished' // ゲーム終了
 

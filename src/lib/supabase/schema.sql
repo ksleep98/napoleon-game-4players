@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS games (
     state JSONB NOT NULL, -- ゲームの状態全体をJSONで保存
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    phase TEXT NOT NULL CHECK (phase IN ('setup', 'dealing', 'napoleon', 'adjutant', 'playing', 'finished')),
+    phase TEXT NOT NULL CHECK (phase IN ('setup', 'dealing', 'napoleon', 'adjutant', 'card_exchange', 'playing', 'finished')),
     winner_team TEXT DEFAULT NULL CHECK (winner_team IN ('napoleon', 'citizen') OR winner_team IS NULL)
 );
 

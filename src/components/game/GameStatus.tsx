@@ -5,7 +5,7 @@ import type { GameState } from '@/types/game'
 
 interface GameStatusProps {
   gameState: GameState
-  currentPlayerId?: string
+  currentPlayerId?: string | null
 }
 
 export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
@@ -27,6 +27,15 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
       finished: 'Game Finished',
     }
     return phaseMap[phase as keyof typeof phaseMap] || phase
+  }
+
+  const getRoleDisplay = (role: string) => {
+    const roleMap = {
+      napoleon: 'Napoleon',
+      adjutant: 'Adjutant',
+      citizen: 'Allied Forces',
+    }
+    return roleMap[role as keyof typeof roleMap] || role
   }
 
   return (
@@ -69,7 +78,7 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
               </div>
             )}
             <div className="text-xs text-gray-500 mt-2">
-              Citizens:{' '}
+              Allied Forces:{' '}
               {gameState.players
                 .filter((p) => !p.isNapoleon && !p.isAdjutant)
                 .map((p) => p.name)
@@ -95,7 +104,7 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
               </span>
             </div>
             <div className="flex justify-between">
-              <span>Citizen Team:</span>
+              <span>Allied Forces:</span>
               <span className="font-medium text-blue-600">
                 {progress.citizenTeamTricks}
               </span>
@@ -131,8 +140,8 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
           <div className="space-y-1 text-sm">
             <div className="flex justify-between">
               <span>Role:</span>
-              <span className="capitalize font-medium">
-                {currentPlayerStats.role}
+              <span className="font-medium">
+                {getRoleDisplay(currentPlayerStats.role)}
               </span>
             </div>
             <div className="flex justify-between">

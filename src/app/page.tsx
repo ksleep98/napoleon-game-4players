@@ -119,9 +119,9 @@ export default function Home() {
               <div>
                 <h4 className="font-semibold text-white mb-3">Objective</h4>
                 <ul className="space-y-2 text-sm">
-                  <li>• Napoleon + Adjutant team vs Citizens</li>
+                  <li>• Napoleon + Adjutant team vs Allied Forces</li>
                   <li>• Napoleon team needs 8+ tricks to win</li>
-                  <li>• Citizens win if Napoleon gets &lt;8 tricks</li>
+                  <li>• Allied Forces win if Napoleon gets &lt;8 tricks</li>
                   <li>• Follow suit when possible</li>
                   <li>• Highest card of leading suit wins trick</li>
                 </ul>
