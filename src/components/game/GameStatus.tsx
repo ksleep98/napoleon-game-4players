@@ -1,5 +1,6 @@
 'use client'
 
+import { NAPOLEON_RULES } from '@/lib/constants'
 import { getGameProgress, getPlayerStats } from '@/lib/scoring'
 import type { GameState } from '@/types/game'
 
@@ -98,33 +99,36 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
               <span>{progress.tricksPlayed}/12</span>
             </div>
             <div className="flex justify-between">
-              <span>Napoleon Team:</span>
+              <span>Napoleon Team Face Cards:</span>
               <span className="font-medium text-yellow-600">
-                {progress.napoleonTeamTricks}
+                {progress.napoleonTeamFaceCards}
               </span>
             </div>
             <div className="flex justify-between">
-              <span>Allied Forces:</span>
+              <span>Allied Forces Face Cards:</span>
               <span className="font-medium text-blue-600">
-                {progress.citizenTeamTricks}
+                {progress.citizenTeamFaceCards}
               </span>
             </div>
             <div className="flex justify-between text-xs text-gray-600">
               <span>Napoleon needs:</span>
-              <span>{progress.napoleonNeedsToWin} more tricks</span>
+              <span>{progress.napoleonNeedsToWin} more face cards</span>
             </div>
 
             {/* プログレスバー */}
             <div className="mt-3">
               <div className="flex justify-between text-xs mb-1">
-                <span>Napoleon Progress</span>
-                <span>{progress.napoleonTeamTricks}/8</span>
+                <span>Napoleon Face Card Progress</span>
+                <span>
+                  {progress.napoleonTeamFaceCards}/
+                  {NAPOLEON_RULES.TARGET_FACE_CARDS}
+                </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
                   className="bg-yellow-500 h-2 rounded-full transition-all duration-300"
                   style={{
-                    width: `${(progress.napoleonTeamTricks / 8) * 100}%`,
+                    width: `${(progress.napoleonTeamFaceCards / NAPOLEON_RULES.TARGET_FACE_CARDS) * 100}%`,
                   }}
                 ></div>
               </div>
@@ -145,8 +149,8 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
               </span>
             </div>
             <div className="flex justify-between">
-              <span>Tricks Won:</span>
-              <span>{currentPlayerStats.tricksWon}</span>
+              <span>Face Cards Won:</span>
+              <span>{currentPlayerStats.faceCardsWon}</span>
             </div>
             <div className="flex justify-between">
               <span>Cards in Hand:</span>

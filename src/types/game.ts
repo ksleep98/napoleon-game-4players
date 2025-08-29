@@ -35,7 +35,7 @@ export interface Player {
 // ナポレオン宣言の詳細
 export interface NapoleonDeclaration {
   playerId: string
-  targetTricks: number // 取る予定のトリック数（13, 14, 15...20）
+  targetTricks: number // 取る予定の絵札数（11, 12, 13...20）
   suit: Suit // 宣言したスート
   adjutantCard?: Card // 指定する副官カード
 }
@@ -95,7 +95,7 @@ export interface GameRoom {
 
 // Napoleon game specific rules
 export interface NapoleonRules {
-  targetTricks: number // ナポレオン側が取る必要があるトリック数
+  targetTricks: number // ナポレオン側が取る必要がある絵札数
   napoleonBonus: number // ナポレオン成功時のボーナス点
   basePoints: number // 基本得点
 }
@@ -105,7 +105,7 @@ export interface GameResult {
   napoleonWon: boolean
   napoleonPlayerId: string
   adjutantPlayerId?: string
-  tricksWon: number
+  faceCardsWon: number
   scores: PlayerScore[]
 }
 

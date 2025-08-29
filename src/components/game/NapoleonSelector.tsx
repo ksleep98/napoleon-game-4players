@@ -122,7 +122,7 @@ export function NapoleonSelector({
               <span className="font-bold">
                 {currentDeclaration.targetTricks}
               </span>{' '}
-              tricks with{' '}
+              face cards with{' '}
               <span className="font-bold">
                 {getSuitDisplay(currentDeclaration.suit)}
               </span>
@@ -140,7 +140,7 @@ export function NapoleonSelector({
               className="block text-sm font-medium text-gray-700 mb-2"
               htmlFor={tricksSelectId}
             >
-              Target Tricks (トリック数)
+              Target Face Cards (絵札数)
             </label>
             <select
               id={tricksSelectId}
@@ -150,7 +150,7 @@ export function NapoleonSelector({
             >
               {availableTricks.map((tricks) => (
                 <option key={tricks} value={tricks}>
-                  {tricks} tricks
+                  {tricks} face cards
                 </option>
               ))}
             </select>
@@ -187,12 +187,12 @@ export function NapoleonSelector({
         <div className="bg-blue-50 p-3 rounded-lg">
           <p className="text-sm font-medium text-blue-800">
             Your declaration:{' '}
-            <span className="font-bold">{selectedTricks}</span> tricks with{' '}
+            <span className="font-bold">{selectedTricks}</span> face cards with{' '}
             <span className="font-bold">{getSuitDisplay(selectedSuit)}</span>
           </p>
           <p className="text-xs text-blue-600 mt-1">
             You and your adjutant must win at least {selectedTricks} out of 20
-            tricks total
+            face cards total
           </p>
         </div>
       </div>
@@ -279,9 +279,11 @@ export function NapoleonSelector({
       <div className="text-xs text-gray-500 text-center space-y-1">
         <p>
           As Napoleon, you and your adjutant need to win your declared number of
-          tricks
+          face cards
         </p>
-        <p>Higher trick counts and stronger suits beat lower declarations</p>
+        <p>
+          Higher face card counts and stronger suits beat lower declarations
+        </p>
         <p>If you don't select an adjutant card, one will be chosen randomly</p>
       </div>
     </div>

@@ -146,7 +146,7 @@ export default function GamePage() {
                   : 'Allied Forces Win!'}
               </div>
               <p className="text-gray-600">
-                Napoleon team won {result.tricksWon} out of 12 tricks
+                Napoleon team won {result.faceCardsWon} out of 20 face cards
               </p>
             </div>
 

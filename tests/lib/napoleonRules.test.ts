@@ -3,8 +3,8 @@ import {
   canDeclareNapoleon,
   getMinimumDeclaration,
   isValidNapoleonDeclaration,
-  MAX_NAPOLEON_TRICKS,
-  MIN_NAPOLEON_TRICKS,
+  MAX_NAPOLEON_FACE_CARDS,
+  MIN_NAPOLEON_FACE_CARDS,
 } from '@/lib/napoleonRules'
 import type { GameState, NapoleonDeclaration } from '@/types/game'
 
@@ -20,7 +20,7 @@ describe('Napoleon Rules', () => {
     it('should accept valid minimum declaration', () => {
       const declaration: NapoleonDeclaration = {
         playerId: 'player_1',
-        targetTricks: MIN_NAPOLEON_TRICKS,
+        targetTricks: MIN_NAPOLEON_FACE_CARDS,
         suit: 'clubs',
       }
 
@@ -30,43 +30,43 @@ describe('Napoleon Rules', () => {
     it('should accept valid maximum declaration', () => {
       const declaration: NapoleonDeclaration = {
         playerId: 'player_1',
-        targetTricks: MAX_NAPOLEON_TRICKS,
+        targetTricks: MAX_NAPOLEON_FACE_CARDS,
         suit: 'spades',
       }
 
       expect(isValidNapoleonDeclaration(declaration)).toBe(true)
     })
 
-    it('should reject declaration with too few tricks', () => {
+    it('should reject declaration with too few face cards', () => {
       const declaration: NapoleonDeclaration = {
         playerId: 'player_1',
-        targetTricks: MIN_NAPOLEON_TRICKS - 1,
+        targetTricks: MIN_NAPOLEON_FACE_CARDS - 1,
         suit: 'clubs',
       }
 
       expect(isValidNapoleonDeclaration(declaration)).toBe(false)
     })
 
-    it('should reject declaration with too many tricks', () => {
+    it('should reject declaration with too many face cards', () => {
       const declaration: NapoleonDeclaration = {
         playerId: 'player_1',
-        targetTricks: MAX_NAPOLEON_TRICKS + 1,
+        targetTricks: MAX_NAPOLEON_FACE_CARDS + 1,
         suit: 'clubs',
       }
 
       expect(isValidNapoleonDeclaration(declaration)).toBe(false)
     })
 
-    it('should accept higher trick count than current declaration', () => {
+    it('should accept higher face card count than current declaration', () => {
       const currentDeclaration: NapoleonDeclaration = {
         playerId: 'player_1',
-        targetTricks: 13,
+        targetTricks: 11,
         suit: 'clubs',
       }
 
       const newDeclaration: NapoleonDeclaration = {
         playerId: 'player_2',
-        targetTricks: 14,
+        targetTricks: 12,
         suit: 'clubs',
       }
 
@@ -75,16 +75,16 @@ describe('Napoleon Rules', () => {
       ).toBe(true)
     })
 
-    it('should accept same trick count with stronger suit', () => {
+    it('should accept same face card count with stronger suit', () => {
       const currentDeclaration: NapoleonDeclaration = {
         playerId: 'player_1',
-        targetTricks: 13,
+        targetTricks: 11,
         suit: 'clubs',
       }
 
       const newDeclaration: NapoleonDeclaration = {
         playerId: 'player_2',
-        targetTricks: 13,
+        targetTricks: 11,
         suit: 'diamonds',
       }
 
@@ -93,16 +93,16 @@ describe('Napoleon Rules', () => {
       ).toBe(true)
     })
 
-    it('should reject same declaration (same tricks and suit)', () => {
+    it('should reject same declaration (same face cards and suit)', () => {
       const currentDeclaration: NapoleonDeclaration = {
         playerId: 'player_1',
-        targetTricks: 13,
+        targetTricks: 11,
         suit: 'clubs',
       }
 
       const newDeclaration: NapoleonDeclaration = {
         playerId: 'player_2',
-        targetTricks: 13,
+        targetTricks: 11,
         suit: 'clubs',
       }
 
@@ -111,16 +111,16 @@ describe('Napoleon Rules', () => {
       ).toBe(false)
     })
 
-    it('should reject weaker declaration (same tricks, weaker suit)', () => {
+    it('should reject weaker declaration (same face cards, weaker suit)', () => {
       const currentDeclaration: NapoleonDeclaration = {
         playerId: 'player_1',
-        targetTricks: 13,
+        targetTricks: 11,
         suit: 'diamonds',
       }
 
       const newDeclaration: NapoleonDeclaration = {
         playerId: 'player_2',
-        targetTricks: 13,
+        targetTricks: 11,
         suit: 'clubs',
       }
 
@@ -134,7 +134,7 @@ describe('Napoleon Rules', () => {
     it('should return minimum when no current declaration', () => {
       const result = getMinimumDeclaration()
 
-      expect(result.minTricks).toBe(MIN_NAPOLEON_TRICKS)
+      expect(result.minTricks).toBe(MIN_NAPOLEON_FACE_CARDS)
       expect(result.availableSuits).toEqual([
         'clubs',
         'diamonds',
@@ -143,7 +143,7 @@ describe('Napoleon Rules', () => {
       ])
     })
 
-    it('should return higher trick count when no stronger suits available', () => {
+    it('should return higher face card count when no stronger suits available', () => {
       const currentDeclaration: NapoleonDeclaration = {
         playerId: 'player_1',
         targetTricks: 15,
@@ -161,7 +161,7 @@ describe('Napoleon Rules', () => {
       ])
     })
 
-    it('should return stronger suits for same trick count', () => {
+    it('should return stronger suits for same face card count', () => {
       const currentDeclaration: NapoleonDeclaration = {
         playerId: 'player_1',
         targetTricks: 15,
@@ -189,7 +189,7 @@ describe('Napoleon Rules', () => {
       expect(result.availableSuits).toEqual(['spades'])
     })
 
-    it('should require higher tricks for strongest suit (spades)', () => {
+    it('should require higher face cards for strongest suit (spades)', () => {
       const currentDeclaration: NapoleonDeclaration = {
         playerId: 'player_1',
         targetTricks: 15,

@@ -44,7 +44,7 @@ export function DeclarationDisplay({
             <div className="text-2xl font-bold text-yellow-700">
               {declaration.targetTricks}
             </div>
-            <div className="text-sm text-yellow-600">tricks</div>
+            <div className="text-sm text-yellow-600">face cards</div>
           </div>
           <div className="text-center">
             <div
@@ -66,8 +66,8 @@ export function DeclarationDisplay({
         )}
 
         <div className="text-xs text-yellow-600 text-center mt-2">
-          Napoleon team needs to win at least {declaration.targetTricks} tricks
-          out of 20 total
+          Napoleon team needs to win at least {declaration.targetTricks} face
+          cards out of 20 total
         </div>
       </div>
     </div>
