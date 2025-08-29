@@ -14,11 +14,11 @@ export const SUIT_PRIORITY: Record<Suit, number> = {
   clubs: 1, // ♣ クラブ（最弱）
 }
 
-// 最小宣言トリック数
-export const MIN_NAPOLEON_TRICKS = 13
+// 最小宣言絵札数
+export const MIN_NAPOLEON_FACE_CARDS = 11
 
-// 最大宣言トリック数
-export const MAX_NAPOLEON_TRICKS = 20
+// 最大宣言絵札数
+export const MAX_NAPOLEON_FACE_CARDS = 20
 
 /**
  * ナポレオン宣言が有効かチェック
@@ -27,25 +27,25 @@ export function isValidNapoleonDeclaration(
   declaration: NapoleonDeclaration,
   currentDeclaration?: NapoleonDeclaration
 ): boolean {
-  // 最小・最大トリック数チェック
+  // 最小・最大絵札数チェック
   if (
-    declaration.targetTricks < MIN_NAPOLEON_TRICKS ||
-    declaration.targetTricks > MAX_NAPOLEON_TRICKS
+    declaration.targetTricks < MIN_NAPOLEON_FACE_CARDS ||
+    declaration.targetTricks > MAX_NAPOLEON_FACE_CARDS
   ) {
     return false
   }
 
   // 現在の宣言がない場合（最初の宣言）
   if (!currentDeclaration) {
-    return declaration.targetTricks >= MIN_NAPOLEON_TRICKS
+    return declaration.targetTricks >= MIN_NAPOLEON_FACE_CARDS
   }
 
-  // より多くのトリック数を宣言している場合
+  // より多くの絵札数を宣言している場合
   if (declaration.targetTricks > currentDeclaration.targetTricks) {
     return true
   }
 
-  // 同じトリック数の場合、スートの優先順位で判定
+  // 同じ絵札数の場合、スートの優先順位で判定
   if (declaration.targetTricks === currentDeclaration.targetTricks) {
     return (
       SUIT_PRIORITY[declaration.suit] > SUIT_PRIORITY[currentDeclaration.suit]
@@ -76,7 +76,7 @@ export function canDeclareNapoleon(
 }
 
 /**
- * 宣言可能な最小トリック数とスートを取得
+ * 宣言可能な最小絵札数とスートを取得
  */
 export function getMinimumDeclaration(
   currentDeclaration?: NapoleonDeclaration
@@ -86,7 +86,7 @@ export function getMinimumDeclaration(
 } {
   if (!currentDeclaration) {
     return {
-      minTricks: MIN_NAPOLEON_TRICKS,
+      minTricks: MIN_NAPOLEON_FACE_CARDS,
       availableSuits: ['clubs', 'diamonds', 'hearts', 'spades'],
     }
   }
@@ -95,7 +95,7 @@ export function getMinimumDeclaration(
   const currentSuit = currentDeclaration.suit
   const currentPriority = SUIT_PRIORITY[currentSuit]
 
-  // 同じトリック数で、より強いスートが可能かチェック
+  // 同じ絵札数で、より強いスートが可能かチェック
   const availableSuits: Suit[] = []
   for (const [suit, priority] of Object.entries(SUIT_PRIORITY)) {
     if (priority > currentPriority) {
@@ -103,7 +103,7 @@ export function getMinimumDeclaration(
     }
   }
 
-  // より強いスートがある場合は、同じトリック数で可能
+  // より強いスートがある場合は、同じ絵札数で可能
   if (availableSuits.length > 0) {
     return {
       minTricks: currentTricks,
@@ -111,17 +111,17 @@ export function getMinimumDeclaration(
     }
   }
 
-  // より強いスートがない場合は、トリック数を上げる必要がある
-  if (currentTricks < MAX_NAPOLEON_TRICKS) {
+  // より強いスートがない場合は、絵札数を上げる必要がある
+  if (currentTricks < MAX_NAPOLEON_FACE_CARDS) {
     return {
       minTricks: currentTricks + 1,
       availableSuits: ['clubs', 'diamonds', 'hearts', 'spades'],
     }
   }
 
-  // 最大トリック数で最強スートの場合、宣言不可
+  // 最大絵札数で最強スートの場合、宣言不可
   return {
-    minTricks: MAX_NAPOLEON_TRICKS + 1, // 実質的に不可能
+    minTricks: MAX_NAPOLEON_FACE_CARDS + 1, // 実質的に不可能
     availableSuits: [],
   }
 }

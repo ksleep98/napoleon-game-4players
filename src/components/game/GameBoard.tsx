@@ -48,8 +48,8 @@ export function GameBoard({ gameState }: GameBoardProps) {
       <div className="absolute top-2 left-2 bg-white bg-opacity-90 rounded-lg p-3 text-sm">
         <div className="font-semibold mb-1">Game Progress</div>
         <div>Tricks: {progress.tricksPlayed}/12</div>
-        <div>Napoleon: {progress.napoleonTeamTricks}</div>
-        <div>Allied Forces: {progress.citizenTeamTricks}</div>
+        <div>Napoleon Face Cards: {progress.napoleonTeamFaceCards}</div>
+        <div>Allied Forces Face Cards: {progress.citizenTeamFaceCards}</div>
         <div className="mt-1 text-xs text-gray-600">
           Napoleon needs {progress.napoleonNeedsToWin} more
         </div>

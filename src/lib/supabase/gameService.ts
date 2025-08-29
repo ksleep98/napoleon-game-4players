@@ -91,7 +91,7 @@ export async function saveGameResult(result: GameResult): Promise<void> {
     napoleon_won: result.napoleonWon,
     napoleon_player_id: result.napoleonPlayerId,
     adjutant_player_id: result.adjutantPlayerId,
-    tricks_won: result.tricksWon,
+    face_cards_won: result.faceCardsWon,
     scores: result.scores,
   })
 

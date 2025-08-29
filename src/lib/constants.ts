@@ -48,11 +48,11 @@ export const GAME_CONFIG = {
   CARDS_PER_PLAYER: 12, // 52枚（Joker除外）から4人に12枚ずつ配って残り4枚
   TOTAL_CARDS_USED: 52, // Jokerを除外した52枚使用
   HIDDEN_CARDS: 4,
-  TARGET_TRICKS: 8, // ナポレオンが取る必要があるトリック数
+  TARGET_FACE_CARDS: 11, // ナポレオンが取る必要がある絵札数
 } as const
 
 export const NAPOLEON_RULES = {
-  TARGET_TRICKS: 8,
+  TARGET_FACE_CARDS: 11, // 絵札（10〜A）の最低獲得枚数
   NAPOLEON_BONUS: 100,
   BASE_POINTS: 10,
   ADJUTANT_BONUS: 50,
@@ -79,4 +79,14 @@ export const createDeck = (): Card[] => {
 // 使用する48枚のカード（通常は2のカードを除く）
 export const createGameDeck = (): Card[] => {
   return createDeck().filter((card) => card.rank !== '2')
+}
+
+// 絵札（10、J、Q、K、A）かどうかを判定
+export const isFaceCard = (card: Card): boolean => {
+  return ['10', 'J', 'Q', 'K', 'A'].includes(card.rank)
+}
+
+// カード配列から絵札の数を数える
+export const countFaceCards = (cards: Card[]): number => {
+  return cards.filter(isFaceCard).length
 }

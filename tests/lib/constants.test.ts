@@ -68,7 +68,7 @@ describe('Constants', () => {
       expect(GAME_CONFIG.CARDS_PER_PLAYER).toBe(12)
       expect(GAME_CONFIG.TOTAL_CARDS_USED).toBe(52)
       expect(GAME_CONFIG.HIDDEN_CARDS).toBe(4)
-      expect(GAME_CONFIG.TARGET_TRICKS).toBe(8)
+      expect(GAME_CONFIG.TARGET_FACE_CARDS).toBe(11)
     })
 
     it('should have mathematically correct card distribution', () => {
