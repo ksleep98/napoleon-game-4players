@@ -7,9 +7,10 @@ import { CardExchangeSelector } from '@/components/game/CardExchangeSelector'
 import { GameBoard } from '@/components/game/GameBoard'
 import { GameStatus } from '@/components/game/GameStatus'
 import { NapoleonSelector } from '@/components/game/NapoleonSelector'
+import { PhaseResult } from '@/components/game/PhaseResult'
 import { PlayerHand } from '@/components/game/PlayerHand'
 import { useGameState } from '@/hooks/useGameState'
-import { calculateGameResult } from '@/lib/scoring'
+import { calculateGameResult, getPlayerFaceCardCount } from '@/lib/scoring'
 import type { Card as CardType, NapoleonDeclaration } from '@/types/game'
 
 export default function GamePage() {
@@ -151,32 +152,32 @@ export default function GamePage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              {result.scores.map((score, _index) => {
-                const player = gameState.players.find(
-                  (p) => p.id === score.playerId
+              {gameState.players.map((player) => {
+                const faceCardsWon = getPlayerFaceCardCount(
+                  gameState,
+                  player.id
                 )
+                const isWinner = result.napoleonWon
+                  ? player.isNapoleon || player.isAdjutant
+                  : !player.isNapoleon && !player.isAdjutant
+
                 return (
                   <div
-                    key={score.playerId}
+                    key={player.id}
                     className={`p-4 rounded-lg ${
-                      score.isWinner ? 'bg-green-100' : 'bg-red-100'
+                      isWinner ? 'bg-green-100' : 'bg-red-100'
                     }`}
                   >
-                    <div className="font-semibold">{player?.name}</div>
+                    <div className="font-semibold">{player.name}</div>
                     <div className="text-sm text-gray-600">
-                      {player?.isNapoleon && 'Napoleon'}
-                      {player?.isAdjutant && 'Adjutant'}
-                      {!player?.isNapoleon &&
-                        !player?.isAdjutant &&
+                      {player.isNapoleon && 'Napoleon'}
+                      {player.isAdjutant && 'Adjutant'}
+                      {!player.isNapoleon &&
+                        !player.isAdjutant &&
                         'Allied Forces'}
                     </div>
-                    <div
-                      className={`text-lg font-bold ${
-                        score.points > 0 ? 'text-green-600' : 'text-red-600'
-                      }`}
-                    >
-                      {score.points > 0 ? '+' : ''}
-                      {score.points} points
+                    <div className="text-lg font-bold text-blue-600">
+                      Face Cards Won: {faceCardsWon}
                     </div>
                   </div>
                 )
@@ -313,6 +314,15 @@ export default function GamePage() {
           </div>
         </div>
       </div>
+
+      {/* トリック結果表示 */}
+      {gameState.showingPhaseResult && gameState.lastCompletedPhase && (
+        <PhaseResult
+          phase={gameState.lastCompletedPhase}
+          players={gameState.players}
+          onContinue={() => actions.closePhaseResult()}
+        />
+      )}
     </div>
   )
 }

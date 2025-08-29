@@ -6,7 +6,7 @@ import {
   getTeamFaceCardCounts,
   isGameDecided,
 } from '@/lib/scoring'
-import type { Card, GameState, Trick } from '@/types/game'
+import type { Card, GameState, Phase, Rank, Suit } from '@/types/game'
 
 describe('Scoring', () => {
   let mockGameState: GameState
@@ -18,10 +18,10 @@ describe('Scoring', () => {
     // Set up Napoleon and Adjutant
     mockGameState.players[0].isNapoleon = true
     mockGameState.players[1].isAdjutant = true
-    mockGameState.tricks = []
+    mockGameState.phases = []
   })
 
-  const createCard = (id: string, suit: any, rank: any): Card => ({
+  const createCard = (id: string, suit: Suit, rank: Rank): Card => ({
     id,
     suit,
     rank,
@@ -37,7 +37,7 @@ describe('Scoring', () => {
 
     it('should calculate correct counts with some face cards won', () => {
       // Mock tricks with face cards - トリックに絵札を含めたモックを作成
-      const tricks: Trick[] = [
+      const phases: Phase[] = [
         {
           id: 'trick1',
           cards: [
@@ -74,7 +74,7 @@ describe('Scoring', () => {
         },
       ]
 
-      mockGameState.tricks = tricks
+      mockGameState.phases = phases
       const counts = getTeamFaceCardCounts(mockGameState)
 
       expect(counts.napoleonTeam).toBe(1) // A = 1 face card
@@ -87,13 +87,13 @@ describe('Scoring', () => {
       const progress = getGameProgress(mockGameState)
       expect(progress.napoleonTeamFaceCards).toBe(0)
       expect(progress.citizenTeamFaceCards).toBe(20)
-      expect(progress.tricksPlayed).toBe(0)
-      expect(progress.tricksRemaining).toBe(12)
-      expect(progress.napoleonNeedsToWin).toBe(11) // TARGET_FACE_CARDS
+      expect(progress.phasesPlayed).toBe(0)
+      expect(progress.phasesRemaining).toBe(12)
+      expect(progress.napoleonNeedsToWin).toBe(13) // TARGET_FACE_CARDS
     })
 
     it('should calculate correct progress with some completed tricks', () => {
-      mockGameState.tricks = [
+      mockGameState.phases = [
         {
           id: 'trick1',
           cards: [
@@ -134,9 +134,9 @@ describe('Scoring', () => {
 
       expect(progress.napoleonTeamFaceCards).toBe(1) // Napoleon won A
       expect(progress.citizenTeamFaceCards).toBe(19) // 20 - 1
-      expect(progress.tricksPlayed).toBe(2)
-      expect(progress.tricksRemaining).toBe(10)
-      expect(progress.napoleonNeedsToWin).toBe(10) // 11 - 1 = 10
+      expect(progress.phasesPlayed).toBe(2)
+      expect(progress.phasesRemaining).toBe(10)
+      expect(progress.napoleonNeedsToWin).toBe(12) // 13 - 1 = 12
     })
   })
 
@@ -147,8 +147,8 @@ describe('Scoring', () => {
     })
 
     it('should return true when Napoleon team reaches target face cards', () => {
-      // Mock Napoleon team winning 11+ face cards
-      mockGameState.tricks = Array(11)
+      // Mock Napoleon team winning 13+ face cards
+      mockGameState.phases = Array(13)
         .fill(null)
         .map((_, i) => ({
           id: `trick${i}`,
@@ -170,9 +170,9 @@ describe('Scoring', () => {
     })
 
     it('should return true when Napoleon team cannot reach target face cards', () => {
-      // Mock scenario where Napoleon cannot reach 11 face cards
+      // Mock scenario where Napoleon cannot reach 13 face cards
       // Napoleon has won 2 face cards, only 1 trick remaining with max 5 face cards
-      mockGameState.tricks = [
+      mockGameState.phases = [
         {
           id: 'napoleon-trick1',
           cards: [
@@ -217,7 +217,7 @@ describe('Scoring', () => {
 
   describe('getPlayerFaceCardCount', () => {
     it('should count face cards won by specific player', () => {
-      mockGameState.tricks = [
+      mockGameState.phases = [
         {
           id: 'trick1',
           cards: [
@@ -279,8 +279,8 @@ describe('Scoring', () => {
 
   describe('calculateGameResult', () => {
     it('should calculate Napoleon team victory', () => {
-      // Mock Napoleon team winning 11+ face cards
-      mockGameState.tricks = Array(11)
+      // Mock Napoleon team winning 13+ face cards
+      mockGameState.phases = Array(13)
         .fill(null)
         .map((_, i) => ({
           id: `trick${i}`,
@@ -298,7 +298,7 @@ describe('Scoring', () => {
       const result = calculateGameResult(mockGameState)
       expect(result.napoleonWon).toBe(true)
       expect(result.napoleonPlayerId).toBe('player_1')
-      expect(result.faceCardsWon).toBe(11)
+      expect(result.faceCardsWon).toBe(13)
 
       const napoleonScore = result.scores.find((s) => s.playerId === 'player_1')
       expect(napoleonScore?.isWinner).toBe(true)
@@ -306,9 +306,9 @@ describe('Scoring', () => {
     })
 
     it('should calculate Citizen victory', () => {
-      // Mock Napoleon team winning only 10 face cards (less than 11)
-      mockGameState.tricks = [
-        ...Array(10)
+      // Mock Napoleon team winning only 12 face cards (less than 13)
+      mockGameState.phases = [
+        ...Array(12)
           .fill(null)
           .map((_, i) => ({
             id: `napoleon-trick${i}`,
@@ -320,7 +320,7 @@ describe('Scoring', () => {
               },
             ],
             completed: true,
-            winnerPlayerId: 'player_1', // Napoleon wins 10 face cards
+            winnerPlayerId: 'player_1', // Napoleon wins 12 face cards
           })),
         {
           id: 'citizen-trick1',
@@ -338,7 +338,7 @@ describe('Scoring', () => {
 
       const result = calculateGameResult(mockGameState)
       expect(result.napoleonWon).toBe(false)
-      expect(result.faceCardsWon).toBe(10)
+      expect(result.faceCardsWon).toBe(12)
 
       const citizenScore = result.scores.find((s) => s.playerId === 'player_3')
       expect(citizenScore?.isWinner).toBe(true)

@@ -10,7 +10,7 @@ interface GameBoardProps {
 }
 
 export function GameBoard({ gameState }: GameBoardProps) {
-  const currentTrick = gameState.currentTrick
+  const currentPhase = gameState.currentPhase
   const progress = getGameProgress(gameState)
 
   // プレイヤーの位置を計算（4人のプレイヤーを上下左右に配置）
@@ -32,7 +32,7 @@ export function GameBoard({ gameState }: GameBoardProps) {
     right: null,
   }
 
-  currentTrick.cards.forEach((playedCard) => {
+  currentPhase.cards.forEach((playedCard) => {
     const playerIndex = gameState.players.findIndex(
       (p) => p.id === playedCard.playerId
     )
@@ -47,7 +47,7 @@ export function GameBoard({ gameState }: GameBoardProps) {
       {/* ゲーム情報 */}
       <div className="absolute top-2 left-2 bg-white bg-opacity-90 rounded-lg p-3 text-sm">
         <div className="font-semibold mb-1">Game Progress</div>
-        <div>Tricks: {progress.tricksPlayed}/12</div>
+        <div>Phases: {progress.phasesPlayed}/12</div>
         <div>Napoleon Face Cards: {progress.napoleonTeamFaceCards}</div>
         <div>Allied Forces Face Cards: {progress.citizenTeamFaceCards}</div>
         <div className="mt-1 text-xs text-gray-600">
@@ -130,7 +130,7 @@ export function GameBoard({ gameState }: GameBoardProps) {
             <div className="bg-white bg-opacity-80 rounded-full w-16 h-16 flex items-center justify-center">
               <div className="text-center">
                 <div className="font-bold text-lg">
-                  {progress.tricksPlayed + 1}
+                  {progress.phasesPlayed + 1}
                 </div>
                 <div className="text-xs">Trick</div>
               </div>
@@ -140,7 +140,7 @@ export function GameBoard({ gameState }: GameBoardProps) {
       </div>
 
       {/* 最後に勝ったトリック表示 */}
-      {gameState.tricks.length > 0 && (
+      {gameState.phases.length > 0 && (
         <div className="absolute bottom-2 left-2 bg-white bg-opacity-90 rounded-lg p-2 text-xs">
           <div className="font-semibold">Last Trick Winner:</div>
           <div>
@@ -148,7 +148,7 @@ export function GameBoard({ gameState }: GameBoardProps) {
               gameState.players.find(
                 (p) =>
                   p.id ===
-                  gameState.tricks[gameState.tricks.length - 1].winnerPlayerId
+                  gameState.phases[gameState.phases.length - 1].winnerPlayerId
               )?.name
             }
           </div>

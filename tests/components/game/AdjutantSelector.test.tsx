@@ -53,12 +53,12 @@ describe('AdjutantSelector', () => {
         isAI: false,
       },
     ],
-    currentTrick: {
-      id: 'trick-1',
+    currentPhase: {
+      id: 'phase-1',
       cards: [],
       completed: false,
     },
-    tricks: [],
+    phases: [],
     currentPlayerIndex: 0,
     phase: 'adjutant',
     hiddenCards: [],
