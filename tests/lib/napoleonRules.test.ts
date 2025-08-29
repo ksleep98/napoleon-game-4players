@@ -60,13 +60,13 @@ describe('Napoleon Rules', () => {
     it('should accept higher face card count than current declaration', () => {
       const currentDeclaration: NapoleonDeclaration = {
         playerId: 'player_1',
-        targetTricks: 11,
+        targetTricks: 13,
         suit: 'clubs',
       }
 
       const newDeclaration: NapoleonDeclaration = {
         playerId: 'player_2',
-        targetTricks: 12,
+        targetTricks: 14,
         suit: 'clubs',
       }
 
@@ -78,13 +78,13 @@ describe('Napoleon Rules', () => {
     it('should accept same face card count with stronger suit', () => {
       const currentDeclaration: NapoleonDeclaration = {
         playerId: 'player_1',
-        targetTricks: 11,
+        targetTricks: 13,
         suit: 'clubs',
       }
 
       const newDeclaration: NapoleonDeclaration = {
         playerId: 'player_2',
-        targetTricks: 11,
+        targetTricks: 13,
         suit: 'diamonds',
       }
 
@@ -96,13 +96,13 @@ describe('Napoleon Rules', () => {
     it('should reject same declaration (same face cards and suit)', () => {
       const currentDeclaration: NapoleonDeclaration = {
         playerId: 'player_1',
-        targetTricks: 11,
+        targetTricks: 13,
         suit: 'clubs',
       }
 
       const newDeclaration: NapoleonDeclaration = {
         playerId: 'player_2',
-        targetTricks: 11,
+        targetTricks: 13,
         suit: 'clubs',
       }
 
@@ -114,13 +114,13 @@ describe('Napoleon Rules', () => {
     it('should reject weaker declaration (same face cards, weaker suit)', () => {
       const currentDeclaration: NapoleonDeclaration = {
         playerId: 'player_1',
-        targetTricks: 11,
+        targetTricks: 13,
         suit: 'diamonds',
       }
 
       const newDeclaration: NapoleonDeclaration = {
         playerId: 'player_2',
-        targetTricks: 11,
+        targetTricks: 13,
         suit: 'clubs',
       }
 

@@ -55,7 +55,7 @@ export async function processNapoleonPhase(
       strategy.declaration
     )
     console.log(
-      `AI Player ${currentPlayer.name} declares Napoleon: ${strategy.declaration.targetTricks} tricks with ${strategy.declaration.suit}!`
+      `AI Player ${currentPlayer.name} declares Napoleon: ${strategy.declaration.targetTricks} face cards with ${strategy.declaration.suit}!`
     )
   } else {
     // パス
@@ -174,6 +174,58 @@ export async function processAlliancePhase(
   updatedGameState.phase = 'playing'
 
   return updatedGameState
+}
+
+// プレイングフェーズの AI 処理
+export async function processAIPlayingPhase(
+  gameState: GameState
+): Promise<GameState> {
+  let updatedState = { ...gameState }
+
+  // 現在のプレイヤーがAIかチェック
+  const { getCurrentPlayer } = await import('../gameLogic')
+  const currentPlayer = getCurrentPlayer(updatedState)
+
+  if (!currentPlayer?.isAI) {
+    return updatedState
+  }
+
+  // AIが出すカードを選択
+  const cardToPlay = selectAICard(currentPlayer.hand, updatedState)
+
+  if (cardToPlay) {
+    const { playCard } = await import('../gameLogic')
+    updatedState = playCard(updatedState, currentPlayer.id, cardToPlay.id)
+    console.log(
+      `AI ${currentPlayer.name} plays ${cardToPlay.suit}-${cardToPlay.rank}`
+    )
+  }
+
+  return updatedState
+}
+
+// AIのカード選択ロジック（シンプル版）
+function selectAICard(hand: Card[], gameState: GameState): Card | null {
+  if (hand.length === 0) return null
+
+  const currentPhase = gameState.currentPhase
+
+  // 最初のカードの場合、適当に選ぶ
+  if (currentPhase.cards.length === 0) {
+    return hand[Math.floor(Math.random() * hand.length)]
+  }
+
+  // フォロー義務がある場合
+  const leadingSuit = currentPhase.cards[0].card.suit
+  const followingCards = hand.filter((card) => card.suit === leadingSuit)
+
+  if (followingCards.length > 0) {
+    // フォローできる場合は適当に選ぶ
+    return followingCards[Math.floor(Math.random() * followingCards.length)]
+  } else {
+    // フォローできない場合は適当に選ぶ
+    return hand[Math.floor(Math.random() * hand.length)]
+  }
 }
 
 // すべての AI フェーズを統合処理

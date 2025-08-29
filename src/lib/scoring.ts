@@ -13,14 +13,14 @@ export function calculateGameResult(gameState: GameState): GameResult {
   }
 
   // ナポレオン・副官側が取った絵札数を計算
-  const napoleonFaceCards = gameState.tricks
+  const napoleonFaceCards = gameState.phases
     .filter(
-      (trick) =>
-        trick.winnerPlayerId === napoleonPlayer.id ||
-        (adjutantPlayer && trick.winnerPlayerId === adjutantPlayer.id)
+      (phase) =>
+        phase.winnerPlayerId === napoleonPlayer.id ||
+        (adjutantPlayer && phase.winnerPlayerId === adjutantPlayer.id)
     )
-    .reduce((total, trick) => {
-      return total + countFaceCards(trick.cards.map((c) => c.card))
+    .reduce((total, phase) => {
+      return total + countFaceCards(phase.cards.map((c) => c.card))
     }, 0)
 
   // ナポレオン側の勝利判定
@@ -88,10 +88,10 @@ export function getPlayerFaceCardCount(
   gameState: GameState,
   playerId: string
 ): number {
-  return gameState.tricks
-    .filter((trick) => trick.winnerPlayerId === playerId)
-    .reduce((total, trick) => {
-      return total + countFaceCards(trick.cards.map((c) => c.card))
+  return gameState.phases
+    .filter((phase) => phase.winnerPlayerId === playerId)
+    .reduce((total, phase) => {
+      return total + countFaceCards(phase.cards.map((c) => c.card))
     }, 0)
 }
 
@@ -109,13 +109,13 @@ export function getTeamFaceCardCounts(gameState: GameState): {
     Boolean
   ) as string[]
 
-  const napoleonTeam = gameState.tricks
+  const napoleonTeam = gameState.phases
     .filter(
-      (trick) =>
-        trick.winnerPlayerId && napoleonTeamIds.includes(trick.winnerPlayerId)
+      (phase) =>
+        phase.winnerPlayerId && napoleonTeamIds.includes(phase.winnerPlayerId)
     )
-    .reduce((total, trick) => {
-      return total + countFaceCards(trick.cards.map((c) => c.card))
+    .reduce((total, phase) => {
+      return total + countFaceCards(phase.cards.map((c) => c.card))
     }, 0)
 
   const totalFaceCards = 20 // 全絵札数
@@ -128,23 +128,23 @@ export function getTeamFaceCardCounts(gameState: GameState): {
  * 現在のゲーム進行状況を取得
  */
 export function getGameProgress(gameState: GameState): {
-  tricksPlayed: number
-  tricksRemaining: number
+  phasesPlayed: number
+  phasesRemaining: number
   napoleonTeamFaceCards: number
   citizenTeamFaceCards: number
   napoleonNeedsToWin: number
 } {
   const { napoleonTeam, citizenTeam } = getTeamFaceCardCounts(gameState)
-  const tricksPlayed = gameState.tricks.length
-  const tricksRemaining = 12 - tricksPlayed
+  const phasesPlayed = gameState.phases.length
+  const phasesRemaining = 12 - phasesPlayed
   const napoleonNeedsToWin = Math.max(
     0,
     NAPOLEON_RULES.TARGET_FACE_CARDS - napoleonTeam
   )
 
   return {
-    tricksPlayed,
-    tricksRemaining,
+    phasesPlayed,
+    phasesRemaining,
     napoleonTeamFaceCards: napoleonTeam,
     citizenTeamFaceCards: citizenTeam,
     napoleonNeedsToWin,
@@ -159,7 +159,7 @@ export function isGameDecided(gameState: GameState): {
   napoleonWon?: boolean
   reason?: string
 } {
-  const { napoleonTeamFaceCards, tricksRemaining } = getGameProgress(gameState)
+  const { napoleonTeamFaceCards, phasesRemaining } = getGameProgress(gameState)
 
   // ナポレオン側が既に必要な絵札数を達成
   if (napoleonTeamFaceCards >= NAPOLEON_RULES.TARGET_FACE_CARDS) {
@@ -171,7 +171,7 @@ export function isGameDecided(gameState: GameState): {
   }
 
   // ナポレオン側が残りトリックで取れる最大絵札数を計算
-  const maxRemainingFaceCards = tricksRemaining * 5 // 最大でトリックごとに5枚の絵札がある可能性
+  const maxRemainingFaceCards = phasesRemaining * 5 // 最大でフェーズごとに5枚の絵札がある可能性
   if (
     napoleonTeamFaceCards + maxRemainingFaceCards <
     NAPOLEON_RULES.TARGET_FACE_CARDS
@@ -204,14 +204,14 @@ export function getPlayerStats(
   }
 
   const faceCardsWon = getPlayerFaceCardCount(gameState, playerId)
-  const cardsPlayed = gameState.tricks.reduce((count, trick) => {
+  const cardsPlayed = gameState.phases.reduce((count, phase) => {
     return (
-      count + (trick.cards.some((card) => card.playerId === playerId) ? 1 : 0)
+      count + (phase.cards.some((card) => card.playerId === playerId) ? 1 : 0)
     )
   }, 0)
 
-  // 現在のトリックでプレイしたカードも含める
-  const currentTrickCards = gameState.currentTrick.cards.some(
+  // 現在のフェーズでプレイしたカードも含める
+  const currentPhaseCards = gameState.currentPhase.cards.some(
     (card) => card.playerId === playerId
   )
     ? 1
@@ -225,7 +225,7 @@ export function getPlayerStats(
 
   return {
     faceCardsWon,
-    cardsPlayed: cardsPlayed + currentTrickCards,
+    cardsPlayed: cardsPlayed + currentPhaseCards,
     cardsInHand: player.hand.length,
     role,
   }

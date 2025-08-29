@@ -1,7 +1,11 @@
 'use client'
 
 import { NAPOLEON_RULES } from '@/lib/constants'
-import { getGameProgress, getPlayerStats } from '@/lib/scoring'
+import {
+  getGameProgress,
+  getPlayerFaceCardCount,
+  getPlayerStats,
+} from '@/lib/scoring'
 import type { GameState } from '@/types/game'
 
 interface GameStatusProps {
@@ -95,8 +99,8 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
           <h4 className="font-semibold text-gray-800 mb-2">Progress</h4>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span>Tricks Played:</span>
-              <span>{progress.tricksPlayed}/12</span>
+              <span>Phases Played:</span>
+              <span>{progress.phasesPlayed}/12</span>
             </div>
             <div className="flex justify-between">
               <span>Napoleon Team Face Cards:</span>
@@ -137,6 +141,49 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
         </div>
       )}
 
+      {/* プレイヤー別絵札獲得数 */}
+      {gameState.phase === 'playing' && (
+        <div className="border-b pb-3">
+          <h4 className="font-semibold text-gray-800 mb-2">
+            Face Cards Won by Player
+          </h4>
+          <div className="space-y-1 text-sm">
+            {gameState.players.map((player) => {
+              const faceCardsWon = getPlayerFaceCardCount(gameState, player.id)
+              const roleColor = player.isNapoleon
+                ? 'text-yellow-600'
+                : player.isAdjutant
+                  ? 'text-green-600'
+                  : 'text-blue-600'
+
+              return (
+                <div
+                  key={player.id}
+                  className="flex justify-between items-center"
+                >
+                  <div className="flex items-center gap-2">
+                    <span>{player.name}</span>
+                    {player.isNapoleon && (
+                      <span className="px-1 py-0 bg-yellow-200 text-yellow-800 rounded text-xs">
+                        N
+                      </span>
+                    )}
+                    {player.isAdjutant && (
+                      <span className="px-1 py-0 bg-green-200 text-green-800 rounded text-xs">
+                        A
+                      </span>
+                    )}
+                  </div>
+                  <span className={`font-medium ${roleColor}`}>
+                    {faceCardsWon} face cards
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* 現在のプレイヤー情報 */}
       {currentPlayerStats && (
         <div className="border-b pb-3">
@@ -164,14 +211,14 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
         </div>
       )}
 
-      {/* 現在のトリック情報 */}
-      {gameState.currentTrick.cards.length > 0 && (
+      {/* 現在のフェーズ情報 */}
+      {gameState.currentPhase.cards.length > 0 && (
         <div>
-          <h4 className="font-semibold text-gray-800 mb-2">Current Trick</h4>
+          <h4 className="font-semibold text-gray-800 mb-2">Current Phase</h4>
           <div className="space-y-1 text-sm">
             <div className="flex justify-between">
               <span>Cards Played:</span>
-              <span>{gameState.currentTrick.cards.length}/4</span>
+              <span>{gameState.currentPhase.cards.length}/4</span>
             </div>
             {gameState.leadingSuit && (
               <div className="flex justify-between">

@@ -15,7 +15,7 @@ export const SUIT_PRIORITY: Record<Suit, number> = {
 }
 
 // 最小宣言絵札数
-export const MIN_NAPOLEON_FACE_CARDS = 11
+export const MIN_NAPOLEON_FACE_CARDS = 13
 
 // 最大宣言絵札数
 export const MAX_NAPOLEON_FACE_CARDS = 20

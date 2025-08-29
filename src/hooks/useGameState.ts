@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import {
+  closePhaseResult,
   declareNapoleon,
   declareNapoleonWithDeclaration,
   exchangeCards,
@@ -117,6 +118,30 @@ export function useGameState(
         setError(null)
 
         const updatedGame = playCard(gameState, playerId, cardId)
+
+        // AIモードの場合、次のプレイヤーがAIなら自動でプレイ
+        if (isAI && updatedGame.phase === 'playing') {
+          const currentPlayer = getCurrentPlayer(updatedGame)
+          if (currentPlayer?.isAI) {
+            // AI処理用に少し遅延を入れる
+            setTimeout(async () => {
+              try {
+                const { processAIPlayingPhase } = await import(
+                  '@/lib/ai/gamePhases'
+                )
+                const aiUpdatedGame = await processAIPlayingPhase(updatedGame)
+                setGameState(aiUpdatedGame)
+
+                if (gameId && process.env.NODE_ENV === 'production') {
+                  await saveGameState(aiUpdatedGame)
+                }
+              } catch (aiError) {
+                console.error('AI playing error:', aiError)
+              }
+            }, 1000)
+          }
+        }
+
         setGameState(updatedGame)
 
         if (gameId) {
@@ -126,7 +151,7 @@ export function useGameState(
         setError(err instanceof Error ? err.message : 'Failed to play card')
       }
     },
-    [gameState, gameId]
+    [gameState, gameId, isAI]
   )
 
   // ナポレオン宣言
@@ -241,6 +266,26 @@ export function useGameState(
     [gameState, gameId]
   )
 
+  // トリック結果を閉じる
+  const handleClosePhaseResult = useCallback(async () => {
+    if (!gameState) return
+
+    try {
+      setError(null)
+
+      const updatedGame = closePhaseResult(gameState)
+      setGameState(updatedGame)
+
+      if (gameId && process.env.NODE_ENV === 'production') {
+        await saveGameState(updatedGame)
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Failed to close phase result'
+      )
+    }
+  }, [gameState, gameId])
+
   // プレイ可能なカードを取得
   const getPlayableCards = useCallback(
     (playerId: string): string[] => {
@@ -348,6 +393,36 @@ export function useGameState(
               }
             }
           }
+        } else if (gameState.phase === 'playing') {
+          // トリック結果表示中の場合、AIモードでは自動で閉じる
+          if (gameState.showingPhaseResult) {
+            setTimeout(() => {
+              handleClosePhaseResult()
+            }, 2000) // 2秒後に自動で閉じる
+            return
+          }
+
+          // プレイングフェーズでAIのターン処理
+          const currentPlayer = getCurrentPlayer(gameState)
+          if (currentPlayer?.isAI) {
+            const { processAIPlayingPhase } = await import(
+              '@/lib/ai/gamePhases'
+            )
+            const updatedState = await processAIPlayingPhase(gameState)
+            if (
+              updatedState !== gameState &&
+              JSON.stringify(updatedState) !== JSON.stringify(gameState)
+            ) {
+              setGameState(updatedState)
+              if (gameId && process.env.NODE_ENV === 'production') {
+                try {
+                  await saveGameState(updatedState)
+                } catch (saveError) {
+                  console.error('Failed to save AI playing state:', saveError)
+                }
+              }
+            }
+          }
         }
       } catch (error) {
         console.error('AI processing error:', error)
@@ -358,7 +433,7 @@ export function useGameState(
     // 少し遅延を入れてAIの動作を見せる
     const timer = setTimeout(processAI, 1500) // 少し長めに設定
     return () => clearTimeout(timer)
-  }, [gameState, isAI, gameId])
+  }, [gameState, isAI, gameId, handleClosePhaseResult])
 
   return {
     gameState,
@@ -373,6 +448,7 @@ export function useGameState(
       passNapoleon: handlePassNapoleon,
       setAdjutant: handleSetAdjutant,
       exchangeCards: handleExchangeCards,
+      closePhaseResult: handleClosePhaseResult,
     },
     utils: {
       getPlayableCards,
