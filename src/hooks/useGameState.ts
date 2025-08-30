@@ -18,7 +18,7 @@ import {
   loadGameState,
   saveGameState,
   subscribeToGameState,
-} from '@/lib/supabase/gameService'
+} from '@/lib/supabase/secureGameService'
 import type {
   Card as CardType,
   GameState,
@@ -45,17 +45,19 @@ export function useGameState(
         setError(null)
         setInitialized(true)
 
+        // AI モードかどうかで初期化方法を変える
+        const newGame = isAI ? initializeAIGame('You') : initializeGame(names)
+
         // プレイヤーセッション設定（RLSポリシー用）
-        const playerId = 'player_1' // Quick Start用の固定プレイヤーID
+        // ゲーム状態から実際のプレイヤーIDを取得
+        const playerId = newGame.players[0]?.id || 'player_1'
         try {
           const { setPlayerSession } = await import('@/lib/supabase/client')
           await setPlayerSession(playerId)
+          console.log('Player session set to:', playerId)
         } catch (sessionError) {
           console.warn('Player session setup failed:', sessionError)
         }
-
-        // AI モードかどうかで初期化方法を変える
-        const newGame = isAI ? initializeAIGame('You') : initializeGame(names)
         // gameIdが指定されている場合は設定
         if (gameId) {
           newGame.id = gameId
@@ -132,7 +134,7 @@ export function useGameState(
                 const aiUpdatedGame = await processAIPlayingPhase(updatedGame)
                 setGameState(aiUpdatedGame)
 
-                if (gameId && process.env.NODE_ENV === 'production') {
+                if (gameId) {
                   await saveGameState(aiUpdatedGame)
                 }
               } catch (aiError) {

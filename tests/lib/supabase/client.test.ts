@@ -25,11 +25,13 @@ describe('Supabase Client Functions', () => {
 
       await setPlayerSession(testPlayerId)
 
+      // レガシーサポートのための従来の保存も確認
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
         'napoleon_player_id',
         testPlayerId
       )
-      expect(localStorageMock.setItem).toHaveBeenCalledTimes(1)
+      // セキュアストレージでは複数のアイテムが保存されるため、呼び出し回数が多くなる
+      expect(localStorageMock.setItem).toHaveBeenCalledTimes(5) // secure storage (4) + legacy (1)
     })
 
     test('空文字のプレイヤーIDでも正常に処理される', async () => {
@@ -41,7 +43,7 @@ describe('Supabase Client Functions', () => {
         'napoleon_player_id',
         testPlayerId
       )
-      expect(localStorageMock.setItem).toHaveBeenCalledTimes(1)
+      expect(localStorageMock.setItem).toHaveBeenCalledTimes(5) // secure storage (4) + legacy (1)
     })
 
     test('特殊文字を含むプレイヤーIDでも正常に処理される', async () => {
@@ -53,7 +55,7 @@ describe('Supabase Client Functions', () => {
         'napoleon_player_id',
         testPlayerId
       )
-      expect(localStorageMock.setItem).toHaveBeenCalledTimes(1)
+      expect(localStorageMock.setItem).toHaveBeenCalledTimes(5) // secure storage (4) + legacy (1)
     })
 
     test('長いプレイヤーIDでも正常に処理される', async () => {
@@ -65,7 +67,7 @@ describe('Supabase Client Functions', () => {
         'napoleon_player_id',
         testPlayerId
       )
-      expect(localStorageMock.setItem).toHaveBeenCalledTimes(1)
+      expect(localStorageMock.setItem).toHaveBeenCalledTimes(5) // secure storage (4) + legacy (1)
     })
 
     test('windowオブジェクトが存在しない環境（SSR）でエラーが発生しない', async () => {
@@ -155,8 +157,8 @@ describe('Supabase Client Functions', () => {
       await setPlayerSession(playerId2)
       await setPlayerSession(playerId3)
 
-      // 3回呼ばれていることを確認
-      expect(localStorageMock.setItem).toHaveBeenCalledTimes(3)
+      // 3回 * 5コール（secure storage 4 + legacy 1）= 15回呼ばれていることを確認
+      expect(localStorageMock.setItem).toHaveBeenCalledTimes(15)
 
       // 最後の呼び出しが正しいことを確認
       expect(localStorageMock.setItem).toHaveBeenLastCalledWith(
@@ -183,7 +185,7 @@ describe('Supabase Client Functions', () => {
 
       // 1000回の呼び出しが1秒以内に完了することを確認
       expect(executionTime).toBeLessThan(1000)
-      expect(localStorageMock.setItem).toHaveBeenCalledTimes(iterations)
+      expect(localStorageMock.setItem).toHaveBeenCalledTimes(iterations * 5) // secure storage (4) + legacy (1) per call
     })
   })
 
@@ -208,8 +210,9 @@ describe('Supabase Client Functions', () => {
         throw new Error('localStorage is not available')
       })
 
-      // 現在の実装ではエラーが伝播するので、エラーが発生することを確認
-      expect(() => getPlayerSession()).toThrow('localStorage is not available')
+      // 現在の実装ではエラーをキャッチしてnullを返すので、nullが返されることを確認
+      const result = getPlayerSession()
+      expect(result).toBeNull()
     })
   })
 })

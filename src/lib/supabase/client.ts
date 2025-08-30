@@ -28,16 +28,37 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 })
 
-// プレイヤーIDをセッションに設定するヘルパー関数
+// プレイヤーIDをセッションに設定するヘルパー関数（セキュア版）
 export const setPlayerSession = async (playerId: string) => {
-  // ローカルストレージに保存
+  // セキュアストレージに保存（従来のlocalStorageも一時的に併用）
   if (typeof window !== 'undefined') {
-    localStorage.setItem('napoleon_player_id', playerId)
+    try {
+      const { SecurePlayerSession } = await import('@/utils/secureStorage')
+      // プレイヤー名は別途設定する必要があるため、既存の名前を取得または匿名設定
+      const currentName =
+        SecurePlayerSession.getPlayerName() ||
+        localStorage.getItem('playerName') ||
+        'Anonymous'
+      SecurePlayerSession.setPlayer(playerId, currentName)
+
+      // レガシーサポート（段階的移行のため）
+      localStorage.setItem('napoleon_player_id', playerId)
+    } catch (error) {
+      console.warn(
+        'Failed to use secure storage, falling back to localStorage:',
+        error
+      )
+      localStorage.setItem('napoleon_player_id', playerId)
+    }
   }
 
-  // 開発環境ではRLSが無効化されているため、set_config関数の呼び出しをスキップ
-  // 本番環境でRLSを有効にする際は、以下のコードを有効にしてください：
-  /*
+  // テスト環境でのみ RLS 関数呼び出しをスキップ
+  // 開発環境では実際のRLS設定を試行する
+  if (process.env.NODE_ENV === 'test') {
+    console.log('Test mode: Skipping RLS setup')
+    return
+  }
+
   try {
     const { error } = await supabase.rpc('set_config', {
       setting_name: 'app.player_id',
@@ -47,19 +68,36 @@ export const setPlayerSession = async (playerId: string) => {
 
     if (error) {
       console.warn('Failed to set player session:', error)
+      // 開発環境ではRLS関数が存在しない場合があるので警告のみ
+      if (process.env.NODE_ENV === 'production') {
+        throw error
+      }
     }
   } catch (err) {
     console.warn('Failed to set player session:', err)
+    // 開発環境ではRLS関数が存在しない場合があるので警告のみ
+    if (process.env.NODE_ENV === 'production') {
+      throw err
+    }
   }
-  */
 }
 
-// プレイヤーID取得ヘルパー
+// プレイヤーID取得ヘルパー（セキュア版）
 export const getPlayerSession = (): string | null => {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('napoleon_player_id')
+  if (typeof window === 'undefined') {
+    return null
   }
-  return null
+
+  try {
+    // セキュアストレージから取得を試行（同期的に取得できない場合はフォールバック）
+    // この関数は同期関数なので、動的importは使用できない
+    // 代わりに、セキュアストレージの初期化タイミングで移行処理を行う
+
+    // 従来のlocalStorageから取得（移行期間中）
+    return localStorage.getItem('napoleon_player_id')
+  } catch {
+    return null
+  }
 }
 
 export type Database = {
@@ -153,7 +191,7 @@ export type Database = {
           napoleon_won: boolean
           napoleon_player_id: string
           adjutant_player_id: string | null
-          tricks_won: number
+          face_cards_won: number
           scores: PlayerScore[] // JSON array of PlayerScore
           created_at: string
         }
@@ -163,7 +201,7 @@ export type Database = {
           napoleon_won: boolean
           napoleon_player_id: string
           adjutant_player_id?: string | null
-          tricks_won: number
+          face_cards_won: number
           scores: PlayerScore[]
           created_at?: string
         }
@@ -173,7 +211,7 @@ export type Database = {
           napoleon_won?: boolean
           napoleon_player_id?: string
           adjutant_player_id?: string | null
-          tricks_won?: number
+          face_cards_won?: number
           scores?: unknown
           created_at?: string
         }

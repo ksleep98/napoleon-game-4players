@@ -36,7 +36,7 @@ describe('Supabase Client Functions - 実関数テスト', () => {
         'napoleon_player_id',
         testPlayerId
       )
-      expect(localStorageMock.setItem).toHaveBeenCalledTimes(1)
+      expect(localStorageMock.setItem).toHaveBeenCalledTimes(5) // secure storage (4) + legacy (1)
     })
 
     test('空文字のプレイヤーIDでも正常に処理される', async () => {
@@ -48,7 +48,7 @@ describe('Supabase Client Functions - 実関数テスト', () => {
         'napoleon_player_id',
         testPlayerId
       )
-      expect(localStorageMock.setItem).toHaveBeenCalledTimes(1)
+      expect(localStorageMock.setItem).toHaveBeenCalledTimes(5) // secure storage (4) + legacy (1)
     })
 
     test('特殊文字を含むプレイヤーIDでも正常に処理される', async () => {
@@ -60,7 +60,7 @@ describe('Supabase Client Functions - 実関数テスト', () => {
         'napoleon_player_id',
         testPlayerId
       )
-      expect(localStorageMock.setItem).toHaveBeenCalledTimes(1)
+      expect(localStorageMock.setItem).toHaveBeenCalledTimes(5) // secure storage (4) + legacy (1)
     })
 
     test('Quick Startで使用される固定プレイヤーID', async () => {
@@ -178,8 +178,8 @@ describe('Supabase Client Functions - 実関数テスト', () => {
         await setPlayerSession(playerId)
       }
 
-      // 4回の設定が呼ばれている
-      expect(localStorageMock.setItem).toHaveBeenCalledTimes(4)
+      // 4回の設定が呼ばれている (各呼び出しで5回ずつ = 20回)
+      expect(localStorageMock.setItem).toHaveBeenCalledTimes(20)
 
       // 最後に設定したプレイヤーIDが保存されている
       expect(localStorageMock.setItem).toHaveBeenLastCalledWith(
@@ -206,7 +206,7 @@ describe('Supabase Client Functions - 実関数テスト', () => {
 
       // RPC呼び出しがないため、非常に高速に完了することを確認
       expect(executionTime).toBeLessThan(50) // 50ms以内
-      expect(localStorageMock.setItem).toHaveBeenCalledTimes(iterations)
+      expect(localStorageMock.setItem).toHaveBeenCalledTimes(iterations * 5) // secure storage (4) + legacy (1) per call
     })
   })
 })

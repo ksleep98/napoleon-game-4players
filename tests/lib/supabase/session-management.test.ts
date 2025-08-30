@@ -44,8 +44,8 @@ describe('Session Management - RLS修正対応', () => {
         await expect(setPlayerSession(playerId)).resolves.not.toThrow()
       }
 
-      // すべての呼び出しが正常に完了
-      expect(localStorageMock.setItem).toHaveBeenCalledTimes(4)
+      // すべての呼び出しが正常に完了 (secure storage 4 + legacy 1 per call)
+      expect(localStorageMock.setItem).toHaveBeenCalledTimes(20)
     })
   })
 
@@ -181,8 +181,8 @@ describe('Session Management - RLS修正対応', () => {
       // 100回の呼び出しが100ms以内に完了することを期待
       expect(executionTime).toBeLessThan(100)
 
-      // ローカルストレージへの呼び出しが100回発生していることを確認
-      expect(localStorageMock.setItem).toHaveBeenCalledTimes(100)
+      // ローカルストレージへの呼び出しが500回発生していることを確認 (secure storage 4 + legacy 1 per call = 5 per call)
+      expect(localStorageMock.setItem).toHaveBeenCalledTimes(500)
     })
   })
 })
