@@ -3,13 +3,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getPlayerSession, setPlayerSession } from '@/lib/supabase/client'
 import {
-  GameServiceError,
   setPlayerOffline,
   setPlayerOnline,
   subscribeToConnectionState,
   subscribeToGameRoom,
   subscribeToGameState,
-} from '@/lib/supabase/gameService'
+} from '@/lib/supabase/secureGameService'
 import type { GameRoom, GameState, Player } from '@/types/game'
 
 // 接続状態フック
@@ -119,26 +118,63 @@ export function usePlayerSession() {
   const [playerName, setPlayerName] = useState<string | null>(null)
 
   useEffect(() => {
-    // 初期化時にローカルストレージから復元
-    const savedPlayerId = getPlayerSession()
-    const savedPlayerName = localStorage.getItem('napoleon_player_name')
+    // 初期化時にセキュアストレージから復元
+    const initializeSession = async () => {
+      try {
+        const { SecurePlayerSession } = await import('@/utils/secureStorage')
 
-    setPlayerId(savedPlayerId)
-    setPlayerName(savedPlayerName)
+        // セキュアストレージから取得を試行
+        const securePlayerId = SecurePlayerSession.getPlayerId()
+        const securePlayerName = SecurePlayerSession.getPlayerName()
+
+        if (securePlayerId && SecurePlayerSession.isValid()) {
+          setPlayerId(securePlayerId)
+          setPlayerName(securePlayerName)
+        } else {
+          // フォールバック: 従来のlocalStorageから取得
+          const legacyPlayerId = getPlayerSession()
+          const legacyPlayerName = localStorage.getItem('napoleon_player_name')
+
+          if (legacyPlayerId && legacyPlayerName) {
+            // セキュアストレージに移行
+            SecurePlayerSession.setPlayer(legacyPlayerId, legacyPlayerName)
+            setPlayerId(legacyPlayerId)
+            setPlayerName(legacyPlayerName)
+          }
+        }
+      } catch (error) {
+        console.warn(
+          'Failed to initialize secure session, using fallback:',
+          error
+        )
+        // 完全なフォールバック
+        const savedPlayerId = getPlayerSession()
+        const savedPlayerName = localStorage.getItem('napoleon_player_name')
+        setPlayerId(savedPlayerId)
+        setPlayerName(savedPlayerName)
+      }
+    }
+
+    initializeSession()
   }, [])
 
   const initializePlayer = useCallback(async (id: string, name: string) => {
     try {
+      // セキュアストレージにプレイヤー情報を保存
+      const { SecurePlayerSession } = await import('@/utils/secureStorage')
+      SecurePlayerSession.setPlayer(id, name)
+
       await setPlayerSession(id)
       setPlayerId(id)
       setPlayerName(name)
 
+      // レガシーサポート（段階的移行のため）
       localStorage.setItem('napoleon_player_name', name)
 
       // オンライン状態に設定
       await setPlayerOnline(id)
     } catch (error) {
-      throw new GameServiceError(`Failed to initialize player: ${error}`)
+      throw new Error(`Failed to initialize player: ${error}`)
     }
   }, [])
 
@@ -148,6 +184,11 @@ export function usePlayerSession() {
         await setPlayerOffline(playerId)
       }
 
+      // セキュアストレージをクリア
+      const { SecurePlayerSession } = await import('@/utils/secureStorage')
+      SecurePlayerSession.clearPlayer()
+
+      // レガシーサポート
       localStorage.removeItem('napoleon_player_id')
       localStorage.removeItem('napoleon_player_name')
 
@@ -178,18 +219,18 @@ export function useGameActions() {
       errorMessage = 'Game action failed'
     ): Promise<T> => {
       if (!isConnected) {
-        throw new GameServiceError('Not connected to server')
+        throw new Error('Not connected to server')
       }
 
       if (!playerId) {
-        throw new GameServiceError('Player not authenticated')
+        throw new Error('Player not authenticated')
       }
 
       try {
         return await action()
       } catch (error) {
         const message = error instanceof Error ? error.message : errorMessage
-        throw new GameServiceError(message)
+        throw new Error(message)
       }
     },
     [isConnected, playerId]

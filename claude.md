@@ -55,28 +55,34 @@ npm run dev
 
 ### 🧪 テスト・品質管理
 
-- [Jest テスト設定](./docs/testing/JEST_SETUP.md) - テスト環境・34テスト実装状況
+- [Jest テスト設定](./docs/testing/JEST_SETUP.md) - テスト環境・141テスト実装状況
 - [GitHub Actions](./docs/ci-cd/GITHUB_ACTIONS.md) - CI/CDパイプライン・自動品質チェック
 - [Pre-commit Hooks](./docs/ci-cd/PRE_COMMIT_HOOKS.md) - Husky・自動修正・品質チェック
 - [PR自動化](./docs/ci-cd/PR_AUTOMATION.md) - PR説明自動生成・コード分析
 - [自動リリース](./docs/ci-cd/AUTO_RELEASE.md) - develop→main自動PR・リリース管理
 
+### 🔒 セキュリティ
+
+- [セキュリティ設定](./docs/security/RLS_SETUP.md) - Supabase RLS・Server Actions・認証
+- [開発環境セキュリティ](./docs/security/DEVELOPMENT_SECURITY.md) - セキュリティベストプラクティス・チェック手順
+
 ### 🎮 ゲーム実装
 
-- [実装状況](./docs/game-logic/IMPLEMENTATION_STATUS.md) - Napoleon Game機能・UI・データ管理
+- [実装状況](./docs/game-logic/IMPLEMENTATION_STATUS.md) - Napoleon Game機能・UI・データ管理・セキュリティ強化
 
 ## 現在のステータス
 
 ### ✅ 完了
 
 - **開発環境**: TypeScript, Next.js, Tailwind CSS, Biome
-- **テスト環境**: Jest設定完了（75テスト実装・全合格）
+- **テスト環境**: Jest設定完了（141テスト実装・全合格）
 - **CI/CD**: GitHub Actions・pre-commit hooks・品質チェック自動化
 - **PR自動化**: 説明自動生成・コード分析・レビュー支援（GitHub Actions構文修正済み）
 - **ゲームロジック**: 52枚デッキ・4人プレイ・基本ルール・スコア計算
 - **Supabase統合**: データベース接続・リアルタイム同期・セッション管理
+- **セキュリティ強化**: RLS・Server Actions・入力検証・レート制限・プレイヤーID同期
 - **Quick Start**: 4人対戦ゲームの即座開始機能
-- **エラー修正**: 404/PGRST202エラー解消・RLS設定最適化
+- **エラー修正**: 404/PGRST202エラー解消・RLS設定最適化・プレイヤーID不一致修正
 
 ### 🚧 進行中
 

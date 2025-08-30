@@ -12,13 +12,18 @@
 
 ### 🗄️ Supabase Integration
 
-- ✅ `src/lib/supabase/client.ts` - データベース接続設定・セッション管理
-- ✅ `src/lib/supabase/gameService.ts` - ゲーム状態の保存・読込・リアルタイム監視
-- ✅ `src/lib/supabase/schema.sql` - データベーススキーマ・RLSポリシー
-- ✅ `.env.local.example` - 環境変数設定例
-- ✅ セッション管理最適化（localStorage ベース）
+- ✅ `src/lib/supabase/client.ts` - データベース接続設定・セッション管理・RLS対応
+- ✅ `src/lib/supabase/server.ts` - サーバーサイド専用クライアント・Service Role Key使用
+- ✅ `src/lib/supabase/secureGameService.ts` - セキュアなゲームサービス（サーバーアクション使用）
+- ✅ `src/app/actions/gameActions.ts` - Next.js Server Actions・入力検証・レート制限
+- ✅ `src/lib/errors/GameActionError.ts` - カスタムエラーハンドリング
+- ✅ `docs/supabase/rls-policies.sql` - RLSポリシー・セットアップスクリプト
+- ✅ `docs/supabase/dev-rls-setup.sql` - 開発環境用RLS設定
+- ✅ `.env.local.example` - 環境変数設定例（Service Role Key追加）
+- ✅ セッション管理最適化（localStorage + RLS対応）
 - ✅ 404/PGRST202エラー解消
 - ✅ Quick Start機能実装
+- ✅ プレイヤーID自動同期機能
 
 ### 🎮 UI Components
 
@@ -99,8 +104,8 @@
 
 ### 🧪 テスト環境
 
-- ✅ Jest設定完了（75テスト実装）
-- ✅ Supabase関連テスト追加（41テスト）
+- ✅ Jest設定完了（141テスト実装・全合格）
+- ✅ Supabase関連テスト追加・セキュリティテスト対応
 - ✅ TypeScript型エラー全修正
 - ✅ CI/CDパイプライン統合
 - ✅ パフォーマンステスト・エラーハンドリング
@@ -147,9 +152,33 @@
 
    - ✅ 4人用ルール完全実装
 
+3. **セキュリティ強化** ✅ **完了**
+   - ✅ Row Level Security (RLS) ポリシー実装
+   - ✅ Next.js Server Actions によるセキュアなDB操作
+   - ✅ Service Role Key による管理者権限分離
+   - ✅ 入力検証・レート制限実装
+   - ✅ プレイヤーID自動同期システム
+   - ✅ カスタムエラーハンドリング
+   - ✅ セキュリティチェックスクリプト追加
+   - ✅ 開発環境・本番環境の適切な分離
+
+4. **4人プレイヤーでCOM3人用の実装のUI修正**
+   - 副官は副官指定されたカードを出すまで誰も分からない
+   - 副官指定のカードをわかりやすく表示・副官プレイヤーは初期から副官と分かるUIに修正
+   - 取得した絵札を表示する改善
+   - 最後のプレイヤーが出したトランプを表示した後に勝利判定フェーズと勝利判定モーダルを表示
+   - ナポレオン宣言フェーズの時に誰が何のスートで宣言しているのか分かりやすいUIに修正
+   - 切り札スートがどれなのかゲーム中に表示するUIに修正
+
+5. **処理全般のリファクタリング**
+   - 不適切な変数名の修正
+   - 不必要な処理を削除
+   - next.jsにおけるuse effectやuse stateなどの使い方の見直し
+   - DBアクセス処理のセキュリティ向上
+
 ### 📋 今後の拡張
 
+- E2Eテストの整備
+- 本番環境デプロイ・RLS完全適用
 - マルチプレイヤー対応
-- プレイヤー統計・履歴
-- AI対戦相手の実装
 - モバイル対応最適化
