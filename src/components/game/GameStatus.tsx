@@ -1,11 +1,16 @@
 'use client'
 
-import { getGameProgress, getPlayerStats } from '@/lib/scoring'
+import { NAPOLEON_RULES } from '@/lib/constants'
+import {
+  getGameProgress,
+  getPlayerFaceCardCount,
+  getPlayerStats,
+} from '@/lib/scoring'
 import type { GameState } from '@/types/game'
 
 interface GameStatusProps {
   gameState: GameState
-  currentPlayerId?: string
+  currentPlayerId?: string | null
 }
 
 export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
@@ -27,6 +32,15 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
       finished: 'Game Finished',
     }
     return phaseMap[phase as keyof typeof phaseMap] || phase
+  }
+
+  const getRoleDisplay = (role: string) => {
+    const roleMap = {
+      napoleon: 'Napoleon',
+      adjutant: 'Adjutant',
+      citizen: 'Allied Forces',
+    }
+    return roleMap[role as keyof typeof roleMap] || role
   }
 
   return (
@@ -69,7 +83,7 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
               </div>
             )}
             <div className="text-xs text-gray-500 mt-2">
-              Citizens:{' '}
+              Allied Forces:{' '}
               {gameState.players
                 .filter((p) => !p.isNapoleon && !p.isAdjutant)
                 .map((p) => p.name)
@@ -85,41 +99,87 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
           <h4 className="font-semibold text-gray-800 mb-2">Progress</h4>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span>Tricks Played:</span>
-              <span>{progress.tricksPlayed}/12</span>
+              <span>Phases Played:</span>
+              <span>{progress.phasesPlayed}/12</span>
             </div>
             <div className="flex justify-between">
-              <span>Napoleon Team:</span>
+              <span>Napoleon Team Face Cards:</span>
               <span className="font-medium text-yellow-600">
-                {progress.napoleonTeamTricks}
+                {progress.napoleonTeamFaceCards}
               </span>
             </div>
             <div className="flex justify-between">
-              <span>Citizen Team:</span>
+              <span>Allied Forces Face Cards:</span>
               <span className="font-medium text-blue-600">
-                {progress.citizenTeamTricks}
+                {progress.citizenTeamFaceCards}
               </span>
             </div>
             <div className="flex justify-between text-xs text-gray-600">
               <span>Napoleon needs:</span>
-              <span>{progress.napoleonNeedsToWin} more tricks</span>
+              <span>{progress.napoleonNeedsToWin} more face cards</span>
             </div>
 
             {/* プログレスバー */}
             <div className="mt-3">
               <div className="flex justify-between text-xs mb-1">
-                <span>Napoleon Progress</span>
-                <span>{progress.napoleonTeamTricks}/8</span>
+                <span>Napoleon Face Card Progress</span>
+                <span>
+                  {progress.napoleonTeamFaceCards}/
+                  {NAPOLEON_RULES.TARGET_FACE_CARDS}
+                </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
                   className="bg-yellow-500 h-2 rounded-full transition-all duration-300"
                   style={{
-                    width: `${(progress.napoleonTeamTricks / 8) * 100}%`,
+                    width: `${(progress.napoleonTeamFaceCards / NAPOLEON_RULES.TARGET_FACE_CARDS) * 100}%`,
                   }}
                 ></div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* プレイヤー別絵札獲得数 */}
+      {gameState.phase === 'playing' && (
+        <div className="border-b pb-3">
+          <h4 className="font-semibold text-gray-800 mb-2">
+            Face Cards Won by Player
+          </h4>
+          <div className="space-y-1 text-sm">
+            {gameState.players.map((player) => {
+              const faceCardsWon = getPlayerFaceCardCount(gameState, player.id)
+              const roleColor = player.isNapoleon
+                ? 'text-yellow-600'
+                : player.isAdjutant
+                  ? 'text-green-600'
+                  : 'text-blue-600'
+
+              return (
+                <div
+                  key={player.id}
+                  className="flex justify-between items-center"
+                >
+                  <div className="flex items-center gap-2">
+                    <span>{player.name}</span>
+                    {player.isNapoleon && (
+                      <span className="px-1 py-0 bg-yellow-200 text-yellow-800 rounded text-xs">
+                        N
+                      </span>
+                    )}
+                    {player.isAdjutant && (
+                      <span className="px-1 py-0 bg-green-200 text-green-800 rounded text-xs">
+                        A
+                      </span>
+                    )}
+                  </div>
+                  <span className={`font-medium ${roleColor}`}>
+                    {faceCardsWon} face cards
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
@@ -131,13 +191,13 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
           <div className="space-y-1 text-sm">
             <div className="flex justify-between">
               <span>Role:</span>
-              <span className="capitalize font-medium">
-                {currentPlayerStats.role}
+              <span className="font-medium">
+                {getRoleDisplay(currentPlayerStats.role)}
               </span>
             </div>
             <div className="flex justify-between">
-              <span>Tricks Won:</span>
-              <span>{currentPlayerStats.tricksWon}</span>
+              <span>Face Cards Won:</span>
+              <span>{currentPlayerStats.faceCardsWon}</span>
             </div>
             <div className="flex justify-between">
               <span>Cards in Hand:</span>
@@ -151,14 +211,14 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
         </div>
       )}
 
-      {/* 現在のトリック情報 */}
-      {gameState.currentTrick.cards.length > 0 && (
+      {/* 現在のフェーズ情報 */}
+      {gameState.currentPhase.cards.length > 0 && (
         <div>
-          <h4 className="font-semibold text-gray-800 mb-2">Current Trick</h4>
+          <h4 className="font-semibold text-gray-800 mb-2">Current Phase</h4>
           <div className="space-y-1 text-sm">
             <div className="flex justify-between">
               <span>Cards Played:</span>
-              <span>{gameState.currentTrick.cards.length}/4</span>
+              <span>{gameState.currentPhase.cards.length}/4</span>
             </div>
             {gameState.leadingSuit && (
               <div className="flex justify-between">

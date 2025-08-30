@@ -7,7 +7,7 @@ import {
   createPlayer,
   getGameRooms,
   joinGameRoom,
-} from '@/lib/supabase/gameService'
+} from '@/lib/supabase/secureGameService'
 import type { GameRoom } from '@/types/game'
 import { generateGameId, generatePlayerId } from '@/utils/cardUtils'
 

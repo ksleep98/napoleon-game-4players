@@ -10,17 +10,16 @@ export default function Home() {
   }
 
   const handleQuickGame = () => {
-    // 4人のテスト用プレイヤーでクイックスタート
-    const testPlayers = ['Alice', 'Bob', 'Charlie', 'Diana']
-    const gameId = `quick_${Date.now()}_${Math.random()
+    // AI対戦用のクイックスタート（人間1人 + AI 3人）
+    const gameId = `ai_game_${Date.now()}_${Math.random()
       .toString(36)
       .substring(2, 8)}`
 
-    // テスト用のプレイヤーIDを保存
+    // プレイヤーIDを保存
     localStorage.setItem('playerId', 'player_1')
-    localStorage.setItem('playerName', 'Alice')
+    localStorage.setItem('playerName', 'You')
 
-    router.push(`/game/${gameId}?players=${testPlayers.join(',')}`)
+    router.push(`/game/${gameId}?ai=true`)
   }
 
   return (
@@ -90,13 +89,12 @@ export default function Home() {
                 onClick={handleQuickGame}
                 className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-lg text-xl transition-colors shadow-lg"
               >
-                Quick Start (Demo)
+                Play vs AI
               </button>
             </div>
 
             <p className="text-green-200 text-sm">
-              Join a room to play with others, or try the quick demo to learn
-              the game
+              Join a room to play with others, or play against AI to practice
             </p>
           </div>
 
@@ -121,9 +119,9 @@ export default function Home() {
               <div>
                 <h4 className="font-semibold text-white mb-3">Objective</h4>
                 <ul className="space-y-2 text-sm">
-                  <li>• Napoleon + Adjutant team vs Citizens</li>
+                  <li>• Napoleon + Adjutant team vs Allied Forces</li>
                   <li>• Napoleon team needs 8+ tricks to win</li>
-                  <li>• Citizens win if Napoleon gets &lt;8 tricks</li>
+                  <li>• Allied Forces win if Napoleon gets &lt;8 tricks</li>
                   <li>• Follow suit when possible</li>
                   <li>• Highest card of leading suit wins trick</li>
                 </ul>

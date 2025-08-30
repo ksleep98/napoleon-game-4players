@@ -6,7 +6,7 @@ interface CardProps {
   card: CardType
   isPlayable?: boolean
   isSelected?: boolean
-  size?: 'small' | 'medium' | 'large'
+  size?: 'tiny' | 'small' | 'medium' | 'large'
   onClick?: (cardId: string) => void
   className?: string
 }
@@ -20,6 +20,7 @@ export function Card({
   className = '',
 }: CardProps) {
   const sizeClasses = {
+    tiny: 'w-8 h-12 text-xs',
     small: 'w-12 h-16 text-xs',
     medium: 'w-16 h-24 text-sm',
     large: 'w-20 h-32 text-base',

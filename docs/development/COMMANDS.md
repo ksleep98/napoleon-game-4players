@@ -56,5 +56,5 @@ npm run lint:fast     # 高速lintチェック（compact reporter）
 
 - `lint:fix`: ~15ms (高速自動修正)
 - `type-check`: ~2s (型チェック)
-- `test`: ~400ms (34テスト実行)
+- `test`: ~800ms (75テスト実行)
 - `build`: ~2s (Next.js最適化ビルド)

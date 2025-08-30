@@ -186,7 +186,7 @@ module.exports = {
 - name: Check formatting
   run: |
     npm run lint           # Biome検証
-    npm run format:check   # Biome フォーマット検証  
+    npm run format:check   # Biome フォーマット検証
     npm run format:other:check  # Prettier検証
 ```
 

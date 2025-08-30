@@ -67,3 +67,6 @@ temp/
 
 # Prisma generated
 /generated/prisma
+
+# TypeScript incremental compilation
+*.tsbuildinfo
