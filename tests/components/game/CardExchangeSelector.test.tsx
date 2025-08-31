@@ -72,12 +72,12 @@ describe('CardExchangeSelector', () => {
         isAI: false,
       },
     ],
-    currentPhase: {
-      id: 'phase-1',
+    currentTrick: {
+      id: 'trick-1',
       cards: [],
       completed: false,
     },
-    phases: [],
+    tricks: [],
     currentPlayerIndex: 0,
     phase: 'card_exchange',
     hiddenCards: [],

@@ -11,7 +11,7 @@ import {
   isTrump,
   isTrumpJack,
 } from '@/lib/napoleonCardRules'
-import type { Card, Phase, PlayedCard, Rank, Suit } from '@/types/game'
+import type { Card, PlayedCard, Rank, Suit, Trick } from '@/types/game'
 
 describe('Napoleon Card Rules', () => {
   const createCard = (id: string, suit: Suit, rank: Rank): Card => ({
@@ -122,7 +122,7 @@ describe('Napoleon Card Rules', () => {
   describe('Special Rules', () => {
     describe('Same 2 Rule', () => {
       it('should detect same 2 rule correctly', () => {
-        const phase: Phase = {
+        const trick: Trick = {
           id: 'test-phase',
           cards: [
             createPlayedCard(createCard('clubs-K', 'clubs', 'K'), 'p1', 0),
@@ -133,13 +133,13 @@ describe('Napoleon Card Rules', () => {
           completed: true,
         }
 
-        const winner = checkSame2Rule(phase, 'hearts')
+        const winner = checkSame2Rule(trick, 'hearts')
         expect(winner).not.toBeNull()
         expect(winner?.playerId).toBe('p2')
       })
 
       it('should not apply same 2 rule for trump suit', () => {
-        const phase: Phase = {
+        const trick: Trick = {
           id: 'test-phase',
           cards: [
             createPlayedCard(createCard('hearts-K', 'hearts', 'K'), 'p1', 0),
@@ -150,12 +150,12 @@ describe('Napoleon Card Rules', () => {
           completed: true,
         }
 
-        const winner = checkSame2Rule(phase, 'hearts')
+        const winner = checkSame2Rule(trick, 'hearts')
         expect(winner).toBeNull()
       })
 
       it('should not apply same 2 rule when counter jack is present (裏J > セイム2)', () => {
-        const phase: Phase = {
+        const trick: Trick = {
           id: 'test-phase',
           cards: [
             createPlayedCard(createCard('clubs-K', 'clubs', 'K'), 'p1', 0),
@@ -171,14 +171,14 @@ describe('Napoleon Card Rules', () => {
         }
 
         // セイム2の条件は満たされているが、裏Jがあるので無効
-        const winner = checkSame2Rule(phase, 'hearts')
+        const winner = checkSame2Rule(trick, 'hearts')
         expect(winner).toBeNull()
       })
     })
 
     describe('Yoromeki Rule', () => {
       it('should detect yoromeki (mighty vs heart queen)', () => {
-        const phase: Phase = {
+        const trick: Trick = {
           id: 'test-phase',
           cards: [
             createPlayedCard(createCard('spades-A', 'spades', 'A'), 'p1', 0),
@@ -193,13 +193,13 @@ describe('Napoleon Card Rules', () => {
           completed: true,
         }
 
-        const winner = checkYoromekiRule(phase, 'clubs')
+        const winner = checkYoromekiRule(trick, 'clubs')
         expect(winner).not.toBeNull()
         expect(winner?.playerId).toBe('p2')
       })
 
       it('should not apply yoromeki when trump jack is present', () => {
-        const phase: Phase = {
+        const trick: Trick = {
           id: 'test-phase',
           cards: [
             createPlayedCard(createCard('spades-A', 'spades', 'A'), 'p1', 0),
@@ -214,14 +214,14 @@ describe('Napoleon Card Rules', () => {
           completed: true,
         }
 
-        const winner = checkYoromekiRule(phase, 'clubs')
+        const winner = checkYoromekiRule(trick, 'clubs')
         expect(winner).toBeNull()
       })
     })
 
     describe('Hunting Jack Rule', () => {
       it('should detect hunting jack (spades J vs hearts J)', () => {
-        const phase: Phase = {
+        const trick: Trick = {
           id: 'test-phase',
           cards: [
             createPlayedCard(createCard('spades-J', 'spades', 'J'), 'p1', 0),
@@ -236,13 +236,13 @@ describe('Napoleon Card Rules', () => {
           completed: true,
         }
 
-        const winner = checkHuntingJackRule(phase, 'spades')
+        const winner = checkHuntingJackRule(trick, 'spades')
         expect(winner).not.toBeNull()
         expect(winner?.playerId).toBe('p2') // Hearts J (weakest) should win
       })
 
       it('should not apply hunting jack when mighty is present', () => {
-        const phase: Phase = {
+        const trick: Trick = {
           id: 'test-phase',
           cards: [
             createPlayedCard(createCard('spades-J', 'spades', 'J'), 'p1', 0),
@@ -257,7 +257,7 @@ describe('Napoleon Card Rules', () => {
           completed: true,
         }
 
-        const winner = checkHuntingJackRule(phase, 'spades')
+        const winner = checkHuntingJackRule(trick, 'spades')
         expect(winner).toBeNull()
       })
     })
@@ -266,7 +266,7 @@ describe('Napoleon Card Rules', () => {
   describe('Determine Winner With Special Rules', () => {
     it('should apply special rules in correct priority', () => {
       // Test with yoromeki rule
-      const phase: Phase = {
+      const trick: Trick = {
         id: 'test-phase',
         cards: [
           createPlayedCard(createCard('spades-A', 'spades', 'A'), 'p1', 0),
@@ -277,14 +277,14 @@ describe('Napoleon Card Rules', () => {
         completed: true,
       }
 
-      const winner = determineWinnerWithSpecialRules(phase, 'clubs', false)
+      const winner = determineWinnerWithSpecialRules(trick, 'clubs', false)
       expect(winner).not.toBeNull()
       expect(winner?.playerId).toBe('p2') // Yoromeki should win over mighty
     })
 
     it('should prioritize counter jack over same 2 rule', () => {
       // セイム2と裏Jが両方存在する場合、裏Jが勝利する
-      const phase: Phase = {
+      const trick: Trick = {
         id: 'test-phase',
         cards: [
           createPlayedCard(createCard('clubs-K', 'clubs', 'K'), 'p1', 0),
@@ -295,14 +295,14 @@ describe('Napoleon Card Rules', () => {
         completed: true,
       }
 
-      const winner = determineWinnerWithSpecialRules(phase, 'hearts', false)
+      const winner = determineWinnerWithSpecialRules(trick, 'hearts', false)
       expect(winner).not.toBeNull()
       expect(winner?.playerId).toBe('p3') // 裏Jが勝利
     })
 
     it('should prioritize counter jack over same 2 rule - detailed test', () => {
       // より詳細なテスト：セイム2の条件を完全に満たしつつ裏Jが勝利することを確認
-      const phase: Phase = {
+      const trick: Trick = {
         id: 'test-phase',
         cards: [
           createPlayedCard(createCard('spades-K', 'spades', 'K'), 'p1', 0), // リードはスペード
@@ -314,13 +314,13 @@ describe('Napoleon Card Rules', () => {
       }
 
       // ハートが切り札の場合、ダイヤのJは裏J
-      const winner = determineWinnerWithSpecialRules(phase, 'hearts', false)
+      const winner = determineWinnerWithSpecialRules(trick, 'hearts', false)
       expect(winner).not.toBeNull()
       expect(winner?.playerId).toBe('p4') // 裏Jが勝利
     })
 
     it('should fall back to normal strength when no special rules apply', () => {
-      const phase: Phase = {
+      const trick: Trick = {
         id: 'test-phase',
         cards: [
           createPlayedCard(createCard('clubs-K', 'clubs', 'K'), 'p1', 0),
@@ -331,7 +331,7 @@ describe('Napoleon Card Rules', () => {
         completed: true,
       }
 
-      const winner = determineWinnerWithSpecialRules(phase, 'hearts', false)
+      const winner = determineWinnerWithSpecialRules(trick, 'hearts', false)
       expect(winner).not.toBeNull()
       expect(winner?.playerId).toBe('p4') // Ace should win normally
     })

@@ -48,8 +48,8 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
   const isAdjutantRevealed =
     adjutantPlayer &&
     gameState.phase === 'playing' &&
-    gameState.phases.some((phase) =>
-      phase.cards.some(
+    gameState.tricks.some((trick) =>
+      trick.cards.some(
         (playedCard) =>
           gameState.napoleonCard &&
           playedCard.card.id === gameState.napoleonCard.id
@@ -176,8 +176,8 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
           <h4 className="font-semibold text-gray-800 mb-2">Progress</h4>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span>Phases Played:</span>
-              <span>{progress.phasesPlayed}/12</span>
+              <span>Tricks Played:</span>
+              <span>{progress.tricksPlayed}/12</span>
             </div>
             <div className="flex justify-between">
               <span>Napoleon Team Face Cards:</span>
@@ -290,13 +290,13 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
       )}
 
       {/* 現在のフェーズ情報 */}
-      {gameState.currentPhase.cards.length > 0 && (
+      {gameState.currentTrick.cards.length > 0 && (
         <div>
-          <h4 className="font-semibold text-gray-800 mb-2">Current Phase</h4>
+          <h4 className="font-semibold text-gray-800 mb-2">Current Trick</h4>
           <div className="space-y-1 text-sm">
             <div className="flex justify-between">
               <span>Cards Played:</span>
-              <span>{gameState.currentPhase.cards.length}/4</span>
+              <span>{gameState.currentTrick.cards.length}/4</span>
             </div>
             {gameState.leadingSuit && (
               <div className="flex justify-between">

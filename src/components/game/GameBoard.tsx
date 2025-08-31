@@ -13,7 +13,7 @@ interface GameBoardProps {
 }
 
 export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
-  const currentPhase = gameState.currentPhase
+  const currentTrick = gameState.currentTrick
   const progress = getGameProgress(gameState)
 
   // プレイヤーの位置を計算（4人のプレイヤーを上下左右に配置）
@@ -35,7 +35,7 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
     right: null,
   }
 
-  currentPhase.cards.forEach((playedCard) => {
+  currentTrick.cards.forEach((playedCard) => {
     const playerIndex = gameState.players.findIndex(
       (p) => p.id === playedCard.playerId
     )
@@ -62,7 +62,7 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
         {/* ゲーム情報 */}
         <div className="absolute top-2 left-2 bg-gray-900 bg-opacity-95 text-white rounded-lg p-3 text-sm shadow-lg border border-gray-700">
           <div className="font-semibold mb-1">Game Progress</div>
-          <div>Phases: {progress.phasesPlayed}/12</div>
+          <div>Tricks: {progress.tricksPlayed}/12</div>
           <div className="flex justify-between items-center mt-2">
             <span className="text-yellow-400 font-medium">Napoleon:</span>
             <span className="font-bold text-yellow-400">
@@ -110,8 +110,8 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
             // 副官が判明しているかどうかをチェック
             const isAdjutantRevealed =
               data.player.isAdjutant &&
-              gameState.phases.some((phase) =>
-                phase.cards.some(
+              gameState.tricks.some((trick) =>
+                trick.cards.some(
                   (playedCard) =>
                     gameState.napoleonCard &&
                     playedCard.card.id === gameState.napoleonCard.id
@@ -186,8 +186,8 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
 
                     const isAdjutantRevealed =
                       player.isAdjutant &&
-                      gameState.phases.some((phase) =>
-                        phase.cards.some(
+                      gameState.tricks.some((trick) =>
+                        trick.cards.some(
                           (playedCard) =>
                             gameState.napoleonCard &&
                             playedCard.card.id === gameState.napoleonCard.id
@@ -227,8 +227,8 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
 
                     const isAdjutantRevealed =
                       player.isAdjutant &&
-                      gameState.phases.some((phase) =>
-                        phase.cards.some(
+                      gameState.tricks.some((trick) =>
+                        trick.cards.some(
                           (playedCard) =>
                             gameState.napoleonCard &&
                             playedCard.card.id === gameState.napoleonCard.id
@@ -268,8 +268,8 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
 
                     const isAdjutantRevealed =
                       player.isAdjutant &&
-                      gameState.phases.some((phase) =>
-                        phase.cards.some(
+                      gameState.tricks.some((trick) =>
+                        trick.cards.some(
                           (playedCard) =>
                             gameState.napoleonCard &&
                             playedCard.card.id === gameState.napoleonCard.id
@@ -309,8 +309,8 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
 
                     const isAdjutantRevealed =
                       player.isAdjutant &&
-                      gameState.phases.some((phase) =>
-                        phase.cards.some(
+                      gameState.tricks.some((trick) =>
+                        trick.cards.some(
                           (playedCard) =>
                             gameState.napoleonCard &&
                             playedCard.card.id === gameState.napoleonCard.id
@@ -342,7 +342,7 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
               <div className="bg-white bg-opacity-80 rounded-full w-16 h-16 flex items-center justify-center">
                 <div className="text-center">
                   <div className="font-bold text-lg">
-                    {progress.phasesPlayed + 1}
+                    {progress.tricksPlayed + 1}
                   </div>
                   <div className="text-xs">Trick</div>
                 </div>
@@ -352,7 +352,7 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
         </div>
 
         {/* 最後に勝ったトリック表示 */}
-        {gameState.phases.length > 0 && (
+        {gameState.tricks.length > 0 && (
           <div className="absolute bottom-2 left-2 bg-gray-900 bg-opacity-95 text-white rounded-lg p-2 text-xs shadow-lg border border-gray-700">
             <div className="font-semibold">Last Trick Winner:</div>
             <div>
@@ -360,7 +360,7 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
                 gameState.players.find(
                   (p) =>
                     p.id ===
-                    gameState.phases[gameState.phases.length - 1].winnerPlayerId
+                    gameState.tricks[gameState.tricks.length - 1].winnerPlayerId
                 )?.name
               }
             </div>
@@ -368,7 +368,7 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
         )}
 
         {/* 最後のフェーズで全カードが出た場合のトリック結果表示 */}
-        {currentPhase.cards.length === 4 && (
+        {currentTrick.cards.length === 4 && (
           <div className="absolute inset-x-0 bottom-20 flex justify-center">
             <div className="bg-yellow-400 text-yellow-900 px-4 py-2 rounded-lg font-bold shadow-lg">
               <div className="text-sm">Trick Complete!</div>
@@ -395,8 +395,8 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
             // 副官が判明しているかどうかをチェック
             const isAdjutantRevealed =
               playerData.player.isAdjutant &&
-              gameState.phases.some((phase) =>
-                phase.cards.some(
+              gameState.tricks.some((trick) =>
+                trick.cards.some(
                   (playedCard) =>
                     gameState.napoleonCard &&
                     playedCard.card.id === gameState.napoleonCard.id
