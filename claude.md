@@ -55,7 +55,7 @@ npm run dev
 
 ### 🧪 テスト・品質管理
 
-- [Jest テスト設定](./docs/testing/JEST_SETUP.md) - テスト環境・141テスト実装状況
+- [Jest テスト設定](./docs/testing/JEST_SETUP.md) - テスト環境・146テスト実装状況
 - [GitHub Actions](./docs/ci-cd/GITHUB_ACTIONS.md) - CI/CDパイプライン・自動品質チェック
 - [Pre-commit Hooks](./docs/ci-cd/PRE_COMMIT_HOOKS.md) - Husky・自動修正・品質チェック
 - [PR自動化](./docs/ci-cd/PR_AUTOMATION.md) - PR説明自動生成・コード分析
@@ -69,6 +69,7 @@ npm run dev
 ### 🎮 ゲーム実装
 
 - [実装状況](./docs/game-logic/IMPLEMENTATION_STATUS.md) - Napoleon Game機能・UI・データ管理・セキュリティ強化
+- [最新改善ログ](./docs/game-logic/RECENT_IMPROVEMENTS.md) - UI改善・ゲームルール修正・COMタイミング制御
 
 ## 現在のステータス
 

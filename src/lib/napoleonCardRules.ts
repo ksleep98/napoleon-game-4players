@@ -130,22 +130,41 @@ export function checkSame2Rule(
   phase: Phase,
   trumpSuit: Suit
 ): PlayedCard | null {
-  if (phase.cards.length !== 4) return null
+  const conditions = checkSame2Conditions(phase, trumpSuit)
+  if (!conditions.isValid) return null
+
+  // 裏Jが出ている場合はセイム2より裏Jが強い
+  const counterJackCard = phase.cards.find((pc) =>
+    isCounterJack(pc.card, trumpSuit)
+  )
+  if (counterJackCard) return null
+
+  return conditions.twoCard
+}
+
+/**
+ * セイム2の条件をチェック（裏Jチェックなし）
+ */
+function checkSame2Conditions(
+  phase: Phase,
+  trumpSuit: Suit
+): { isValid: boolean; twoCard: PlayedCard | null } {
+  if (phase.cards.length !== 4) return { isValid: false, twoCard: null }
 
   const leadingSuit = phase.cards[0].card.suit
 
   // 切り札の場合は無効
-  if (leadingSuit === trumpSuit) return null
+  if (leadingSuit === trumpSuit) return { isValid: false, twoCard: null }
 
   // 全員が同じスート（リードスート）を出しているかチェック
   const allSameSuit = phase.cards.every((pc) => pc.card.suit === leadingSuit)
-  if (!allSameSuit) return null
+  if (!allSameSuit) return { isValid: false, twoCard: null }
 
   // 2が出ているかチェック
   const twoCard = phase.cards.find((pc) => pc.card.rank === '2')
-  if (!twoCard) return null
+  if (!twoCard) return { isValid: false, twoCard: null }
 
-  return twoCard
+  return { isValid: true, twoCard }
 }
 
 /**
@@ -224,19 +243,31 @@ export function determineWinnerWithSpecialRules(
 
   const leadingSuit = phase.cards[0].card.suit
 
-  // 1. セイム2ルール（最初のフェーズ以外）
-  if (!isFirstPhase) {
-    const same2Winner = checkSame2Rule(phase, trumpSuit)
-    if (same2Winner) return same2Winner
-  }
-
-  // 2. 狩りJルール
+  // 1. 狩りJルール（最優先）
   const huntingJackWinner = checkHuntingJackRule(phase, trumpSuit)
   if (huntingJackWinner) return huntingJackWinner
 
-  // 3. よろめきルール
+  // 2. よろめきルール
   const yoromekiWinner = checkYoromekiRule(phase, trumpSuit)
   if (yoromekiWinner) return yoromekiWinner
+
+  // 3. セイム2ルール（最初のフェーズ以外）
+  // ただし、裏Jがある場合はセイム2より裏Jが優先
+  if (!isFirstPhase) {
+    // 裏Jがある場合は、セイム2のチェック前に裏Jを返す
+    const counterJackCard = phase.cards.find((pc) =>
+      isCounterJack(pc.card, trumpSuit)
+    )
+    if (counterJackCard) {
+      return counterJackCard
+    }
+
+    // 裏Jがない場合のみセイム2をチェック
+    const same2Conditions = checkSame2Conditions(phase, trumpSuit)
+    if (same2Conditions.isValid) {
+      return same2Conditions.twoCard
+    }
+  }
 
   // 4. 通常の強度比較
   let winner = phase.cards[0]

@@ -344,4 +344,82 @@ describe('Scoring', () => {
       expect(citizenScore?.isWinner).toBe(true)
     })
   })
+
+  describe('Napoleon Declaration Target', () => {
+    it('should use Napoleon declaration target instead of default', () => {
+      // ナポレオンが15枚宣言した場合のテスト
+      mockGameState.napoleonDeclaration = {
+        playerId: 'player_1',
+        targetTricks: 15, // 15枚宣言
+        suit: 'hearts',
+      }
+
+      const phase: Phase = {
+        id: 'trick1',
+        cards: [
+          {
+            card: createCard('hearts-A', 'hearts', 'A'),
+            playerId: 'player_1',
+            order: 1,
+          },
+          {
+            card: createCard('clubs-K', 'clubs', 'K'),
+            playerId: 'player_2',
+            order: 2,
+          },
+        ],
+        completed: true,
+        winnerPlayerId: 'player_1', // Napoleon wins A + K = 2 face cards
+      }
+
+      mockGameState.phases = [phase]
+      const result = getGameProgress(mockGameState)
+
+      expect(result.phasesPlayed).toBe(1)
+      expect(result.napoleonTeamFaceCards).toBe(2)
+      expect(result.napoleonNeedsToWin).toBe(13) // 15 - 2 = 13
+    })
+
+    it('should use Napoleon declaration in game decision logic', () => {
+      // ナポレオンが16枚宣言して16枚取った場合
+      mockGameState.napoleonDeclaration = {
+        playerId: 'player_1',
+        targetTricks: 16,
+        suit: 'spades',
+      }
+
+      // 16枚の絵札を獲得したフェーズを作成
+      mockGameState.phases = Array.from({ length: 4 }, (_, i) => ({
+        id: `trick${i + 1}`,
+        cards: [
+          {
+            card: createCard('hearts-A', 'hearts', 'A'),
+            playerId: 'player_1',
+            order: 1,
+          },
+          {
+            card: createCard('hearts-K', 'hearts', 'K'),
+            playerId: 'player_1',
+            order: 2,
+          },
+          {
+            card: createCard('hearts-Q', 'hearts', 'Q'),
+            playerId: 'player_1',
+            order: 3,
+          },
+          {
+            card: createCard('hearts-J', 'hearts', 'J'),
+            playerId: 'player_1',
+            order: 4,
+          },
+        ],
+        completed: true,
+        winnerPlayerId: 'player_1',
+      }))
+
+      const decided = isGameDecided(mockGameState)
+      expect(decided.decided).toBe(true)
+      expect(decided.napoleonWon).toBe(true)
+    })
+  })
 })

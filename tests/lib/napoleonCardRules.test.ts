@@ -153,6 +153,27 @@ describe('Napoleon Card Rules', () => {
         const winner = checkSame2Rule(phase, 'hearts')
         expect(winner).toBeNull()
       })
+
+      it('should not apply same 2 rule when counter jack is present (裏J > セイム2)', () => {
+        const phase: Phase = {
+          id: 'test-phase',
+          cards: [
+            createPlayedCard(createCard('clubs-K', 'clubs', 'K'), 'p1', 0),
+            createPlayedCard(createCard('clubs-2', 'clubs', '2'), 'p2', 1),
+            createPlayedCard(
+              createCard('diamonds-J', 'diamonds', 'J'),
+              'p3',
+              2
+            ), // 裏J (hearts trump)
+            createPlayedCard(createCard('clubs-A', 'clubs', 'A'), 'p4', 3),
+          ],
+          completed: true,
+        }
+
+        // セイム2の条件は満たされているが、裏Jがあるので無効
+        const winner = checkSame2Rule(phase, 'hearts')
+        expect(winner).toBeNull()
+      })
     })
 
     describe('Yoromeki Rule', () => {
@@ -259,6 +280,43 @@ describe('Napoleon Card Rules', () => {
       const winner = determineWinnerWithSpecialRules(phase, 'clubs', false)
       expect(winner).not.toBeNull()
       expect(winner?.playerId).toBe('p2') // Yoromeki should win over mighty
+    })
+
+    it('should prioritize counter jack over same 2 rule', () => {
+      // セイム2と裏Jが両方存在する場合、裏Jが勝利する
+      const phase: Phase = {
+        id: 'test-phase',
+        cards: [
+          createPlayedCard(createCard('clubs-K', 'clubs', 'K'), 'p1', 0),
+          createPlayedCard(createCard('clubs-2', 'clubs', '2'), 'p2', 1), // セイム2候補
+          createPlayedCard(createCard('diamonds-J', 'diamonds', 'J'), 'p3', 2), // 裏J (hearts trump)
+          createPlayedCard(createCard('clubs-A', 'clubs', 'A'), 'p4', 3),
+        ],
+        completed: true,
+      }
+
+      const winner = determineWinnerWithSpecialRules(phase, 'hearts', false)
+      expect(winner).not.toBeNull()
+      expect(winner?.playerId).toBe('p3') // 裏Jが勝利
+    })
+
+    it('should prioritize counter jack over same 2 rule - detailed test', () => {
+      // より詳細なテスト：セイム2の条件を完全に満たしつつ裏Jが勝利することを確認
+      const phase: Phase = {
+        id: 'test-phase',
+        cards: [
+          createPlayedCard(createCard('spades-K', 'spades', 'K'), 'p1', 0), // リードはスペード
+          createPlayedCard(createCard('spades-2', 'spades', '2'), 'p2', 1), // セイム2候補
+          createPlayedCard(createCard('spades-7', 'spades', '7'), 'p3', 2), // 同じスート
+          createPlayedCard(createCard('diamonds-J', 'diamonds', 'J'), 'p4', 3), // 裏J (hearts trump時)
+        ],
+        completed: true,
+      }
+
+      // ハートが切り札の場合、ダイヤのJは裏J
+      const winner = determineWinnerWithSpecialRules(phase, 'hearts', false)
+      expect(winner).not.toBeNull()
+      expect(winner?.playerId).toBe('p4') // 裏Jが勝利
     })
 
     it('should fall back to normal strength when no special rules apply', () => {

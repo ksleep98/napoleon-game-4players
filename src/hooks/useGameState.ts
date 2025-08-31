@@ -396,12 +396,9 @@ export function useGameState(
             }
           }
         } else if (gameState.phase === 'playing') {
-          // トリック結果表示中の場合、AIモードでは自動で閉じる
+          // トリック結果表示中の場合は、ユーザーがモーダルを閉じるまで待機
           if (gameState.showingPhaseResult) {
-            setTimeout(() => {
-              handleClosePhaseResult()
-            }, 2000) // 2秒後に自動で閉じる
-            return
+            return // AIの自動進行を停止し、ユーザーの操作を待つ
           }
 
           // プレイングフェーズでAIのターン処理
@@ -435,7 +432,7 @@ export function useGameState(
     // 少し遅延を入れてAIの動作を見せる
     const timer = setTimeout(processAI, 1500) // 少し長めに設定
     return () => clearTimeout(timer)
-  }, [gameState, isAI, gameId, handleClosePhaseResult])
+  }, [gameState, isAI, gameId])
 
   return {
     gameState,

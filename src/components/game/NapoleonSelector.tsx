@@ -106,33 +106,74 @@ export function NapoleonSelector({
     return colorMap[suit]
   }
 
+  // 現在の宣言プレイヤー情報を取得
+  const currentDeclarationPlayer = currentDeclaration
+    ? players.find((p) => p.id === currentDeclaration.playerId)
+    : null
+
   return (
     <div className="space-y-6 p-6 bg-white rounded-lg shadow-lg">
       <div className="text-center">
         <h2 className="text-2xl font-bold text-gray-800 mb-2">
-          Napoleon Declaration
+          🎩 Napoleon Declaration Phase
         </h2>
         <p className="text-gray-600">
-          {currentPlayer.name}, declare your Napoleon bid!
+          <span className="font-semibold">{currentPlayer.name}</span>, it's your
+          turn to declare!
         </p>
-        {currentDeclaration && (
-          <div className="mt-2 p-2 bg-yellow-100 rounded">
-            <p className="text-sm">
-              Current bid:{' '}
-              <span className="font-bold">
-                {currentDeclaration.targetTricks}
-              </span>{' '}
-              face cards with{' '}
-              <span className="font-bold">
-                {getSuitDisplay(currentDeclaration.suit)}
-              </span>
+      </div>
+
+      {/* 現在の最高宣言表示 */}
+      {currentDeclaration && currentDeclarationPlayer ? (
+        <div className="border border-yellow-300 bg-yellow-50 p-4 rounded-lg">
+          <h3 className="font-semibold text-yellow-800 mb-3 text-center">
+            🏆 Current Highest Bid
+          </h3>
+          <div className="bg-white rounded-lg p-4 border border-yellow-200">
+            <div className="flex items-center justify-center gap-4">
+              <div className="text-center">
+                <div className="text-sm text-gray-600">Player</div>
+                <div className="text-lg font-bold text-yellow-700">
+                  {currentDeclarationPlayer.name}
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm text-gray-600">Face Cards</div>
+                <div className="text-2xl font-bold text-yellow-700">
+                  {currentDeclaration.targetTricks}
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm text-gray-600">Trump Suit</div>
+                <div
+                  className={`text-2xl font-bold ${getSuitColor(currentDeclaration.suit)}`}
+                >
+                  {getSuitDisplay(currentDeclaration.suit)}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="text-center text-sm text-yellow-700 mt-2">
+            You must bid higher to become Napoleon!
+          </div>
+        </div>
+      ) : (
+        <div className="border border-blue-300 bg-blue-50 p-4 rounded-lg">
+          <div className="text-center">
+            <h3 className="font-semibold text-blue-800 mb-2">
+              🚀 Be the first to bid!
+            </h3>
+            <p className="text-sm text-blue-600">
+              No bids yet - you can start with any face card count and trump
+              suit!
             </p>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* トリック数とスート選択 */}
       <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-center">Make Your Bid</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* トリック数選択 */}
           <div>
@@ -146,7 +187,7 @@ export function NapoleonSelector({
               id={tricksSelectId}
               value={selectedTricks}
               onChange={(e) => setSelectedTricks(Number(e.target.value))}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+              className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-transparent text-lg font-medium"
             >
               {availableTricks.map((tricks) => (
                 <option key={tricks} value={tricks}>
@@ -168,7 +209,7 @@ export function NapoleonSelector({
               id={suitSelectId}
               value={selectedSuit}
               onChange={(e) => setSelectedSuit(e.target.value as Suit)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+              className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-transparent text-lg font-medium"
             >
               {availableSuits.map((suit) => (
                 <option
@@ -183,27 +224,44 @@ export function NapoleonSelector({
           </div>
         </div>
 
-        {/* 宣言の詳細 */}
-        <div className="bg-blue-50 p-3 rounded-lg">
-          <p className="text-sm font-medium text-blue-800">
-            Your declaration:{' '}
-            <span className="font-bold">{selectedTricks}</span> face cards with{' '}
-            <span className="font-bold">{getSuitDisplay(selectedSuit)}</span>
-          </p>
-          <p className="text-xs text-blue-600 mt-1">
-            You and your adjutant must win at least {selectedTricks} out of 20
-            face cards total
-          </p>
+        {/* 宣言プレビュー */}
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 p-4 rounded-lg">
+          <div className="text-center">
+            <div className="text-sm text-gray-600 mb-2">
+              Your Declaration Preview:
+            </div>
+            <div className="flex items-center justify-center gap-4">
+              <div className="bg-white rounded-lg px-4 py-2 shadow-sm">
+                <div className="text-2xl font-bold text-blue-600">
+                  {selectedTricks}
+                </div>
+                <div className="text-xs text-gray-600">face cards</div>
+              </div>
+              <div className="text-xl font-bold text-gray-400">+</div>
+              <div className="bg-white rounded-lg px-4 py-2 shadow-sm">
+                <div
+                  className={`text-2xl font-bold ${getSuitColor(selectedSuit)}`}
+                >
+                  {getSuitDisplay(selectedSuit).split(' ')[0]}
+                </div>
+                <div className="text-xs text-gray-600">trump</div>
+              </div>
+            </div>
+            <div className="text-xs text-gray-600 mt-2">
+              You and your adjutant must win at least {selectedTricks} out of 20
+              face cards total
+            </div>
+          </div>
         </div>
       </div>
 
       {/* 副官カード選択 */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">
-          Select adjutant card (副官カード選択):
+          👤 Select Adjutant Card (副官カード選択):
         </h3>
         <p className="text-sm text-gray-600">
-          Choose a card that your adjutant should have
+          Choose a card that your future adjutant should have (optional)
         </p>
 
         {/* スート別に手札を表示 */}
@@ -239,14 +297,14 @@ export function NapoleonSelector({
         </div>
 
         {selectedCard && (
-          <div className="bg-blue-50 p-3 rounded-lg">
+          <div className="bg-green-50 border border-green-200 p-3 rounded-lg">
             <p className="text-sm">
-              Selected card:{' '}
+              Selected adjutant card:{' '}
               <span className="font-semibold">
                 {selectedCard.rank} of {selectedCard.suit}
               </span>
             </p>
-            <p className="text-xs text-gray-600 mt-1">
+            <p className="text-xs text-green-600 mt-1">
               The player who has this card will be your adjutant
             </p>
           </div>
@@ -254,14 +312,14 @@ export function NapoleonSelector({
       </div>
 
       {/* アクションボタン */}
-      <div className="flex gap-4 justify-center">
+      <div className="flex gap-4 justify-center pt-4">
         <button
           type="button"
           onClick={handleNapoleonDeclaration}
-          className="px-8 py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-lg transition-colors shadow-lg"
+          className="px-8 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold rounded-lg transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
         >
-          Declare Napoleon
-          <div className="text-xs mt-1">
+          🎩 Declare Napoleon
+          <div className="text-xs mt-1 opacity-90">
             {selectedTricks} {getSuitDisplay(selectedSuit)}
           </div>
         </button>
@@ -269,22 +327,25 @@ export function NapoleonSelector({
         <button
           type="button"
           onClick={handlePass}
-          className="px-8 py-3 bg-gray-500 hover:bg-gray-600 text-white font-bold rounded-lg transition-colors shadow-lg"
+          className="px-8 py-3 bg-gray-500 hover:bg-gray-600 text-white font-bold rounded-lg transition-all shadow-lg hover:shadow-xl"
         >
-          Pass
+          ⏭️ Pass
         </button>
       </div>
 
       {/* 説明 */}
-      <div className="text-xs text-gray-500 text-center space-y-1">
+      <div className="text-xs text-gray-500 text-center space-y-1 pt-2">
         <p>
-          As Napoleon, you and your adjutant need to win your declared number of
-          face cards
+          💡 As Napoleon, you and your adjutant need to win your declared number
+          of face cards
         </p>
         <p>
-          Higher face card counts and stronger suits beat lower declarations
+          🎯 Higher face card counts and stronger suits (♠ {'>'} ♥ {'>'} ♦ {'>'}{' '}
+          ♣) beat lower declarations
         </p>
-        <p>If you don't select an adjutant card, one will be chosen randomly</p>
+        <p>
+          🎲 If you don't select an adjutant card, one will be chosen randomly
+        </p>
       </div>
     </div>
   )
