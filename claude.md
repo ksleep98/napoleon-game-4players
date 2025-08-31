@@ -112,6 +112,12 @@ npm run cleanup:smart  # 手動スマート版（GitHub CLI連携）
 - **型安全**: TypeScript strict mode
 - **テスト**: 新機能にはJestテスト追加
 
+### Claude Code設定
+
+- SHALL use the MCP server 'serena' for source code retrieval and modification.
+- SHALL limit response token length to avoid usage limit.
+- SHALL break down large files for stepwise parsing.
+
 ### 開発フロー
 
 1. `feature/xxx` ブランチで開発
