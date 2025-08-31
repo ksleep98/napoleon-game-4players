@@ -38,7 +38,7 @@
 - ✅ `src/lib/ai/napoleon.ts` - ナポレオンAI（宣言判断・副官カード選択）
 - ✅ `src/lib/ai/adjutant.ts` - 副官AI（協力判断）
 - ✅ `src/lib/ai/alliance.ts` - 連合軍AI（戦略判断）
-- ✅ `src/lib/ai/gamePhases.ts` - AI フェーズ統合処理
+- ✅ `src/lib/ai/gameTricks.ts` - AI トリック統合処理
 - ✅ `src/utils/aiPlayerUtils.ts` - AI プレイヤー管理
 - ✅ `src/lib/napoleonRules.ts` - ナポレオンルール詳細実装
 

@@ -1,4 +1,4 @@
-import type { Card, Phase, PlayedCard, Suit } from '@/types/game'
+import type { Card, PlayedCard, Suit, Trick } from '@/types/game'
 
 /**
  * ナポレオンゲームの特殊カードルールを管理
@@ -127,14 +127,14 @@ export function getCardStrength(
  * セイム2ルールの判定
  */
 export function checkSame2Rule(
-  phase: Phase,
+  trick: Trick,
   trumpSuit: Suit
 ): PlayedCard | null {
-  const conditions = checkSame2Conditions(phase, trumpSuit)
+  const conditions = checkSame2Conditions(trick, trumpSuit)
   if (!conditions.isValid) return null
 
   // 裏Jが出ている場合はセイム2より裏Jが強い
-  const counterJackCard = phase.cards.find((pc) =>
+  const counterJackCard = trick.cards.find((pc) =>
     isCounterJack(pc.card, trumpSuit)
   )
   if (counterJackCard) return null
@@ -146,22 +146,22 @@ export function checkSame2Rule(
  * セイム2の条件をチェック（裏Jチェックなし）
  */
 function checkSame2Conditions(
-  phase: Phase,
+  trick: Trick,
   trumpSuit: Suit
 ): { isValid: boolean; twoCard: PlayedCard | null } {
-  if (phase.cards.length !== 4) return { isValid: false, twoCard: null }
+  if (trick.cards.length !== 4) return { isValid: false, twoCard: null }
 
-  const leadingSuit = phase.cards[0].card.suit
+  const leadingSuit = trick.cards[0].card.suit
 
   // 切り札の場合は無効
   if (leadingSuit === trumpSuit) return { isValid: false, twoCard: null }
 
   // 全員が同じスート（リードスート）を出しているかチェック
-  const allSameSuit = phase.cards.every((pc) => pc.card.suit === leadingSuit)
+  const allSameSuit = trick.cards.every((pc) => pc.card.suit === leadingSuit)
   if (!allSameSuit) return { isValid: false, twoCard: null }
 
   // 2が出ているかチェック
-  const twoCard = phase.cards.find((pc) => pc.card.rank === '2')
+  const twoCard = trick.cards.find((pc) => pc.card.rank === '2')
   if (!twoCard) return { isValid: false, twoCard: null }
 
   return { isValid: true, twoCard }
@@ -171,17 +171,17 @@ function checkSame2Conditions(
  * よろめきルールの判定（マイティーがある時のハートQ）
  */
 export function checkYoromekiRule(
-  phase: Phase,
+  trick: Trick,
   trumpSuit: Suit
 ): PlayedCard | null {
-  const mightyCard = phase.cards.find((pc) => isMighty(pc.card))
-  const heartQueenCard = phase.cards.find((pc) => isHeartQueen(pc.card))
+  const mightyCard = trick.cards.find((pc) => isMighty(pc.card))
+  const heartQueenCard = trick.cards.find((pc) => isHeartQueen(pc.card))
 
   if (!mightyCard || !heartQueenCard) return null
 
   // 切り札Jや裏Jがある場合は無効
-  const hasTrumpJack = phase.cards.some((pc) => isTrumpJack(pc.card, trumpSuit))
-  const hasCounterJack = phase.cards.some((pc) =>
+  const hasTrumpJack = trick.cards.some((pc) => isTrumpJack(pc.card, trumpSuit))
+  const hasCounterJack = trick.cards.some((pc) =>
     isCounterJack(pc.card, trumpSuit)
   )
 
@@ -194,10 +194,10 @@ export function checkYoromekiRule(
  * 狩りJルールの判定
  */
 export function checkHuntingJackRule(
-  phase: Phase,
+  trick: Trick,
   trumpSuit: Suit
 ): PlayedCard | null {
-  const jacks = phase.cards.filter((pc) => pc.card.rank === 'J')
+  const jacks = trick.cards.filter((pc) => pc.card.rank === 'J')
   if (jacks.length < 2) return null
 
   // 狩りJペアを探す
@@ -208,7 +208,7 @@ export function checkHuntingJackRule(
 
       if (isHuntingJackPair(jack1.card, jack2.card, trumpSuit)) {
         // 他に別スートの切り札や裏Jがある場合は無効
-        const otherTrumpCards = phase.cards.filter(
+        const otherTrumpCards = trick.cards.filter(
           (pc) =>
             pc !== jack1 &&
             pc !== jack2 &&
@@ -219,7 +219,7 @@ export function checkHuntingJackRule(
         if (otherTrumpCards.length > 0) return null
 
         // マイティーがある場合は無効
-        const hasMighty = phase.cards.some((pc) => isMighty(pc.card))
+        const hasMighty = trick.cards.some((pc) => isMighty(pc.card))
         if (hasMighty) return null
 
         // 最弱Jを返す（切り札でない方）
@@ -235,27 +235,27 @@ export function checkHuntingJackRule(
  * 新しい勝者決定ロジック（特殊ルール適用）
  */
 export function determineWinnerWithSpecialRules(
-  phase: Phase,
+  trick: Trick,
   trumpSuit: Suit,
-  isFirstPhase: boolean = false
+  isFirstTrick: boolean = false
 ): PlayedCard | null {
-  if (phase.cards.length === 0) return null
+  if (trick.cards.length === 0) return null
 
-  const leadingSuit = phase.cards[0].card.suit
+  const leadingSuit = trick.cards[0].card.suit
 
   // 1. 狩りJルール（最優先）
-  const huntingJackWinner = checkHuntingJackRule(phase, trumpSuit)
+  const huntingJackWinner = checkHuntingJackRule(trick, trumpSuit)
   if (huntingJackWinner) return huntingJackWinner
 
   // 2. よろめきルール
-  const yoromekiWinner = checkYoromekiRule(phase, trumpSuit)
+  const yoromekiWinner = checkYoromekiRule(trick, trumpSuit)
   if (yoromekiWinner) return yoromekiWinner
 
-  // 3. セイム2ルール（最初のフェーズ以外）
+  // 3. セイム2ルール（最初のトリック以外）
   // ただし、裏Jがある場合はセイム2より裏Jが優先
-  if (!isFirstPhase) {
+  if (!isFirstTrick) {
     // 裏Jがある場合は、セイム2のチェック前に裏Jを返す
-    const counterJackCard = phase.cards.find((pc) =>
+    const counterJackCard = trick.cards.find((pc) =>
       isCounterJack(pc.card, trumpSuit)
     )
     if (counterJackCard) {
@@ -263,17 +263,17 @@ export function determineWinnerWithSpecialRules(
     }
 
     // 裏Jがない場合のみセイム2をチェック
-    const same2Conditions = checkSame2Conditions(phase, trumpSuit)
+    const same2Conditions = checkSame2Conditions(trick, trumpSuit)
     if (same2Conditions.isValid) {
       return same2Conditions.twoCard
     }
   }
 
   // 4. 通常の強度比較
-  let winner = phase.cards[0]
+  let winner = trick.cards[0]
   let maxStrength = getCardStrength(winner.card, trumpSuit, leadingSuit)
 
-  for (const playedCard of phase.cards) {
+  for (const playedCard of trick.cards) {
     const strength = getCardStrength(playedCard.card, trumpSuit, leadingSuit)
     if (strength > maxStrength) {
       maxStrength = strength

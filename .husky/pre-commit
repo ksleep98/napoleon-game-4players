@@ -17,9 +17,9 @@ if ! npm run type-check; then
   exit 1
 fi
 
-# Run all tests
+# Run all tests with consistent environment variables (same as CI)
 echo "🧪 Running tests..."
-if ! npm test -- --passWithNoTests; then
+if ! npm run test:ci -- --passWithNoTests; then
   echo "❌ Tests failed. Please fix failing tests before committing."
   exit 1
 fi

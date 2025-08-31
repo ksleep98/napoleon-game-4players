@@ -43,8 +43,8 @@ export interface NapoleonDeclaration {
 export interface GameState {
   id: string
   players: Player[]
-  currentPhase: Phase
-  phases: Phase[]
+  currentTrick: Trick
+  tricks: Trick[]
   currentPlayerIndex: number
   phase: GamePhase
   napoleonDeclaration?: NapoleonDeclaration // ナポレオン宣言の詳細
@@ -56,13 +56,13 @@ export interface GameState {
   declarationTurn: number // 現在の宣言ターン（0から開始）
   needsRedeal: boolean // 配り直しが必要かどうか
   exchangedCards?: Card[] // ナポレオンが交換で捨てたカード
-  showingPhaseResult?: boolean // フェーズ結果を表示中かどうか
-  lastCompletedPhase?: Phase // 最後に完了したフェーズ
+  showingTrickResult?: boolean // トリック結果を表示中かどうか
+  lastCompletedTrick?: Trick // 最後に完了したトリック
   createdAt: Date
   updatedAt: Date
 }
 
-export interface Phase {
+export interface Trick {
   id: string
   cards: PlayedCard[]
   winnerPlayerId?: string

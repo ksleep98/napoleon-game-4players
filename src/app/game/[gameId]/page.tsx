@@ -7,8 +7,8 @@ import { CardExchangeSelector } from '@/components/game/CardExchangeSelector'
 import { GameBoard } from '@/components/game/GameBoard'
 import { GameStatus } from '@/components/game/GameStatus'
 import { NapoleonSelector } from '@/components/game/NapoleonSelector'
-import { PhaseResult } from '@/components/game/PhaseResult'
 import { PlayerHand } from '@/components/game/PlayerHand'
+import { TrickResult } from '@/components/game/TrickResult'
 import { useGameState } from '@/hooks/useGameState'
 import { calculateGameResult, getPlayerFaceCardCount } from '@/lib/scoring'
 import type { Card as CardType, NapoleonDeclaration } from '@/types/game'
@@ -316,11 +316,11 @@ export default function GamePage() {
       </div>
 
       {/* トリック結果表示 */}
-      {gameState.showingPhaseResult && gameState.lastCompletedPhase && (
-        <PhaseResult
-          phase={gameState.lastCompletedPhase}
+      {gameState.showingTrickResult && gameState.lastCompletedTrick && (
+        <TrickResult
+          trick={gameState.lastCompletedTrick}
           players={gameState.players}
-          onContinue={() => actions.closePhaseResult()}
+          onContinue={() => actions.closeTrickResult()}
         />
       )}
     </div>

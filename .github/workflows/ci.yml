@@ -60,7 +60,7 @@ jobs:
             npm run type-check &
             PID_TYPE=$!
 
-            npm test &
+            npm run test:ci &
             PID_TEST=$!
 
             wait $PID_TYPE
@@ -89,7 +89,7 @@ jobs:
             npm run format:check &
             PID_FORMAT=$!
 
-            npm test &
+            npm run test:ci &
             PID_TEST=$!
 
             # Wait for all processes and capture exit codes

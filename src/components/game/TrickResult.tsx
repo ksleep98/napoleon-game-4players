@@ -1,10 +1,10 @@
 'use client'
 
 import { isFaceCard } from '@/lib/constants'
-import type { Phase, PlayedCard } from '@/types/game'
+import type { PlayedCard, Trick } from '@/types/game'
 
-interface PhaseResultProps {
-  phase: Phase
+interface TrickResultProps {
+  trick: Trick
   players: Array<{
     id: string
     name: string
@@ -14,14 +14,14 @@ interface PhaseResultProps {
   onContinue: () => void
 }
 
-export function PhaseResult({ phase, players, onContinue }: PhaseResultProps) {
-  if (!phase.completed || !phase.winnerPlayerId) {
+export function TrickResult({ trick, players, onContinue }: TrickResultProps) {
+  if (!trick.completed || !trick.winnerPlayerId) {
     return null
   }
 
-  const winner = players.find((p) => p.id === phase.winnerPlayerId)
-  const faceCardsInPhase = phase.cards.filter((pc) => isFaceCard(pc.card))
-  const lastCard = phase.cards[phase.cards.length - 1]
+  const winner = players.find((p) => p.id === trick.winnerPlayerId)
+  const faceCardsInPhase = trick.cards.filter((pc) => isFaceCard(pc.card))
+  const lastCard = trick.cards[trick.cards.length - 1]
   const lastPlayer = players.find((p) => p.id === lastCard.playerId)
 
   const getCardDisplay = (playedCard: PlayedCard) => {
@@ -57,10 +57,10 @@ export function PhaseResult({ phase, players, onContinue }: PhaseResultProps) {
             Cards played in this trick:
           </div>
           <div className="space-y-2">
-            {phase.cards.map((playedCard) => {
+            {trick.cards.map((playedCard) => {
               const player = players.find((p) => p.id === playedCard.playerId)
               const cardDisplay = getCardDisplay(playedCard)
-              const isWinningCard = playedCard.playerId === phase.winnerPlayerId
+              const isWinningCard = playedCard.playerId === trick.winnerPlayerId
 
               return (
                 <div
@@ -87,7 +87,7 @@ export function PhaseResult({ phase, players, onContinue }: PhaseResultProps) {
         </div>
 
         {/* 最後のプレイヤーが出したカード（特別強調） */}
-        {phase.cards.length === 4 && (
+        {trick.cards.length === 4 && (
           <div className="text-center bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
             <div className="text-sm text-yellow-700 mb-1">
               Final card played:

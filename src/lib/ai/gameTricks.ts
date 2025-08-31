@@ -208,15 +208,15 @@ export async function processAIPlayingPhase(
 function selectAICard(hand: Card[], gameState: GameState): Card | null {
   if (hand.length === 0) return null
 
-  const currentPhase = gameState.currentPhase
+  const currentTrick = gameState.currentTrick
 
   // 最初のカードの場合、適当に選ぶ
-  if (currentPhase.cards.length === 0) {
+  if (currentTrick.cards.length === 0) {
     return hand[Math.floor(Math.random() * hand.length)]
   }
 
   // フォロー義務がある場合
-  const leadingSuit = currentPhase.cards[0].card.suit
+  const leadingSuit = currentTrick.cards[0].card.suit
   const followingCards = hand.filter((card) => card.suit === leadingSuit)
 
   if (followingCards.length > 0) {
