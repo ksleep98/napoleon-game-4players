@@ -1,5 +1,11 @@
-import { countFaceCards, NAPOLEON_RULES } from '@/lib/constants'
-import type { GameResult, GameState, PlayerScore } from '@/types/game'
+import { countFaceCards, isFaceCard, NAPOLEON_RULES } from '@/lib/constants'
+import type {
+  Card,
+  GameResult,
+  GameState,
+  Player,
+  PlayerScore,
+} from '@/types/game'
 
 /**
  * ゲーム結果を計算して判定する
@@ -23,8 +29,11 @@ export function calculateGameResult(gameState: GameState): GameResult {
       return total + countFaceCards(phase.cards.map((c) => c.card))
     }, 0)
 
-  // ナポレオン側の勝利判定
-  const napoleonWon = napoleonFaceCards >= NAPOLEON_RULES.TARGET_FACE_CARDS
+  // ナポレオン側の勝利判定（実際の宣言数を使用）
+  const targetFaceCards =
+    gameState.napoleonDeclaration?.targetTricks ??
+    NAPOLEON_RULES.TARGET_FACE_CARDS
+  const napoleonWon = napoleonFaceCards >= targetFaceCards
 
   // プレイヤーごとのスコアを計算
   const scores: PlayerScore[] = gameState.players.map((player) => {
@@ -96,6 +105,32 @@ export function getPlayerFaceCardCount(
 }
 
 /**
+ * プレイヤーが取得した絵札の詳細リストを取得
+ */
+export function getPlayerWonFaceCards(
+  gameState: GameState,
+  playerId: string
+): Card[] {
+  return gameState.phases
+    .filter((phase) => phase.winnerPlayerId === playerId)
+    .flatMap((phase) => phase.cards.map((c) => c.card))
+    .filter(isFaceCard)
+}
+
+/**
+ * 全プレイヤーの取得絵札詳細を取得
+ */
+export function getAllPlayersWonFaceCards(gameState: GameState): Array<{
+  player: Player
+  faceCards: Card[]
+}> {
+  return gameState.players.map((player) => ({
+    player,
+    faceCards: getPlayerWonFaceCards(gameState, player.id),
+  }))
+}
+
+/**
  * 各チーム（ナポレオン側 vs 市民側）の取った絵札数を計算
  */
 export function getTeamFaceCardCounts(gameState: GameState): {
@@ -137,10 +172,12 @@ export function getGameProgress(gameState: GameState): {
   const { napoleonTeam, citizenTeam } = getTeamFaceCardCounts(gameState)
   const phasesPlayed = gameState.phases.length
   const phasesRemaining = 12 - phasesPlayed
-  const napoleonNeedsToWin = Math.max(
-    0,
-    NAPOLEON_RULES.TARGET_FACE_CARDS - napoleonTeam
-  )
+
+  // ナポレオン宣言から実際の目標絵札数を取得、なければデフォルト値を使用
+  const targetFaceCards =
+    gameState.napoleonDeclaration?.targetTricks ??
+    NAPOLEON_RULES.TARGET_FACE_CARDS
+  const napoleonNeedsToWin = Math.max(0, targetFaceCards - napoleonTeam)
 
   return {
     phasesPlayed,
@@ -161,8 +198,13 @@ export function isGameDecided(gameState: GameState): {
 } {
   const { napoleonTeamFaceCards, phasesRemaining } = getGameProgress(gameState)
 
+  // 実際の宣言数を取得
+  const targetFaceCards =
+    gameState.napoleonDeclaration?.targetTricks ??
+    NAPOLEON_RULES.TARGET_FACE_CARDS
+
   // ナポレオン側が既に必要な絵札数を達成
-  if (napoleonTeamFaceCards >= NAPOLEON_RULES.TARGET_FACE_CARDS) {
+  if (napoleonTeamFaceCards >= targetFaceCards) {
     return {
       decided: true,
       napoleonWon: true,
@@ -172,10 +214,7 @@ export function isGameDecided(gameState: GameState): {
 
   // ナポレオン側が残りトリックで取れる最大絵札数を計算
   const maxRemainingFaceCards = phasesRemaining * 5 // 最大でフェーズごとに5枚の絵札がある可能性
-  if (
-    napoleonTeamFaceCards + maxRemainingFaceCards <
-    NAPOLEON_RULES.TARGET_FACE_CARDS
-  ) {
+  if (napoleonTeamFaceCards + maxRemainingFaceCards < targetFaceCards) {
     return {
       decided: true,
       napoleonWon: false,

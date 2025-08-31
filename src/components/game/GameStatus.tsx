@@ -28,6 +28,7 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
       dealing: 'Dealing Cards',
       napoleon: 'Napoleon Declaration',
       adjutant: 'Adjutant Selection',
+      card_exchange: 'Card Exchange',
       playing: 'Playing',
       finished: 'Game Finished',
     }
@@ -42,6 +43,18 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
     }
     return roleMap[role as keyof typeof roleMap] || role
   }
+
+  // 副官が判明しているかどうかをチェック（副官指定カードが実際にプレイされた場合のみ表示）
+  const isAdjutantRevealed =
+    adjutantPlayer &&
+    gameState.phase === 'playing' &&
+    gameState.phases.some((phase) =>
+      phase.cards.some(
+        (playedCard) =>
+          gameState.napoleonCard &&
+          playedCard.card.id === gameState.napoleonCard.id
+      )
+    )
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4 space-y-4">
@@ -61,20 +74,53 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
         </div>
       </div>
 
-      {/* チーム構成 */}
-      {(napoleonPlayer || adjutantPlayer) && (
+      {/* ナポレオン宣言情報 */}
+      {gameState.napoleonDeclaration && (
+        <div className="border-b pb-3">
+          <h4 className="font-semibold text-gray-800 mb-2">
+            Napoleon Declaration
+          </h4>
+          <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
+            <div className="flex items-center justify-center gap-4 text-sm">
+              <div className="text-center">
+                <div className="text-xl font-bold text-yellow-700">
+                  {gameState.napoleonDeclaration.targetTricks}
+                </div>
+                <div className="text-xs text-yellow-600">tricks</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-yellow-700">
+                  {gameState.napoleonDeclaration.suit === 'spades' && '♠'}
+                  {gameState.napoleonDeclaration.suit === 'hearts' && '♥'}
+                  {gameState.napoleonDeclaration.suit === 'diamonds' && '♦'}
+                  {gameState.napoleonDeclaration.suit === 'clubs' && '♣'}
+                </div>
+                <div className="text-xs text-yellow-600 capitalize">
+                  {gameState.napoleonDeclaration.suit}
+                </div>
+              </div>
+            </div>
+            <div className="text-center text-sm text-yellow-700 mt-2">
+              <span className="font-semibold">
+                Declared by: {napoleonPlayer?.name}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* チーム構成 - 副官は判明した場合のみ表示 */}
+      {napoleonPlayer && (
         <div className="border-b pb-3">
           <h4 className="font-semibold text-gray-800 mb-2">Teams</h4>
           <div className="space-y-2 text-sm">
-            {napoleonPlayer && (
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs font-bold">
-                  Napoleon
-                </span>
-                <span>{napoleonPlayer.name}</span>
-              </div>
-            )}
-            {adjutantPlayer && (
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs font-bold">
+                Napoleon
+              </span>
+              <span>{napoleonPlayer.name}</span>
+            </div>
+            {isAdjutantRevealed && adjutantPlayer && (
               <div className="flex items-center gap-2">
                 <span className="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs font-bold">
                   Adjutant
@@ -82,12 +128,43 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
                 <span>{adjutantPlayer.name}</span>
               </div>
             )}
+            {!isAdjutantRevealed && (
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-1 bg-gray-200 text-gray-600 rounded-full text-xs font-bold">
+                  Adjutant
+                </span>
+                <span className="text-gray-600">??? (Hidden)</span>
+              </div>
+            )}
             <div className="text-xs text-gray-500 mt-2">
               Allied Forces:{' '}
               {gameState.players
-                .filter((p) => !p.isNapoleon && !p.isAdjutant)
+                .filter(
+                  (p) => !p.isNapoleon && (!isAdjutantRevealed || !p.isAdjutant)
+                )
                 .map((p) => p.name)
                 .join(', ')}
+              {!isAdjutantRevealed && ' (includes hidden adjutant)'}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 切り札スート表示 - ゲーム中のみ */}
+      {gameState.phase === 'playing' && gameState.trumpSuit && (
+        <div className="border-b pb-3">
+          <h4 className="font-semibold text-gray-800 mb-2">Trump Suit</h4>
+          <div className="flex items-center justify-center bg-red-50 border border-red-200 p-3 rounded-lg">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-red-600">
+                {gameState.trumpSuit === 'spades' && '♠'}
+                {gameState.trumpSuit === 'hearts' && '♥'}
+                {gameState.trumpSuit === 'diamonds' && '♦'}
+                {gameState.trumpSuit === 'clubs' && '♣'}
+              </div>
+              <div className="text-sm text-red-600 capitalize font-medium">
+                {gameState.trumpSuit}
+              </div>
             </div>
           </div>
         </div>
@@ -125,14 +202,15 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
                 <span>Napoleon Face Card Progress</span>
                 <span>
                   {progress.napoleonTeamFaceCards}/
-                  {NAPOLEON_RULES.TARGET_FACE_CARDS}
+                  {gameState.napoleonDeclaration?.targetTricks ??
+                    NAPOLEON_RULES.TARGET_FACE_CARDS}
                 </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
                   className="bg-yellow-500 h-2 rounded-full transition-all duration-300"
                   style={{
-                    width: `${(progress.napoleonTeamFaceCards / NAPOLEON_RULES.TARGET_FACE_CARDS) * 100}%`,
+                    width: `${(progress.napoleonTeamFaceCards / (gameState.napoleonDeclaration?.targetTricks ?? NAPOLEON_RULES.TARGET_FACE_CARDS)) * 100}%`,
                   }}
                 ></div>
               </div>
@@ -152,7 +230,7 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
               const faceCardsWon = getPlayerFaceCardCount(gameState, player.id)
               const roleColor = player.isNapoleon
                 ? 'text-yellow-600'
-                : player.isAdjutant
+                : player.isAdjutant && isAdjutantRevealed
                   ? 'text-green-600'
                   : 'text-blue-600'
 
@@ -168,7 +246,7 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
                         N
                       </span>
                     )}
-                    {player.isAdjutant && (
+                    {player.isAdjutant && isAdjutantRevealed && (
                       <span className="px-1 py-0 bg-green-200 text-green-800 rounded text-xs">
                         A
                       </span>
@@ -226,21 +304,15 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
                 <span className="capitalize">{gameState.leadingSuit}</span>
               </div>
             )}
-            {gameState.trumpSuit && (
-              <div className="flex justify-between">
-                <span>Trump Suit:</span>
-                <span className="capitalize">{gameState.trumpSuit}</span>
-              </div>
-            )}
           </div>
         </div>
       )}
 
-      {/* ナポレオンカード表示 */}
-      {gameState.napoleonCard && (
-        <div className="bg-yellow-50 p-3 rounded-lg">
-          <div className="text-sm">
-            <span className="font-semibold">Napoleon's Card: </span>
+      {/* 副官指定カードは隠す - 判明後のみヒント表示 */}
+      {gameState.napoleonCard && isAdjutantRevealed && (
+        <div className="bg-green-50 border border-green-200 p-3 rounded-lg">
+          <div className="text-sm text-green-700">
+            <span className="font-semibold">Adjutant was found by: </span>
             <span>
               {gameState.napoleonCard.rank} of {gameState.napoleonCard.suit}
             </span>
