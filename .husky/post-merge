@@ -28,45 +28,67 @@ CURRENT_BRANCH=$(git branch --show-current)
 print_info "🤖 Auto-cleanup triggered after merge"
 print_info "Current branch: $CURRENT_BRANCH"
 
-# developブランチの場合のみ自動実行
-if [ "$CURRENT_BRANCH" != "develop" ]; then
-    print_info "Not on develop branch, skipping auto-cleanup"
+# developブランチまたはfeature/hotfix/choreブランチでの自動実行
+if [ "$CURRENT_BRANCH" != "develop" ] && [[ ! "$CURRENT_BRANCH" =~ ^(feature|hotfix|chore)/ ]]; then
+    print_info "Not on develop or feature branch, skipping auto-cleanup"
     exit 0
 fi
 
-# マージコミットかどうか確認（2つ以上の親コミットを持つ）
-PARENT_COUNT=$(git log -1 --pretty=format:"%P" | wc -w)
-if [ "$PARENT_COUNT" -lt 2 ]; then
-    print_info "Not a merge commit, skipping auto-cleanup"
-    exit 0
-fi
-
-# マージされたブランチ名を取得（複数のパターンに対応）
-MERGED_BRANCH=""
-
-# GitHub merge commit pattern: "Merge pull request #123 from user/branch-name"
-MERGED_BRANCH=$(git log --merges -1 --pretty=format:"%s" | sed -n 's/.*from [^/]*\/\(.*\)/\1/p')
-
-# Git merge pattern: "Merge branch 'branch-name' into develop"
-if [ -z "$MERGED_BRANCH" ]; then
-    MERGED_BRANCH=$(git log --merges -1 --pretty=format:"%s" | sed -n "s/.*branch '\([^']*\)'.*/\1/p")
-fi
-
-# Fast-forward merge の場合、前のコミットから推測
-if [ -z "$MERGED_BRANCH" ]; then
-    print_info "Could not determine merged branch name from merge commit"
-    print_info "Trying alternative detection method..."
+# feature/hotfix/choreブランチの場合は、developにマージ完了後の処理として実行
+if [[ "$CURRENT_BRANCH" =~ ^(feature|hotfix|chore)/ ]]; then
+    print_info "Running post-merge cleanup for feature branch: $CURRENT_BRANCH"
     
-    # 最近削除されたリモートブランチを確認
-    RECENT_BRANCHES=$(git for-each-ref --format='%(refname:short) %(committerdate:iso8601)' refs/remotes/origin | grep -v 'origin/develop\|origin/main' | sort -k2 -r | head -3)
-    if [ -n "$RECENT_BRANCHES" ]; then
-        print_info "Recent remote branches:"
-        echo "$RECENT_BRANCHES"
+    # developブランチに切り替えて最新を取得
+    print_info "Switching to develop branch for cleanup..."
+    git fetch origin
+    git checkout develop
+    git pull origin develop
+    
+    # 元のブランチを削除対象として設定
+    MERGED_BRANCH="$CURRENT_BRANCH"
+    
+    # 削除処理にスキップ
+    print_success "✅ Detected completed work on branch: $MERGED_BRANCH"
+    
+else
+    # 通常のdevelopブランチでのマージ処理
+    # マージコミットかどうか確認（2つ以上の親コミットを持つ）
+    PARENT_COUNT=$(git log -1 --pretty=format:"%P" | wc -w)
+    if [ "$PARENT_COUNT" -lt 2 ]; then
+        print_info "Not a merge commit, skipping auto-cleanup"
+        exit 0
     fi
-    
-    print_info "Auto-cleanup cannot determine target branch"
-    print_info "💡 Manual cleanup: npm run cleanup:smart"
-    exit 0
+fi
+
+# feature/hotfix/choreブランチ以外の場合のみブランチ名を検出
+if [[ ! "$CURRENT_BRANCH" =~ ^(feature|hotfix|chore)/ ]]; then
+    # マージされたブランチ名を取得（複数のパターンに対応）
+    MERGED_BRANCH=""
+
+    # GitHub merge commit pattern: "Merge pull request #123 from user/branch-name"
+    MERGED_BRANCH=$(git log --merges -1 --pretty=format:"%s" | sed -n 's/.*from [^/]*\/\(.*\)/\1/p')
+
+    # Git merge pattern: "Merge branch 'branch-name' into develop"
+    if [ -z "$MERGED_BRANCH" ]; then
+        MERGED_BRANCH=$(git log --merges -1 --pretty=format:"%s" | sed -n "s/.*branch '\([^']*\)'.*/\1/p")
+    fi
+
+    # Fast-forward merge の場合、前のコミットから推測
+    if [ -z "$MERGED_BRANCH" ]; then
+        print_info "Could not determine merged branch name from merge commit"
+        print_info "Trying alternative detection method..."
+        
+        # 最近削除されたリモートブランチを確認
+        RECENT_BRANCHES=$(git for-each-ref --format='%(refname:short) %(committerdate:iso8601)' refs/remotes/origin | grep -v 'origin/develop\|origin/main' | sort -k2 -r | head -3)
+        if [ -n "$RECENT_BRANCHES" ]; then
+            print_info "Recent remote branches:"
+            echo "$RECENT_BRANCHES"
+        fi
+        
+        print_info "Auto-cleanup cannot determine target branch"
+        print_info "💡 Manual cleanup: npm run cleanup:smart"
+        exit 0
+    fi
 fi
 
 if [ "$MERGED_BRANCH" = "develop" ] || [ "$MERGED_BRANCH" = "main" ]; then
