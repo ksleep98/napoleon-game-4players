@@ -1,5 +1,5 @@
 import {
-  createNewPhase,
+  createNewTrick,
   declareNapoleon,
   declareNapoleonWithDeclaration,
   determineWinner,
@@ -10,7 +10,7 @@ import {
   passNapoleonDeclaration,
   setAdjutant,
 } from '@/lib/gameLogic'
-import type { Card, GameState, NapoleonDeclaration, Phase } from '@/types/game'
+import type { Card, GameState, NapoleonDeclaration, Trick } from '@/types/game'
 
 describe('Game Logic', () => {
   let gameState: GameState
@@ -24,10 +24,10 @@ describe('Game Logic', () => {
     it('should initialize game with correct structure', () => {
       expect(gameState.players).toHaveLength(4)
       expect(gameState.hiddenCards).toHaveLength(4)
-      expect(gameState.currentPhase).toHaveProperty('id')
-      expect(gameState.currentPhase).toHaveProperty('cards')
-      expect(gameState.currentPhase).toHaveProperty('completed', false)
-      expect(gameState.phases).toEqual([])
+      expect(gameState.currentTrick).toHaveProperty('id')
+      expect(gameState.currentTrick).toHaveProperty('cards')
+      expect(gameState.currentTrick).toHaveProperty('completed', false)
+      expect(gameState.tricks).toEqual([])
       expect(gameState.phase).toBe('napoleon')
       expect(gameState.currentPlayerIndex).toBe(0)
     })
@@ -53,21 +53,21 @@ describe('Game Logic', () => {
     })
   })
 
-  describe('createNewPhase', () => {
-    it('should create a new empty phase', () => {
-      const phase = createNewPhase()
-      expect(phase).toHaveProperty('id')
-      expect(phase.cards).toEqual([])
-      expect(phase.completed).toBe(false)
+  describe('createNewTrick', () => {
+    it('should create a new empty trick', () => {
+      const trick = createNewTrick()
+      expect(trick).toHaveProperty('id')
+      expect(trick.cards).toEqual([])
+      expect(trick.completed).toBe(false)
     })
   })
 
   // isCardStronger function removed - logic integrated into determineWinner
 
   describe('determineWinner', () => {
-    it('should determine winner of a complete phase', () => {
-      const phase: Phase = {
-        id: 'test-phase',
+    it('should determine winner of a complete trick', () => {
+      const trick: Trick = {
+        id: 'test-trick',
         cards: [
           {
             card: {
@@ -114,19 +114,19 @@ describe('Game Logic', () => {
         leadingSuit: 'hearts',
       }
 
-      const winner = determineWinner(phase)
+      const winner = determineWinner(trick)
       expect(winner).not.toBeNull()
       expect(winner?.playerId).toBe('p4') // Player with Ace of Hearts should win
     })
 
-    it('should return null for empty phase', () => {
-      const emptyPhase: Phase = {
-        id: 'empty-phase',
+    it('should return null for empty trick', () => {
+      const emptyTrick: Trick = {
+        id: 'empty-trick',
         cards: [],
         completed: false,
       }
 
-      const winner = determineWinner(emptyPhase)
+      const winner = determineWinner(emptyTrick)
       expect(winner).toBeNull()
     })
   })

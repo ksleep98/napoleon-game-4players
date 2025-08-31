@@ -1,12 +1,12 @@
-import { processAllAIPhases } from '@/lib/ai/gamePhases'
+import { processAllAIPhases } from '@/lib/ai/gameTricks'
 import { determineWinnerWithSpecialRules } from '@/lib/napoleonCardRules'
 import type {
   Card,
   GameState,
   NapoleonDeclaration,
-  Phase,
   PlayedCard,
   Player,
+  Trick,
 } from '@/types/game'
 import { createPlayersWithAI } from '@/utils/aiPlayerUtils'
 import {
@@ -46,8 +46,8 @@ export function initializeGame(playerNames: string[]): GameState {
   return {
     id: generateGameId(),
     players: playersWithCards,
-    currentPhase: createNewPhase(),
-    phases: [],
+    currentTrick: createNewTrick(),
+    tricks: [],
     currentPlayerIndex: 0,
     phase: 'napoleon',
     hiddenCards,
@@ -69,8 +69,8 @@ export function initializeAIGame(humanPlayerName: string): GameState {
   return {
     id: generateGameId(),
     players: playersWithCards,
-    currentPhase: createNewPhase(),
-    phases: [],
+    currentTrick: createNewTrick(),
+    tricks: [],
     currentPlayerIndex: 0,
     phase: 'napoleon',
     hiddenCards,
@@ -83,11 +83,11 @@ export function initializeAIGame(humanPlayerName: string): GameState {
 }
 
 /**
- * 新しいフェーズを作成
+ * 新しいトリックを作成
  */
-export function createNewPhase(): Phase {
+export function createNewTrick(): Trick {
   return {
-    id: `phase_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+    id: `trick_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
     cards: [],
     completed: false,
   }
@@ -368,7 +368,7 @@ export function playCard(
   }
 
   // フォロー義務のチェック
-  if (gameState.currentPhase.cards.length > 0 && gameState.leadingSuit) {
+  if (gameState.currentTrick.cards.length > 0 && gameState.leadingSuit) {
     if (canFollowSuit(player.hand, gameState.leadingSuit)) {
       if (card.suit !== gameState.leadingSuit) {
         throw new Error('Must follow suit if possible')
@@ -380,7 +380,7 @@ export function playCard(
   const playedCard: PlayedCard = {
     card,
     playerId,
-    order: gameState.currentPhase.cards.length,
+    order: gameState.currentTrick.cards.length,
   }
 
   // プレイヤーの手札からカードを削除
@@ -394,30 +394,30 @@ export function playCard(
     return p
   })
 
-  // フェーズにカードを追加
-  const updatedPhase: Phase = {
-    ...gameState.currentPhase,
-    cards: [...gameState.currentPhase.cards, playedCard],
+  // トリックにカードを追加
+  const updatedTrick: Trick = {
+    ...gameState.currentTrick,
+    cards: [...gameState.currentTrick.cards, playedCard],
   }
 
   // 最初のカードの場合、リードスーツを設定
   let leadingSuit = gameState.leadingSuit
-  if (gameState.currentPhase.cards.length === 0) {
+  if (gameState.currentTrick.cards.length === 0) {
     leadingSuit = card.suit
-    updatedPhase.leadingSuit = card.suit
+    updatedTrick.leadingSuit = card.suit
   }
 
   const updatedGameState: GameState = {
     ...gameState,
     players: updatedPlayers,
-    currentPhase: updatedPhase,
+    currentTrick: updatedTrick,
     leadingSuit,
     updatedAt: new Date(),
   }
 
-  // フェーズが完了したかチェック
-  if (updatedPhase.cards.length === 4) {
-    return completePhase(updatedGameState)
+  // トリックが完了したかチェック
+  if (updatedTrick.cards.length === 4) {
+    return completeTrick(updatedGameState)
   }
 
   // 次のプレイヤーに移動
@@ -428,70 +428,70 @@ export function playCard(
 }
 
 /**
- * フェーズを完了
+ * トリックを完了
  */
-export function completePhase(gameState: GameState): GameState {
-  const winner = determineWinner(gameState.currentPhase, gameState)
+export function completeTrick(gameState: GameState): GameState {
+  const winner = determineWinner(gameState.currentTrick, gameState)
   if (!winner) {
-    throw new Error('Cannot determine phase winner')
+    throw new Error('Cannot determine trick winner')
   }
 
-  const completedPhase: Phase = {
-    ...gameState.currentPhase,
+  const completedTrick: Trick = {
+    ...gameState.currentTrick,
     winnerPlayerId: winner.playerId,
     completed: true,
   }
 
-  const allPhases = [...gameState.phases, completedPhase]
+  const allTricks = [...gameState.tricks, completedTrick]
 
   // ゲーム終了チェック
-  if (allPhases.length === 12) {
+  if (allTricks.length === 12) {
     return {
       ...gameState,
-      currentPhase: completedPhase,
-      phases: allPhases,
+      currentTrick: completedTrick,
+      tricks: allTricks,
       phase: 'finished',
       updatedAt: new Date(),
     }
   }
 
-  // 次のフェーズを開始（勝者が先手）
+  // 次のトリックを開始（勝者が先手）
   const winnerIndex = gameState.players.findIndex(
     (p) => p.id === winner.playerId
   )
 
   return {
     ...gameState,
-    currentPhase: createNewPhase(),
-    phases: allPhases,
+    currentTrick: createNewTrick(),
+    tricks: allTricks,
     currentPlayerIndex: winnerIndex,
     leadingSuit: undefined,
-    showingPhaseResult: true,
-    lastCompletedPhase: completedPhase,
+    showingTrickResult: true,
+    lastCompletedTrick: completedTrick,
     updatedAt: new Date(),
   }
 }
 
 /**
- * フェーズ結果表示を閉じる
+ * トリック結果表示を閉じる
  */
-export function closePhaseResult(gameState: GameState): GameState {
+export function closeTrickResult(gameState: GameState): GameState {
   return {
     ...gameState,
-    showingPhaseResult: false,
-    lastCompletedPhase: undefined,
+    showingTrickResult: false,
+    lastCompletedTrick: undefined,
     updatedAt: new Date(),
   }
 }
 
 /**
- * フェーズの勝者を決定（特殊ルール適用）
+ * トリックの勝者を決定（特殊ルール適用）
  */
 export function determineWinner(
-  phase: Phase,
+  trick: Trick,
   gameState?: GameState
 ): PlayedCard | null {
-  if (phase.cards.length === 0) {
+  if (trick.cards.length === 0) {
     return null
   }
 
@@ -499,24 +499,24 @@ export function determineWinner(
   const trumpSuit = gameState?.trumpSuit || gameState?.napoleonDeclaration?.suit
   if (!trumpSuit) {
     // 切り札が設定されていない場合は基本ロジック
-    return determineWinnerBasic(phase)
+    return determineWinnerBasic(trick)
   }
 
-  // 最初のフェーズかどうかを判定
-  const isFirstPhase = gameState?.phases?.length === 0
+  // 最初のトリックかどうかを判定
+  const isFirstTrick = gameState?.tricks?.length === 0
 
   // 特殊ルール適用の勝者決定
-  return determineWinnerWithSpecialRules(phase, trumpSuit, isFirstPhase)
+  return determineWinnerWithSpecialRules(trick, trumpSuit, isFirstTrick)
 }
 
 /**
- * 基本的なフェーズ勝者決定（特殊ルールなし）
+ * 基本的なトリック勝者決定（特殊ルールなし）
  */
-function determineWinnerBasic(phase: Phase): PlayedCard | null {
-  const leadingSuit = phase.cards[0].card.suit
-  let winner = phase.cards[0]
+function determineWinnerBasic(trick: Trick): PlayedCard | null {
+  const leadingSuit = trick.cards[0].card.suit
+  let winner = trick.cards[0]
 
-  for (const playedCard of phase.cards) {
+  for (const playedCard of trick.cards) {
     const currentCard = playedCard.card
     const winnerCard = winner.card
 
@@ -551,18 +551,18 @@ export function checkNapoleonVictory(gameState: GameState): boolean {
     return false
   }
 
-  // ナポレオンチームが取ったフェーズ数を計算
-  let napoleonPhases = 0
-  for (const phase of gameState.phases) {
-    if (phase.winnerPlayerId === napoleonPlayer.id) {
-      napoleonPhases++
+  // ナポレオンチームが取ったトリック数を計算
+  let napoleonTricks = 0
+  for (const trick of gameState.tricks) {
+    if (trick.winnerPlayerId === napoleonPlayer.id) {
+      napoleonTricks++
     }
-    if (adjutantPlayer && phase.winnerPlayerId === adjutantPlayer.id) {
-      napoleonPhases++
+    if (adjutantPlayer && trick.winnerPlayerId === adjutantPlayer.id) {
+      napoleonTricks++
     }
   }
 
-  return napoleonPhases >= 8
+  return napoleonTricks >= 8
 }
 
 /**
@@ -579,16 +579,16 @@ export function validateGameState(gameState: GameState): boolean {
     (sum, player) => sum + player.hand.length,
     0
   )
-  const playedCards = gameState.phases.reduce(
-    (sum, phase) => sum + phase.cards.length,
+  const playedCards = gameState.tricks.reduce(
+    (sum, trick) => sum + trick.cards.length,
     0
   )
-  const currentPhaseCards = gameState.currentPhase.cards.length
+  const currentTrickCards = gameState.currentTrick.cards.length
 
   return (
     totalCards +
       playedCards +
-      currentPhaseCards +
+      currentTrickCards +
       gameState.hiddenCards.length ===
     52
   )

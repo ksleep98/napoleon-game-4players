@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import {
-  closePhaseResult,
+  closeTrickResult,
   declareNapoleon,
   declareNapoleonWithDeclaration,
   exchangeCards,
@@ -129,7 +129,7 @@ export function useGameState(
             setTimeout(async () => {
               try {
                 const { processAIPlayingPhase } = await import(
-                  '@/lib/ai/gamePhases'
+                  '@/lib/ai/gameTricks'
                 )
                 const aiUpdatedGame = await processAIPlayingPhase(updatedGame)
                 setGameState(aiUpdatedGame)
@@ -275,7 +275,7 @@ export function useGameState(
     try {
       setError(null)
 
-      const updatedGame = closePhaseResult(gameState)
+      const updatedGame = closeTrickResult(gameState)
       setGameState(updatedGame)
 
       if (gameId && process.env.NODE_ENV === 'production') {
@@ -283,7 +283,7 @@ export function useGameState(
       }
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Failed to close phase result'
+        err instanceof Error ? err.message : 'Failed to close trick result'
       )
     }
   }, [gameState, gameId])
@@ -397,7 +397,7 @@ export function useGameState(
           }
         } else if (gameState.phase === 'playing') {
           // トリック結果表示中の場合は、ユーザーがモーダルを閉じるまで待機
-          if (gameState.showingPhaseResult) {
+          if (gameState.showingTrickResult) {
             return // AIの自動進行を停止し、ユーザーの操作を待つ
           }
 
@@ -405,7 +405,7 @@ export function useGameState(
           const currentPlayer = getCurrentPlayer(gameState)
           if (currentPlayer?.isAI) {
             const { processAIPlayingPhase } = await import(
-              '@/lib/ai/gamePhases'
+              '@/lib/ai/gameTricks'
             )
             const updatedState = await processAIPlayingPhase(gameState)
             if (
@@ -447,7 +447,7 @@ export function useGameState(
       passNapoleon: handlePassNapoleon,
       setAdjutant: handleSetAdjutant,
       exchangeCards: handleExchangeCards,
-      closePhaseResult: handleClosePhaseResult,
+      closeTrickResult: handleClosePhaseResult,
     },
     utils: {
       getPlayableCards,
