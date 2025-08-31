@@ -65,14 +65,12 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         print_warning "Branch '$CURRENT_BRANCH' already deleted or doesn't exist"
     }
     
-    # リモートブランチが存在するか確認して削除
+    # リモートブランチは GitHub で自動削除されるためスキップ
     if git show-ref --verify --quiet refs/remotes/origin/"$CURRENT_BRANCH"; then
-        read -p "Also delete remote branch 'origin/$CURRENT_BRANCH'? (y/N): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            print_info "Deleting remote branch 'origin/$CURRENT_BRANCH'..."
-            git push origin --delete "$CURRENT_BRANCH"
-        fi
+        print_info "Remote branch 'origin/$CURRENT_BRANCH' exists but skipping deletion"
+        print_info "💡 GitHub auto-deletes remote branches on squash merge"
+    else
+        print_info "Remote branch 'origin/$CURRENT_BRANCH' already deleted by GitHub"
     fi
     
     print_success "Branch '$CURRENT_BRANCH' has been deleted."

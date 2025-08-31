@@ -116,26 +116,12 @@ else
     print_info "Local branch '$MERGED_BRANCH' not found (may have been deleted already)"
 fi
 
-# リモートブランチが存在するか確認して削除
+# リモートブランチは GitHub で自動削除されるためスキップ
 if git show-ref --verify --quiet refs/remotes/origin/"$MERGED_BRANCH"; then
-    # GitHub CLIがあるかチェックしてPRステータスを確認
-    if command -v gh &> /dev/null; then
-        PR_STATE=$(gh pr view "$MERGED_BRANCH" --json state -q .state 2>/dev/null || echo "NOT_FOUND")
-        if [ "$PR_STATE" = "MERGED" ]; then
-            print_info "🗑️ Deleting remote branch: origin/$MERGED_BRANCH"
-            git push origin --delete "$MERGED_BRANCH" 2>/dev/null || {
-                print_warning "Failed to delete remote branch (may have been deleted already)"
-            }
-            print_success "✅ Remote branch 'origin/$MERGED_BRANCH' deleted"
-        else
-            print_info "PR not merged, keeping remote branch"
-        fi
-    else
-        print_info "GitHub CLI not found, keeping remote branch for safety"
-        print_info "💡 Install GitHub CLI: brew install gh"
-    fi
+    print_info "ℹ️ Remote branch 'origin/$MERGED_BRANCH' exists but skipping deletion"
+    print_info "💡 GitHub auto-deletes remote branches on squash merge"
 else
-    print_info "Remote branch 'origin/$MERGED_BRANCH' not found"
+    print_info "ℹ️ Remote branch 'origin/$MERGED_BRANCH' already deleted by GitHub"
 fi
 
 # 不要なリモート参照をクリーンアップ
