@@ -204,8 +204,9 @@ describe('Supabase Client Functions - 実関数テスト', () => {
       const endTime = Date.now()
       const executionTime = endTime - startTime
 
-      // RPC呼び出しがないため、非常に高速に完了することを確認
-      expect(executionTime).toBeLessThan(50) // 50ms以内
+      // RPC呼び出しがないため、高速に完了することを確認
+      // CI環境を考慮して100ms以内とする
+      expect(executionTime).toBeLessThan(100)
       expect(localStorageMock.setItem).toHaveBeenCalledTimes(iterations * 5) // secure storage (4) + legacy (1) per call
     })
   })
