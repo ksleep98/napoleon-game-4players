@@ -5,8 +5,6 @@
 ### 設定ファイル
 
 - ✅ `.husky/pre-commit` - メインpre-commitフック
-- ✅ `.husky/pre-commit-light` - 軽量版（フォーマットのみ）
-- ✅ `.husky/pre-commit-enhanced` - 拡張版（詳細フィードバック付き）
 - ✅ `package.json` lint-staged設定
 
 ## 動作内容
@@ -38,13 +36,6 @@ npm test           # Jest テスト実行
 ```bash
 git commit -m "message"
 # → 自動修正 + 型チェック + テスト実行
-```
-
-### 軽量版に切り替え
-
-```bash
-cp .husky/pre-commit-light .husky/pre-commit
-# → フォーマット・lint のみ
 ```
 
 ### 緊急時スキップ

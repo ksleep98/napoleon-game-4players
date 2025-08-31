@@ -5,6 +5,12 @@
 
 set -e
 
+# 手動実行中の場合はスキップ
+if [ "$CLEANUP_MANUAL_RUN" = "1" ]; then
+    echo "Manual cleanup in progress, skipping auto-cleanup"
+    exit 0
+fi
+
 # 色付きメッセージ用の関数
 print_info() {
     echo -e "\033[36m[AUTO-CLEANUP]\033[0m $1"

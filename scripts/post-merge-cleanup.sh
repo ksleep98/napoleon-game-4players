@@ -5,6 +5,9 @@
 
 set -e  # エラー時に停止
 
+# post-mergeフックとの重複実行を防ぐ
+export CLEANUP_MANUAL_RUN=1
+
 # 色付きメッセージ用の関数
 print_info() {
     echo -e "\033[36m[INFO]\033[0m $1"
@@ -58,7 +61,9 @@ echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     # ローカルブランチを削除
     print_info "Deleting local branch '$CURRENT_BRANCH'..."
-    git branch -d "$CURRENT_BRANCH"
+    git branch -d "$CURRENT_BRANCH" 2>/dev/null || {
+        print_warning "Branch '$CURRENT_BRANCH' already deleted or doesn't exist"
+    }
     
     # リモートブランチが存在するか確認して削除
     if git show-ref --verify --quiet refs/remotes/origin/"$CURRENT_BRANCH"; then

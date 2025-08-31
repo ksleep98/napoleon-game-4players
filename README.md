@@ -120,13 +120,6 @@ This project uses **Husky** and **lint-staged** for automated pre-commit quality
 git commit -m "your message"
 ```
 
-**Light version (format + lint only):**
-
-```bash
-# Switch to light version
-cp .husky/pre-commit-light .husky/pre-commit
-```
-
 **Skip checks (emergency only):**
 
 ```bash
