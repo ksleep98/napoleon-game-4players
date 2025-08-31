@@ -269,7 +269,7 @@ export function useGameState(
   )
 
   // トリック結果を閉じる
-  const handleClosePhaseResult = useCallback(async () => {
+  const handleCloseTrickResult = useCallback(async () => {
     if (!gameState) return
 
     try {
@@ -447,7 +447,7 @@ export function useGameState(
       passNapoleon: handlePassNapoleon,
       setAdjutant: handleSetAdjutant,
       exchangeCards: handleExchangeCards,
-      closeTrickResult: handleClosePhaseResult,
+      closeTrickResult: handleCloseTrickResult,
     },
     utils: {
       getPlayableCards,
