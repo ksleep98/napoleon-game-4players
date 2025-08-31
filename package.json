@@ -24,6 +24,9 @@
     "ci-fix": "npm run lint:fix && npm run format && npm run format:other && npm run type-check && npm test",
     "format:other": "npx prettier --write \"**/*.{yml,yaml,md}\" --ignore-path .gitignore",
     "format:other:check": "npx prettier --check \"**/*.{yml,yaml,md}\" --ignore-path .gitignore",
+    "cleanup": "./scripts/post-merge-cleanup.sh",
+    "cleanup:smart": "./scripts/smart-cleanup.sh",
+    "setup:auto-cleanup": "./scripts/setup-auto-cleanup.sh",
     "prepare": "husky"
   },
   "dependencies": {

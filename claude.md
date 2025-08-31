@@ -43,6 +43,11 @@ npm install
 # 3. 開発サーバー起動
 npm run dev
 # → http://localhost:3000
+
+# 4. マージ後の自動クリーンアップ
+npm run setup:auto-cleanup enable  # 自動実行を有効化
+npm run cleanup        # 手動インタラクティブ版
+npm run cleanup:smart  # 手動スマート版（GitHub CLI連携）
 ```
 
 ## 詳細ドキュメント
@@ -52,6 +57,7 @@ npm run dev
 - [プロジェクトセットアップ](./docs/setup/PROJECT_SETUP.md) - 技術スタック・初期設定
 - [開発コマンド一覧](./docs/development/COMMANDS.md) - npm scripts・使い方
 - [フォーマット設定](./docs/development/FORMATTING_SETUP.md) - Biome/Prettier統合・VSCode設定
+- [Post-merge自動化](./scripts/) - マージ後のブランチクリーンアップ自動化
 
 ### 🧪 テスト・品質管理
 
@@ -84,6 +90,7 @@ npm run dev
 - **セキュリティ強化**: RLS・Server Actions・入力検証・レート制限・プレイヤーID同期
 - **Quick Start**: 4人対戦ゲームの即座開始機能
 - **エラー修正**: 404/PGRST202エラー解消・RLS設定最適化・プレイヤーID不一致修正
+- **Post-merge自動化**: ブランチクリーンアップ自動化・developブランチ自動移行・GitHub CLI連携・Git hooks統合
 
 ### 🚧 進行中
 
@@ -119,6 +126,29 @@ npm run dev
 - TypeScript型チェック
 - Jest テスト実行
 - 全チェック合格でコミット可能
+
+### Post-merge 自動クリーンアップ
+
+**自動実行設定:**
+
+- `npm run setup:auto-cleanup enable` - 自動クリーンアップ有効化
+- `npm run setup:auto-cleanup disable` - 自動クリーンアップ無効化
+- `npm run setup:auto-cleanup status` - 設定状況確認
+
+**手動実行:**
+
+- `npm run cleanup` - インタラクティブ版（確認あり）
+- `npm run cleanup:smart` - スマート版（GitHub CLI連携）
+  - `-- --force` - 自動削除（確認なし）
+  - `-- --keep` - ブランチ保持
+  - `-- --help` - 使用方法表示
+
+**自動実行の仕組み:**
+
+- Git post-merge hookでPRマージ後に自動実行
+- developブランチへのマージを検出して自動クリーンアップ
+- マージされたブランチのローカル・リモート削除
+- GitHub CLI連携でPRステータス確認
 
 ## 次のステップ
 
