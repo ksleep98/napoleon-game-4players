@@ -1,6 +1,11 @@
 'use client'
 
-import { NAPOLEON_RULES } from '@/lib/constants'
+import {
+  GAME_PHASES,
+  NAPOLEON_RULES,
+  PLAYER_ROLES,
+  SUIT_SYMBOLS,
+} from '@/lib/constants'
 import {
   getGameProgress,
   getPlayerFaceCardCount,
@@ -24,21 +29,21 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
 
   const getPhaseDisplay = (phase: string) => {
     const phaseMap = {
-      setup: 'Game Setup',
+      [GAME_PHASES.SETUP]: 'Game Setup',
       dealing: 'Dealing Cards',
-      napoleon: 'Napoleon Declaration',
-      adjutant: 'Adjutant Selection',
-      card_exchange: 'Card Exchange',
-      playing: 'Playing',
-      finished: 'Game Finished',
+      [GAME_PHASES.NAPOLEON]: 'Napoleon Declaration',
+      [GAME_PHASES.ADJUTANT]: 'Adjutant Selection',
+      [GAME_PHASES.EXCHANGE]: 'Card Exchange',
+      [GAME_PHASES.PLAYING]: 'Playing',
+      [GAME_PHASES.FINISHED]: 'Game Finished',
     }
     return phaseMap[phase as keyof typeof phaseMap] || phase
   }
 
   const getRoleDisplay = (role: string) => {
     const roleMap = {
-      napoleon: 'Napoleon',
-      adjutant: 'Adjutant',
+      napoleon: PLAYER_ROLES.NAPOLEON,
+      adjutant: PLAYER_ROLES.ADJUTANT,
       citizen: 'Allied Forces',
     }
     return roleMap[role as keyof typeof roleMap] || role
@@ -47,7 +52,7 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
   // 副官が判明しているかどうかをチェック（副官指定カードが実際にプレイされた場合のみ表示）
   const isAdjutantRevealed =
     adjutantPlayer &&
-    gameState.phase === 'playing' &&
+    gameState.phase === GAME_PHASES.PLAYING &&
     gameState.tricks.some((trick) =>
       trick.cards.some(
         (playedCard) =>
@@ -90,10 +95,7 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-yellow-700">
-                  {gameState.napoleonDeclaration.suit === 'spades' && '♠'}
-                  {gameState.napoleonDeclaration.suit === 'hearts' && '♥'}
-                  {gameState.napoleonDeclaration.suit === 'diamonds' && '♦'}
-                  {gameState.napoleonDeclaration.suit === 'clubs' && '♣'}
+                  {SUIT_SYMBOLS[gameState.napoleonDeclaration.suit]}
                 </div>
                 <div className="text-xs text-yellow-600 capitalize">
                   {gameState.napoleonDeclaration.suit}
@@ -116,14 +118,14 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
           <div className="space-y-2 text-sm">
             <div className="flex items-center gap-2">
               <span className="px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs font-bold">
-                Napoleon
+                {PLAYER_ROLES.NAPOLEON}
               </span>
               <span>{napoleonPlayer.name}</span>
             </div>
             {isAdjutantRevealed && adjutantPlayer && (
               <div className="flex items-center gap-2">
                 <span className="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs font-bold">
-                  Adjutant
+                  {PLAYER_ROLES.ADJUTANT}
                 </span>
                 <span>{adjutantPlayer.name}</span>
               </div>
@@ -131,7 +133,7 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
             {!isAdjutantRevealed && (
               <div className="flex items-center gap-2">
                 <span className="px-2 py-1 bg-gray-200 text-gray-600 rounded-full text-xs font-bold">
-                  Adjutant
+                  {PLAYER_ROLES.ADJUTANT}
                 </span>
                 <span className="text-gray-600">??? (Hidden)</span>
               </div>
@@ -151,16 +153,13 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
       )}
 
       {/* 切り札スート表示 - ゲーム中のみ */}
-      {gameState.phase === 'playing' && gameState.trumpSuit && (
+      {gameState.phase === GAME_PHASES.PLAYING && gameState.trumpSuit && (
         <div className="border-b pb-3">
           <h4 className="font-semibold text-gray-800 mb-2">Trump Suit</h4>
           <div className="flex items-center justify-center bg-red-50 border border-red-200 p-3 rounded-lg">
             <div className="text-center">
               <div className="text-3xl font-bold text-red-600">
-                {gameState.trumpSuit === 'spades' && '♠'}
-                {gameState.trumpSuit === 'hearts' && '♥'}
-                {gameState.trumpSuit === 'diamonds' && '♦'}
-                {gameState.trumpSuit === 'clubs' && '♣'}
+                {SUIT_SYMBOLS[gameState.trumpSuit]}
               </div>
               <div className="text-sm text-red-600 capitalize font-medium">
                 {gameState.trumpSuit}
@@ -171,7 +170,7 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
       )}
 
       {/* ゲーム進行状況 */}
-      {gameState.phase === 'playing' && (
+      {gameState.phase === GAME_PHASES.PLAYING && (
         <div className="border-b pb-3">
           <h4 className="font-semibold text-gray-800 mb-2">Progress</h4>
           <div className="space-y-2 text-sm">
@@ -180,7 +179,7 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
               <span>{progress.tricksPlayed}/12</span>
             </div>
             <div className="flex justify-between">
-              <span>Napoleon Team Face Cards:</span>
+              <span>{PLAYER_ROLES.NAPOLEON} Team Face Cards:</span>
               <span className="font-medium text-yellow-600">
                 {progress.napoleonTeamFaceCards}
               </span>
@@ -192,14 +191,14 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
               </span>
             </div>
             <div className="flex justify-between text-xs text-gray-600">
-              <span>Napoleon needs:</span>
+              <span>{PLAYER_ROLES.NAPOLEON} needs:</span>
               <span>{progress.napoleonNeedsToWin} more face cards</span>
             </div>
 
             {/* プログレスバー */}
             <div className="mt-3">
               <div className="flex justify-between text-xs mb-1">
-                <span>Napoleon Face Card Progress</span>
+                <span>{PLAYER_ROLES.NAPOLEON} Face Card Progress</span>
                 <span>
                   {progress.napoleonTeamFaceCards}/
                   {gameState.napoleonDeclaration?.targetTricks ??
@@ -220,7 +219,7 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
       )}
 
       {/* プレイヤー別絵札獲得数 */}
-      {gameState.phase === 'playing' && (
+      {gameState.phase === GAME_PHASES.PLAYING && (
         <div className="border-b pb-3">
           <h4 className="font-semibold text-gray-800 mb-2">
             Face Cards Won by Player
@@ -312,7 +311,9 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
       {gameState.napoleonCard && isAdjutantRevealed && (
         <div className="bg-green-50 border border-green-200 p-3 rounded-lg">
           <div className="text-sm text-green-700">
-            <span className="font-semibold">Adjutant was found by: </span>
+            <span className="font-semibold">
+              {PLAYER_ROLES.ADJUTANT} was found by:{' '}
+            </span>
             <span>
               {gameState.napoleonCard.rank} of {gameState.napoleonCard.suit}
             </span>

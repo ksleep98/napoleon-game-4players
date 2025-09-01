@@ -1,3 +1,4 @@
+import { GAME_PHASES, WINNER_TEAMS } from '@/lib/constants'
 import type { GameResult, GameRoom, GameState, Player } from '@/types/game'
 import { supabase } from './client'
 
@@ -50,10 +51,10 @@ export async function saveGameState(gameState: GameState): Promise<void> {
     phase: gameState.phase,
     updated_at: new Date().toISOString(),
     winner_team:
-      gameState.phase === 'finished'
+      gameState.phase === GAME_PHASES.FINISHED
         ? gameState.players.find((p) => p.isNapoleon)
-          ? 'napoleon'
-          : 'citizen'
+          ? WINNER_TEAMS.NAPOLEON
+          : WINNER_TEAMS.CITIZEN
         : null,
   })
 

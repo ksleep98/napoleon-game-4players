@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { GAME_PHASES } from '@/lib/constants'
 import {
   closeTrickResult,
   declareNapoleon,
@@ -122,7 +123,7 @@ export function useGameState(
         const updatedGame = playCard(gameState, playerId, cardId)
 
         // AIモードの場合、次のプレイヤーがAIなら自動でプレイ
-        if (isAI && updatedGame.phase === 'playing') {
+        if (isAI && updatedGame.phase === GAME_PHASES.PLAYING) {
           const currentPlayer = getCurrentPlayer(updatedGame)
           if (currentPlayer?.isAI) {
             // AI処理用に少し遅延を入れる
@@ -291,7 +292,7 @@ export function useGameState(
   // プレイ可能なカードを取得
   const getPlayableCards = useCallback(
     (playerId: string): string[] => {
-      if (!gameState || gameState.phase !== 'playing') return []
+      if (!gameState || gameState.phase !== GAME_PHASES.PLAYING) return []
 
       const player = gameState.players.find((p) => p.id === playerId)
       if (!player) return []
@@ -362,7 +363,7 @@ export function useGameState(
     const processAI = async () => {
       try {
         // ナポレオンフェーズでは、次の宣言者がAIかチェック
-        if (gameState.phase === 'napoleon') {
+        if (gameState.phase === GAME_PHASES.NAPOLEON) {
           const { getNextDeclarationPlayer } = await import(
             '@/lib/napoleonRules'
           )
@@ -373,9 +374,9 @@ export function useGameState(
         }
 
         if (
-          gameState.phase === 'napoleon' ||
-          gameState.phase === 'adjutant' ||
-          gameState.phase === 'card_exchange'
+          gameState.phase === GAME_PHASES.NAPOLEON ||
+          gameState.phase === GAME_PHASES.ADJUTANT ||
+          gameState.phase === GAME_PHASES.EXCHANGE
         ) {
           const updatedState = await processAITurn(gameState)
           if (
@@ -395,7 +396,7 @@ export function useGameState(
               }
             }
           }
-        } else if (gameState.phase === 'playing') {
+        } else if (gameState.phase === GAME_PHASES.PLAYING) {
           // トリック結果表示中の場合は、ユーザーがモーダルを閉じるまで待機
           if (gameState.showingTrickResult) {
             return // AIの自動進行を停止し、ユーザーの操作を待つ

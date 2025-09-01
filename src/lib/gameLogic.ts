@@ -1,4 +1,5 @@
 import { processAllAIPhases } from '@/lib/ai/gameTricks'
+import { GAME_PHASES } from '@/lib/constants'
 import { determineWinnerWithSpecialRules } from '@/lib/napoleonCardRules'
 import type {
   Card,
@@ -49,7 +50,7 @@ export function initializeGame(playerNames: string[]): GameState {
     currentTrick: createNewTrick(),
     tricks: [],
     currentPlayerIndex: 0,
-    phase: 'napoleon',
+    phase: GAME_PHASES.NAPOLEON,
     hiddenCards,
     passedPlayers: [],
     declarationTurn: 0,
@@ -72,7 +73,7 @@ export function initializeAIGame(humanPlayerName: string): GameState {
     currentTrick: createNewTrick(),
     tricks: [],
     currentPlayerIndex: 0,
-    phase: 'napoleon',
+    phase: GAME_PHASES.NAPOLEON,
     hiddenCards,
     passedPlayers: [],
     declarationTurn: 0,
@@ -138,7 +139,7 @@ export function declareNapoleon(
   playerId: string,
   selectedCard?: Card
 ): GameState {
-  if (gameState.phase !== 'napoleon') {
+  if (gameState.phase !== GAME_PHASES.NAPOLEON) {
     throw new Error('Napoleon can only be declared during napoleon phase')
   }
 
@@ -152,7 +153,7 @@ export function declareNapoleon(
   return {
     ...gameState,
     players: updatedPlayers,
-    phase: 'adjutant',
+    phase: GAME_PHASES.ADJUTANT,
     napoleonCard: selectedCard,
     currentPlayerIndex: gameState.players.findIndex((p) => p.id === playerId),
     updatedAt: new Date(),
@@ -212,7 +213,7 @@ export function redealCards(gameState: GameState): GameState {
     needsRedeal: false,
     napoleonDeclaration: undefined,
     napoleonCard: undefined,
-    phase: 'napoleon',
+    phase: GAME_PHASES.NAPOLEON,
     currentPlayerIndex: 0,
     updatedAt: new Date(),
   }
@@ -225,7 +226,7 @@ export function setAdjutant(
   gameState: GameState,
   adjutantCard: Card
 ): GameState {
-  if (gameState.phase !== 'adjutant') {
+  if (gameState.phase !== GAME_PHASES.ADJUTANT) {
     throw new Error('Adjutant can only be set during adjutant phase')
   }
 
@@ -259,7 +260,7 @@ export function setAdjutant(
   return {
     ...gameState,
     players: finalPlayers,
-    phase: 'card_exchange',
+    phase: GAME_PHASES.EXCHANGE,
     napoleonCard: adjutantCard,
     updatedAt: new Date(),
   }
@@ -273,7 +274,7 @@ export function exchangeCards(
   playerId: string,
   cardsToDiscard: Card[]
 ): GameState {
-  if (gameState.phase !== 'card_exchange') {
+  if (gameState.phase !== GAME_PHASES.EXCHANGE) {
     throw new Error('Card exchange can only be done during card exchange phase')
   }
 
@@ -317,7 +318,7 @@ export function exchangeCards(
     ...gameState,
     players: updatedPlayers,
     exchangedCards: cardsToDiscard,
-    phase: 'playing',
+    phase: GAME_PHASES.PLAYING,
     currentPlayerIndex: gameState.players.findIndex((p) => p.id === playerId),
     updatedAt: new Date(),
   }
@@ -328,9 +329,9 @@ export function exchangeCards(
  */
 export async function processAITurn(gameState: GameState): Promise<GameState> {
   if (
-    gameState.phase === 'napoleon' ||
-    gameState.phase === 'adjutant' ||
-    gameState.phase === 'card_exchange'
+    gameState.phase === GAME_PHASES.NAPOLEON ||
+    gameState.phase === GAME_PHASES.ADJUTANT ||
+    gameState.phase === GAME_PHASES.EXCHANGE
   ) {
     return await processAllAIPhases(gameState)
   }
@@ -353,7 +354,7 @@ export function playCard(
   playerId: string,
   cardId: string
 ): GameState {
-  if (gameState.phase !== 'playing') {
+  if (gameState.phase !== GAME_PHASES.PLAYING) {
     throw new Error('Cards can only be played during playing phase')
   }
 
@@ -450,7 +451,7 @@ export function completeTrick(gameState: GameState): GameState {
       ...gameState,
       currentTrick: completedTrick,
       tricks: allTricks,
-      phase: 'finished',
+      phase: GAME_PHASES.FINISHED,
       updatedAt: new Date(),
     }
   }
@@ -537,7 +538,7 @@ function determineWinnerBasic(trick: Trick): PlayedCard | null {
  * ゲーム終了チェック
  */
 export function isGameFinished(gameState: GameState): boolean {
-  return gameState.phase === 'finished'
+  return gameState.phase === GAME_PHASES.FINISHED
 }
 
 /**

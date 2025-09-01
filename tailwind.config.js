@@ -5,6 +5,18 @@ module.exports = {
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  // Safelist important classes to prevent purging
+  safelist: [
+    'text-black',
+    'text-red-600',
+    'text-red-500',
+    'font-bold',
+    // Suit color classes
+    {
+      pattern: /text-(black|red-\d+)/,
+      variants: ['hover', 'focus'],
+    },
+  ],
   theme: {
     extend: {
       colors: {

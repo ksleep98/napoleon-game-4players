@@ -1,7 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { createDeck } from '@/lib/constants'
+import {
+  CARD_RANKS,
+  COUNTER_SUITS,
+  createDeck,
+  SPECIAL_CARDS,
+  SUITS,
+} from '@/lib/constants'
 import type { Card as CardType, GameState, Suit } from '@/types/game'
 import { Card } from './Card'
 
@@ -13,12 +19,7 @@ interface AdjutantSelectorProps {
 
 // 裏スートを取得する関数
 function getOppositeSuit(suit: Suit): Suit {
-  const oppositeMap: Record<Suit, Suit> = {
-    spades: 'clubs',
-    clubs: 'spades',
-    hearts: 'diamonds',
-    diamonds: 'hearts',
-  }
+  const oppositeMap: Record<Suit, Suit> = COUNTER_SUITS
   return oppositeMap[suit]
 }
 
@@ -31,12 +32,16 @@ function getImportantCards(trumpSuit: Suit): {
 } {
   const allCards = createDeck()
 
-  const mighty = allCards.find((c) => c.suit === 'spades' && c.rank === 'A')
-  const trumpJack = allCards.find((c) => c.suit === trumpSuit && c.rank === 'J')
-  const oppositeJack = allCards.find(
-    (c) => c.suit === getOppositeSuit(trumpSuit) && c.rank === 'J'
+  const mighty = allCards.find(
+    (c) => c.suit === SPECIAL_CARDS.MIGHTY_SUIT && c.rank === CARD_RANKS.ACE
   )
-  const aces = allCards.filter((c) => c.rank === 'A')
+  const trumpJack = allCards.find(
+    (c) => c.suit === trumpSuit && c.rank === CARD_RANKS.JACK
+  )
+  const oppositeJack = allCards.find(
+    (c) => c.suit === getOppositeSuit(trumpSuit) && c.rank === CARD_RANKS.JACK
+  )
+  const aces = allCards.filter((c) => c.rank === CARD_RANKS.ACE)
 
   if (!mighty || !trumpJack || !oppositeJack) {
     throw new Error('Required cards not found in deck')
@@ -240,7 +245,7 @@ export function AdjutantSelector({
         <div className="space-y-4">
           <h4 className="text-lg font-semibold">All 52 Cards:</h4>
           <div className="space-y-3">
-            {['spades', 'hearts', 'diamonds', 'clubs'].map((suit) => (
+            {SUITS.map((suit) => (
               <div key={suit} className="space-y-2">
                 <h5 className={`font-medium ${getSuitColor(suit as Suit)}`}>
                   {getSuitDisplay(suit as Suit)}

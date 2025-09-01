@@ -1,3 +1,4 @@
+import { CARD_RANKS, SUIT_ENUM } from '@/lib/constants'
 import {
   checkHuntingJackRule,
   checkSame2Rule,
@@ -52,47 +53,87 @@ describe('Napoleon Card Rules', () => {
 
   describe('Helper Functions', () => {
     it('should identify counter suits correctly', () => {
-      expect(getCounterSuit('spades')).toBe('clubs')
-      expect(getCounterSuit('clubs')).toBe('spades')
-      expect(getCounterSuit('hearts')).toBe('diamonds')
-      expect(getCounterSuit('diamonds')).toBe('hearts')
+      expect(getCounterSuit(SUIT_ENUM.SPADES)).toBe(SUIT_ENUM.CLUBS)
+      expect(getCounterSuit(SUIT_ENUM.CLUBS)).toBe(SUIT_ENUM.SPADES)
+      expect(getCounterSuit(SUIT_ENUM.HEARTS)).toBe(SUIT_ENUM.DIAMONDS)
+      expect(getCounterSuit(SUIT_ENUM.DIAMONDS)).toBe(SUIT_ENUM.HEARTS)
     })
 
     it('should identify mighty (♠A) correctly', () => {
-      const mighty = createCard('spades-A', 'spades', 'A')
-      const notMighty = createCard('hearts-A', 'hearts', 'A')
+      const mighty = createCard(
+        `${SUIT_ENUM.SPADES}-${CARD_RANKS.ACE}`,
+        SUIT_ENUM.SPADES,
+        CARD_RANKS.ACE
+      )
+      const notMighty = createCard(
+        `${SUIT_ENUM.HEARTS}-${CARD_RANKS.ACE}`,
+        SUIT_ENUM.HEARTS,
+        CARD_RANKS.ACE
+      )
 
       expect(isMighty(mighty)).toBe(true)
       expect(isMighty(notMighty)).toBe(false)
     })
 
     it('should identify trump jack correctly', () => {
-      const trumpJack = createCard('hearts-J', 'hearts', 'J')
-      const notTrumpJack = createCard('spades-J', 'spades', 'J')
+      const trumpJack = createCard(
+        `${SUIT_ENUM.HEARTS}-${CARD_RANKS.JACK}`,
+        SUIT_ENUM.HEARTS,
+        CARD_RANKS.JACK
+      )
+      const notTrumpJack = createCard(
+        `${SUIT_ENUM.SPADES}-${CARD_RANKS.JACK}`,
+        SUIT_ENUM.SPADES,
+        CARD_RANKS.JACK
+      )
 
-      expect(isTrumpJack(trumpJack, 'hearts')).toBe(true)
-      expect(isTrumpJack(notTrumpJack, 'hearts')).toBe(false)
+      expect(isTrumpJack(trumpJack, SUIT_ENUM.HEARTS)).toBe(true)
+      expect(isTrumpJack(notTrumpJack, SUIT_ENUM.HEARTS)).toBe(false)
     })
 
     it('should identify counter jack correctly', () => {
-      const counterJack = createCard('diamonds-J', 'diamonds', 'J')
-      const notCounterJack = createCard('spades-J', 'spades', 'J')
+      const counterJack = createCard(
+        `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.JACK}`,
+        SUIT_ENUM.DIAMONDS,
+        CARD_RANKS.JACK
+      )
+      const notCounterJack = createCard(
+        `${SUIT_ENUM.SPADES}-${CARD_RANKS.JACK}`,
+        SUIT_ENUM.SPADES,
+        CARD_RANKS.JACK
+      )
 
-      expect(isCounterJack(counterJack, 'hearts')).toBe(true)
-      expect(isCounterJack(notCounterJack, 'hearts')).toBe(false)
+      expect(isCounterJack(counterJack, SUIT_ENUM.HEARTS)).toBe(true)
+      expect(isCounterJack(notCounterJack, SUIT_ENUM.HEARTS)).toBe(false)
     })
 
     it('should identify trump cards correctly', () => {
-      const trumpCard = createCard('hearts-K', 'hearts', 'K')
-      const notTrumpCard = createCard('spades-K', 'spades', 'K')
+      const trumpCard = createCard(
+        `${SUIT_ENUM.HEARTS}-${CARD_RANKS.KING}`,
+        SUIT_ENUM.HEARTS,
+        CARD_RANKS.KING
+      )
+      const notTrumpCard = createCard(
+        `${SUIT_ENUM.SPADES}-${CARD_RANKS.KING}`,
+        SUIT_ENUM.SPADES,
+        CARD_RANKS.KING
+      )
 
-      expect(isTrump(trumpCard, 'hearts')).toBe(true)
-      expect(isTrump(notTrumpCard, 'hearts')).toBe(false)
+      expect(isTrump(trumpCard, SUIT_ENUM.HEARTS)).toBe(true)
+      expect(isTrump(notTrumpCard, SUIT_ENUM.HEARTS)).toBe(false)
     })
 
     it('should identify heart queen correctly', () => {
-      const heartQueen = createCard('hearts-Q', 'hearts', 'Q')
-      const notHeartQueen = createCard('spades-Q', 'spades', 'Q')
+      const heartQueen = createCard(
+        `${SUIT_ENUM.HEARTS}-${CARD_RANKS.QUEEN}`,
+        SUIT_ENUM.HEARTS,
+        CARD_RANKS.QUEEN
+      )
+      const notHeartQueen = createCard(
+        `${SUIT_ENUM.SPADES}-${CARD_RANKS.QUEEN}`,
+        SUIT_ENUM.SPADES,
+        CARD_RANKS.QUEEN
+      )
 
       expect(isHeartQueen(heartQueen)).toBe(true)
       expect(isHeartQueen(notHeartQueen)).toBe(false)
@@ -101,21 +142,55 @@ describe('Napoleon Card Rules', () => {
 
   describe('Card Strength', () => {
     it('should assign correct strength values', () => {
-      const mighty = createCard('spades-A', 'spades', 'A')
-      const trumpJack = createCard('hearts-J', 'hearts', 'J')
-      const counterJack = createCard('diamonds-J', 'diamonds', 'J')
-      const trumpCard = createCard('hearts-K', 'hearts', 'K')
-      const leadingCard = createCard('clubs-A', 'clubs', 'A')
-      const otherCard = createCard('spades-K', 'spades', 'K')
-
-      expect(getCardStrength(mighty, 'hearts', 'clubs')).toBe(1000)
-      expect(getCardStrength(trumpJack, 'hearts', 'clubs')).toBe(900)
-      expect(getCardStrength(counterJack, 'hearts', 'clubs')).toBe(800)
-      expect(getCardStrength(trumpCard, 'hearts', 'clubs')).toBeGreaterThan(700)
-      expect(getCardStrength(leadingCard, 'hearts', 'clubs')).toBeGreaterThan(
-        600
+      const mighty = createCard(
+        `${SUIT_ENUM.SPADES}-${CARD_RANKS.ACE}`,
+        SUIT_ENUM.SPADES,
+        CARD_RANKS.ACE
       )
-      expect(getCardStrength(otherCard, 'hearts', 'clubs')).toBeLessThan(600)
+      const trumpJack = createCard(
+        `${SUIT_ENUM.HEARTS}-${CARD_RANKS.JACK}`,
+        SUIT_ENUM.HEARTS,
+        CARD_RANKS.JACK
+      )
+      const counterJack = createCard(
+        `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.JACK}`,
+        SUIT_ENUM.DIAMONDS,
+        CARD_RANKS.JACK
+      )
+      const trumpCard = createCard(
+        `${SUIT_ENUM.HEARTS}-${CARD_RANKS.KING}`,
+        SUIT_ENUM.HEARTS,
+        CARD_RANKS.KING
+      )
+      const leadingCard = createCard(
+        `${SUIT_ENUM.CLUBS}-${CARD_RANKS.ACE}`,
+        SUIT_ENUM.CLUBS,
+        CARD_RANKS.ACE
+      )
+      const otherCard = createCard(
+        `${SUIT_ENUM.SPADES}-${CARD_RANKS.KING}`,
+        SUIT_ENUM.SPADES,
+        CARD_RANKS.KING
+      )
+
+      expect(getCardStrength(mighty, SUIT_ENUM.HEARTS, SUIT_ENUM.CLUBS)).toBe(
+        1000
+      )
+      expect(
+        getCardStrength(trumpJack, SUIT_ENUM.HEARTS, SUIT_ENUM.CLUBS)
+      ).toBe(900)
+      expect(
+        getCardStrength(counterJack, SUIT_ENUM.HEARTS, SUIT_ENUM.CLUBS)
+      ).toBe(800)
+      expect(
+        getCardStrength(trumpCard, SUIT_ENUM.HEARTS, SUIT_ENUM.CLUBS)
+      ).toBeGreaterThan(700)
+      expect(
+        getCardStrength(leadingCard, SUIT_ENUM.HEARTS, SUIT_ENUM.CLUBS)
+      ).toBeGreaterThan(600)
+      expect(
+        getCardStrength(otherCard, SUIT_ENUM.HEARTS, SUIT_ENUM.CLUBS)
+      ).toBeLessThan(600)
     })
   })
 
@@ -125,15 +200,47 @@ describe('Napoleon Card Rules', () => {
         const trick: Trick = {
           id: 'test-trick',
           cards: [
-            createPlayedCard(createCard('clubs-K', 'clubs', 'K'), 'p1', 0),
-            createPlayedCard(createCard('clubs-2', 'clubs', '2'), 'p2', 1),
-            createPlayedCard(createCard('clubs-7', 'clubs', '7'), 'p3', 2),
-            createPlayedCard(createCard('clubs-A', 'clubs', 'A'), 'p4', 3),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.CLUBS}-${CARD_RANKS.KING}`,
+                SUIT_ENUM.CLUBS,
+                CARD_RANKS.KING
+              ),
+              'p1',
+              0
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.CLUBS}-${CARD_RANKS.TWO}`,
+                SUIT_ENUM.CLUBS,
+                CARD_RANKS.TWO
+              ),
+              'p2',
+              1
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.CLUBS}-${CARD_RANKS.SEVEN}`,
+                SUIT_ENUM.CLUBS,
+                CARD_RANKS.SEVEN
+              ),
+              'p3',
+              2
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.CLUBS}-${CARD_RANKS.ACE}`,
+                SUIT_ENUM.CLUBS,
+                CARD_RANKS.ACE
+              ),
+              'p4',
+              3
+            ),
           ],
           completed: true,
         }
 
-        const winner = checkSame2Rule(trick, 'hearts')
+        const winner = checkSame2Rule(trick, SUIT_ENUM.HEARTS)
         expect(winner).not.toBeNull()
         expect(winner?.playerId).toBe('p2')
       })
@@ -142,15 +249,47 @@ describe('Napoleon Card Rules', () => {
         const trick: Trick = {
           id: 'test-trick',
           cards: [
-            createPlayedCard(createCard('hearts-K', 'hearts', 'K'), 'p1', 0),
-            createPlayedCard(createCard('hearts-2', 'hearts', '2'), 'p2', 1),
-            createPlayedCard(createCard('hearts-7', 'hearts', '7'), 'p3', 2),
-            createPlayedCard(createCard('hearts-A', 'hearts', 'A'), 'p4', 3),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.HEARTS}-${CARD_RANKS.KING}`,
+                SUIT_ENUM.HEARTS,
+                CARD_RANKS.KING
+              ),
+              'p1',
+              0
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.HEARTS}-${CARD_RANKS.TWO}`,
+                SUIT_ENUM.HEARTS,
+                CARD_RANKS.TWO
+              ),
+              'p2',
+              1
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.HEARTS}-${CARD_RANKS.SEVEN}`,
+                SUIT_ENUM.HEARTS,
+                CARD_RANKS.SEVEN
+              ),
+              'p3',
+              2
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.HEARTS}-${CARD_RANKS.ACE}`,
+                SUIT_ENUM.HEARTS,
+                CARD_RANKS.ACE
+              ),
+              'p4',
+              3
+            ),
           ],
           completed: true,
         }
 
-        const winner = checkSame2Rule(trick, 'hearts')
+        const winner = checkSame2Rule(trick, SUIT_ENUM.HEARTS)
         expect(winner).toBeNull()
       })
 
@@ -158,20 +297,48 @@ describe('Napoleon Card Rules', () => {
         const trick: Trick = {
           id: 'test-trick',
           cards: [
-            createPlayedCard(createCard('clubs-K', 'clubs', 'K'), 'p1', 0),
-            createPlayedCard(createCard('clubs-2', 'clubs', '2'), 'p2', 1),
             createPlayedCard(
-              createCard('diamonds-J', 'diamonds', 'J'),
+              createCard(
+                `${SUIT_ENUM.CLUBS}-${CARD_RANKS.KING}`,
+                SUIT_ENUM.CLUBS,
+                CARD_RANKS.KING
+              ),
+              'p1',
+              0
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.CLUBS}-${CARD_RANKS.TWO}`,
+                SUIT_ENUM.CLUBS,
+                CARD_RANKS.TWO
+              ),
+              'p2',
+              1
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.JACK}`,
+                SUIT_ENUM.DIAMONDS,
+                CARD_RANKS.JACK
+              ),
               'p3',
               2
             ), // 裏J (hearts trump)
-            createPlayedCard(createCard('clubs-A', 'clubs', 'A'), 'p4', 3),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.CLUBS}-${CARD_RANKS.ACE}`,
+                SUIT_ENUM.CLUBS,
+                CARD_RANKS.ACE
+              ),
+              'p4',
+              3
+            ),
           ],
           completed: true,
         }
 
         // セイム2の条件は満たされているが、裏Jがあるので無効
-        const winner = checkSame2Rule(trick, 'hearts')
+        const winner = checkSame2Rule(trick, SUIT_ENUM.HEARTS)
         expect(winner).toBeNull()
       })
     })
@@ -181,11 +348,39 @@ describe('Napoleon Card Rules', () => {
         const trick: Trick = {
           id: 'test-trick',
           cards: [
-            createPlayedCard(createCard('spades-A', 'spades', 'A'), 'p1', 0),
-            createPlayedCard(createCard('hearts-Q', 'hearts', 'Q'), 'p2', 1),
-            createPlayedCard(createCard('clubs-7', 'clubs', '7'), 'p3', 2),
             createPlayedCard(
-              createCard('diamonds-K', 'diamonds', 'K'),
+              createCard(
+                `${SUIT_ENUM.SPADES}-${CARD_RANKS.ACE}`,
+                SUIT_ENUM.SPADES,
+                CARD_RANKS.ACE
+              ),
+              'p1',
+              0
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.HEARTS}-${CARD_RANKS.QUEEN}`,
+                SUIT_ENUM.HEARTS,
+                CARD_RANKS.QUEEN
+              ),
+              'p2',
+              1
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.CLUBS}-${CARD_RANKS.SEVEN}`,
+                SUIT_ENUM.CLUBS,
+                CARD_RANKS.SEVEN
+              ),
+              'p3',
+              2
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.KING}`,
+                SUIT_ENUM.DIAMONDS,
+                CARD_RANKS.KING
+              ),
               'p4',
               3
             ),
@@ -193,7 +388,7 @@ describe('Napoleon Card Rules', () => {
           completed: true,
         }
 
-        const winner = checkYoromekiRule(trick, 'clubs')
+        const winner = checkYoromekiRule(trick, SUIT_ENUM.CLUBS)
         expect(winner).not.toBeNull()
         expect(winner?.playerId).toBe('p2')
       })
@@ -202,11 +397,39 @@ describe('Napoleon Card Rules', () => {
         const trick: Trick = {
           id: 'test-trick',
           cards: [
-            createPlayedCard(createCard('spades-A', 'spades', 'A'), 'p1', 0),
-            createPlayedCard(createCard('hearts-Q', 'hearts', 'Q'), 'p2', 1),
-            createPlayedCard(createCard('clubs-J', 'clubs', 'J'), 'p3', 2),
             createPlayedCard(
-              createCard('diamonds-K', 'diamonds', 'K'),
+              createCard(
+                `${SUIT_ENUM.SPADES}-${CARD_RANKS.ACE}`,
+                SUIT_ENUM.SPADES,
+                CARD_RANKS.ACE
+              ),
+              'p1',
+              0
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.HEARTS}-${CARD_RANKS.QUEEN}`,
+                SUIT_ENUM.HEARTS,
+                CARD_RANKS.QUEEN
+              ),
+              'p2',
+              1
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.CLUBS}-${CARD_RANKS.JACK}`,
+                SUIT_ENUM.CLUBS,
+                CARD_RANKS.JACK
+              ),
+              'p3',
+              2
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.KING}`,
+                SUIT_ENUM.DIAMONDS,
+                CARD_RANKS.KING
+              ),
               'p4',
               3
             ),
@@ -214,7 +437,7 @@ describe('Napoleon Card Rules', () => {
           completed: true,
         }
 
-        const winner = checkYoromekiRule(trick, 'clubs')
+        const winner = checkYoromekiRule(trick, SUIT_ENUM.CLUBS)
         expect(winner).toBeNull()
       })
     })
@@ -224,11 +447,39 @@ describe('Napoleon Card Rules', () => {
         const trick: Trick = {
           id: 'test-trick',
           cards: [
-            createPlayedCard(createCard('spades-J', 'spades', 'J'), 'p1', 0),
-            createPlayedCard(createCard('hearts-J', 'hearts', 'J'), 'p2', 1),
-            createPlayedCard(createCard('clubs-7', 'clubs', '7'), 'p3', 2),
             createPlayedCard(
-              createCard('diamonds-K', 'diamonds', 'K'),
+              createCard(
+                `${SUIT_ENUM.SPADES}-${CARD_RANKS.JACK}`,
+                SUIT_ENUM.SPADES,
+                CARD_RANKS.JACK
+              ),
+              'p1',
+              0
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.HEARTS}-${CARD_RANKS.JACK}`,
+                SUIT_ENUM.HEARTS,
+                CARD_RANKS.JACK
+              ),
+              'p2',
+              1
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.CLUBS}-${CARD_RANKS.SEVEN}`,
+                SUIT_ENUM.CLUBS,
+                CARD_RANKS.SEVEN
+              ),
+              'p3',
+              2
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.KING}`,
+                SUIT_ENUM.DIAMONDS,
+                CARD_RANKS.KING
+              ),
               'p4',
               3
             ),
@@ -236,7 +487,7 @@ describe('Napoleon Card Rules', () => {
           completed: true,
         }
 
-        const winner = checkHuntingJackRule(trick, 'spades')
+        const winner = checkHuntingJackRule(trick, SUIT_ENUM.SPADES)
         expect(winner).not.toBeNull()
         expect(winner?.playerId).toBe('p2') // Hearts J (weakest) should win
       })
@@ -245,11 +496,39 @@ describe('Napoleon Card Rules', () => {
         const trick: Trick = {
           id: 'test-trick',
           cards: [
-            createPlayedCard(createCard('spades-J', 'spades', 'J'), 'p1', 0),
-            createPlayedCard(createCard('hearts-J', 'hearts', 'J'), 'p2', 1),
-            createPlayedCard(createCard('spades-A', 'spades', 'A'), 'p3', 2),
             createPlayedCard(
-              createCard('diamonds-K', 'diamonds', 'K'),
+              createCard(
+                `${SUIT_ENUM.SPADES}-${CARD_RANKS.JACK}`,
+                SUIT_ENUM.SPADES,
+                CARD_RANKS.JACK
+              ),
+              'p1',
+              0
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.HEARTS}-${CARD_RANKS.JACK}`,
+                SUIT_ENUM.HEARTS,
+                CARD_RANKS.JACK
+              ),
+              'p2',
+              1
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.SPADES}-${CARD_RANKS.ACE}`,
+                SUIT_ENUM.SPADES,
+                CARD_RANKS.ACE
+              ),
+              'p3',
+              2
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.KING}`,
+                SUIT_ENUM.DIAMONDS,
+                CARD_RANKS.KING
+              ),
               'p4',
               3
             ),
@@ -257,7 +536,7 @@ describe('Napoleon Card Rules', () => {
           completed: true,
         }
 
-        const winner = checkHuntingJackRule(trick, 'spades')
+        const winner = checkHuntingJackRule(trick, SUIT_ENUM.SPADES)
         expect(winner).toBeNull()
       })
     })
@@ -269,15 +548,51 @@ describe('Napoleon Card Rules', () => {
       const trick: Trick = {
         id: 'test-trick',
         cards: [
-          createPlayedCard(createCard('spades-A', 'spades', 'A'), 'p1', 0),
-          createPlayedCard(createCard('hearts-Q', 'hearts', 'Q'), 'p2', 1),
-          createPlayedCard(createCard('clubs-7', 'clubs', '7'), 'p3', 2),
-          createPlayedCard(createCard('diamonds-K', 'diamonds', 'K'), 'p4', 3),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.SPADES}-${CARD_RANKS.ACE}`,
+              SUIT_ENUM.SPADES,
+              CARD_RANKS.ACE
+            ),
+            'p1',
+            0
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.QUEEN}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.QUEEN
+            ),
+            'p2',
+            1
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.SEVEN}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.SEVEN
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.DIAMONDS,
+              CARD_RANKS.KING
+            ),
+            'p4',
+            3
+          ),
         ],
         completed: true,
       }
 
-      const winner = determineWinnerWithSpecialRules(trick, 'clubs', false)
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.CLUBS,
+        false
+      )
       expect(winner).not.toBeNull()
       expect(winner?.playerId).toBe('p2') // Yoromeki should win over mighty
     })
@@ -287,15 +602,51 @@ describe('Napoleon Card Rules', () => {
       const trick: Trick = {
         id: 'test-trick',
         cards: [
-          createPlayedCard(createCard('clubs-K', 'clubs', 'K'), 'p1', 0),
-          createPlayedCard(createCard('clubs-2', 'clubs', '2'), 'p2', 1), // セイム2候補
-          createPlayedCard(createCard('diamonds-J', 'diamonds', 'J'), 'p3', 2), // 裏J (hearts trump)
-          createPlayedCard(createCard('clubs-A', 'clubs', 'A'), 'p4', 3),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.KING
+            ),
+            'p1',
+            0
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.TWO}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.TWO
+            ),
+            'p2',
+            1
+          ), // セイム2候補
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.JACK}`,
+              SUIT_ENUM.DIAMONDS,
+              CARD_RANKS.JACK
+            ),
+            'p3',
+            2
+          ), // 裏J (hearts trump)
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.ACE}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.ACE
+            ),
+            'p4',
+            3
+          ),
         ],
         completed: true,
       }
 
-      const winner = determineWinnerWithSpecialRules(trick, 'hearts', false)
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.HEARTS,
+        false
+      )
       expect(winner).not.toBeNull()
       expect(winner?.playerId).toBe('p3') // 裏Jが勝利
     })
@@ -305,16 +656,52 @@ describe('Napoleon Card Rules', () => {
       const trick: Trick = {
         id: 'test-trick',
         cards: [
-          createPlayedCard(createCard('spades-K', 'spades', 'K'), 'p1', 0), // リードはスペード
-          createPlayedCard(createCard('spades-2', 'spades', '2'), 'p2', 1), // セイム2候補
-          createPlayedCard(createCard('spades-7', 'spades', '7'), 'p3', 2), // 同じスート
-          createPlayedCard(createCard('diamonds-J', 'diamonds', 'J'), 'p4', 3), // 裏J (hearts trump時)
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.SPADES}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.SPADES,
+              CARD_RANKS.KING
+            ),
+            'p1',
+            0
+          ), // リードはスペード
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.SPADES}-${CARD_RANKS.TWO}`,
+              SUIT_ENUM.SPADES,
+              CARD_RANKS.TWO
+            ),
+            'p2',
+            1
+          ), // セイム2候補
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.SPADES}-${CARD_RANKS.SEVEN}`,
+              SUIT_ENUM.SPADES,
+              CARD_RANKS.SEVEN
+            ),
+            'p3',
+            2
+          ), // 同じスート
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.JACK}`,
+              SUIT_ENUM.DIAMONDS,
+              CARD_RANKS.JACK
+            ),
+            'p4',
+            3
+          ), // 裏J (hearts trump時)
         ],
         completed: true,
       }
 
       // ハートが切り札の場合、ダイヤのJは裏J
-      const winner = determineWinnerWithSpecialRules(trick, 'hearts', false)
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.HEARTS,
+        false
+      )
       expect(winner).not.toBeNull()
       expect(winner?.playerId).toBe('p4') // 裏Jが勝利
     })
@@ -323,15 +710,51 @@ describe('Napoleon Card Rules', () => {
       const trick: Trick = {
         id: 'test-trick',
         cards: [
-          createPlayedCard(createCard('clubs-K', 'clubs', 'K'), 'p1', 0),
-          createPlayedCard(createCard('clubs-7', 'clubs', '7'), 'p2', 1),
-          createPlayedCard(createCard('clubs-Q', 'clubs', 'Q'), 'p3', 2),
-          createPlayedCard(createCard('clubs-A', 'clubs', 'A'), 'p4', 3),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.KING
+            ),
+            'p1',
+            0
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.SEVEN}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.SEVEN
+            ),
+            'p2',
+            1
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.QUEEN}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.QUEEN
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.ACE}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.ACE
+            ),
+            'p4',
+            3
+          ),
         ],
         completed: true,
       }
 
-      const winner = determineWinnerWithSpecialRules(trick, 'hearts', false)
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.HEARTS,
+        false
+      )
       expect(winner).not.toBeNull()
       expect(winner?.playerId).toBe('p4') // Ace should win normally
     })

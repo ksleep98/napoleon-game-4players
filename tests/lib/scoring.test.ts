@@ -1,3 +1,4 @@
+import { CARD_RANKS, SUIT_ENUM } from '@/lib/constants'
 import { initializeGame } from '@/lib/gameLogic'
 import {
   calculateGameResult,
@@ -42,12 +43,20 @@ describe('Scoring', () => {
           id: 'trick1',
           cards: [
             {
-              card: createCard('spades-A', 'spades', 'A'),
+              card: createCard(
+                `${SUIT_ENUM.SPADES}-${CARD_RANKS.ACE}`,
+                SUIT_ENUM.SPADES,
+                CARD_RANKS.ACE
+              ),
               playerId: 'player_1',
               order: 1,
             },
             {
-              card: createCard('hearts-2', 'hearts', '2'),
+              card: createCard(
+                `${SUIT_ENUM.HEARTS}-${CARD_RANKS.TWO}`,
+                SUIT_ENUM.HEARTS,
+                CARD_RANKS.TWO
+              ),
               playerId: 'player_2',
               order: 2,
             },
@@ -59,12 +68,20 @@ describe('Scoring', () => {
           id: 'trick2',
           cards: [
             {
-              card: createCard('clubs-K', 'clubs', 'K'),
+              card: createCard(
+                `${SUIT_ENUM.CLUBS}-${CARD_RANKS.KING}`,
+                SUIT_ENUM.CLUBS,
+                CARD_RANKS.KING
+              ),
               playerId: 'player_3',
               order: 1,
             },
             {
-              card: createCard('diamonds-Q', 'diamonds', 'Q'),
+              card: createCard(
+                `${SUIT_ENUM.DIAMONDS}-Q`,
+                SUIT_ENUM.DIAMONDS,
+                'Q'
+              ),
               playerId: 'player_4',
               order: 2,
             },
@@ -98,12 +115,20 @@ describe('Scoring', () => {
           id: 'trick1',
           cards: [
             {
-              card: createCard('spades-A', 'spades', 'A'),
+              card: createCard(
+                `${SUIT_ENUM.SPADES}-${CARD_RANKS.ACE}`,
+                SUIT_ENUM.SPADES,
+                CARD_RANKS.ACE
+              ),
               playerId: 'player_1',
               order: 1,
             },
             {
-              card: createCard('hearts-2', 'hearts', '2'),
+              card: createCard(
+                `${SUIT_ENUM.HEARTS}-${CARD_RANKS.TWO}`,
+                SUIT_ENUM.HEARTS,
+                CARD_RANKS.TWO
+              ),
               playerId: 'player_2',
               order: 2,
             },
@@ -115,12 +140,16 @@ describe('Scoring', () => {
           id: 'trick2',
           cards: [
             {
-              card: createCard('clubs-3', 'clubs', '3'),
+              card: createCard(`${SUIT_ENUM.CLUBS}-3`, SUIT_ENUM.CLUBS, '3'),
               playerId: 'player_3',
               order: 1,
             },
             {
-              card: createCard('diamonds-4', 'diamonds', '4'),
+              card: createCard(
+                `${SUIT_ENUM.DIAMONDS}-4`,
+                SUIT_ENUM.DIAMONDS,
+                '4'
+              ),
               playerId: 'player_4',
               order: 2,
             },
@@ -154,7 +183,7 @@ describe('Scoring', () => {
           id: `trick${i}`,
           cards: [
             {
-              card: createCard(`card${i}`, 'spades', 'A'),
+              card: createCard(`card${i}`, SUIT_ENUM.SPADES, CARD_RANKS.ACE),
               playerId: 'player_1',
               order: 1,
             },
@@ -177,12 +206,20 @@ describe('Scoring', () => {
           id: 'napoleon-trick1',
           cards: [
             {
-              card: createCard('spades-A', 'spades', 'A'),
+              card: createCard(
+                `${SUIT_ENUM.SPADES}-${CARD_RANKS.ACE}`,
+                SUIT_ENUM.SPADES,
+                CARD_RANKS.ACE
+              ),
               playerId: 'player_1',
               order: 1,
             },
             {
-              card: createCard('hearts-K', 'hearts', 'K'),
+              card: createCard(
+                `${SUIT_ENUM.HEARTS}-${CARD_RANKS.KING}`,
+                SUIT_ENUM.HEARTS,
+                CARD_RANKS.KING
+              ),
               playerId: 'player_2',
               order: 2,
             },
@@ -196,7 +233,7 @@ describe('Scoring', () => {
             id: `citizen-trick${i}`,
             cards: [
               {
-                card: createCard(`card${i}`, 'clubs', '2'),
+                card: createCard(`card${i}`, SUIT_ENUM.CLUBS, CARD_RANKS.TWO),
                 playerId: 'player_3',
                 order: 1,
               },
@@ -222,12 +259,20 @@ describe('Scoring', () => {
           id: 'trick1',
           cards: [
             {
-              card: createCard('spades-A', 'spades', 'A'),
+              card: createCard(
+                `${SUIT_ENUM.SPADES}-${CARD_RANKS.ACE}`,
+                SUIT_ENUM.SPADES,
+                CARD_RANKS.ACE
+              ),
               playerId: 'player_1',
               order: 1,
             },
             {
-              card: createCard('hearts-K', 'hearts', 'K'),
+              card: createCard(
+                `${SUIT_ENUM.HEARTS}-${CARD_RANKS.KING}`,
+                SUIT_ENUM.HEARTS,
+                CARD_RANKS.KING
+              ),
               playerId: 'player_2',
               order: 2,
             },
@@ -239,12 +284,16 @@ describe('Scoring', () => {
           id: 'trick2',
           cards: [
             {
-              card: createCard('clubs-Q', 'clubs', 'Q'),
+              card: createCard(`${SUIT_ENUM.CLUBS}-Q`, SUIT_ENUM.CLUBS, 'Q'),
               playerId: 'player_1',
               order: 1,
             },
             {
-              card: createCard('diamonds-2', 'diamonds', '2'),
+              card: createCard(
+                `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.TWO}`,
+                SUIT_ENUM.DIAMONDS,
+                CARD_RANKS.TWO
+              ),
               playerId: 'player_2',
               order: 2,
             },
@@ -256,12 +305,16 @@ describe('Scoring', () => {
           id: 'trick3',
           cards: [
             {
-              card: createCard('spades-10', 'spades', '10'),
+              card: createCard(
+                `${SUIT_ENUM.SPADES}-${CARD_RANKS.TEN}`,
+                SUIT_ENUM.SPADES,
+                CARD_RANKS.TEN
+              ),
               playerId: 'player_3',
               order: 1,
             },
             {
-              card: createCard('hearts-3', 'hearts', '3'),
+              card: createCard(`${SUIT_ENUM.HEARTS}-3`, SUIT_ENUM.HEARTS, '3'),
               playerId: 'player_4',
               order: 2,
             },
@@ -286,7 +339,7 @@ describe('Scoring', () => {
           id: `trick${i}`,
           cards: [
             {
-              card: createCard(`card${i}`, 'spades', 'A'),
+              card: createCard(`card${i}`, SUIT_ENUM.SPADES, CARD_RANKS.ACE),
               playerId: 'player_1',
               order: 1,
             },
@@ -314,7 +367,11 @@ describe('Scoring', () => {
             id: `napoleon-trick${i}`,
             cards: [
               {
-                card: createCard(`napoleon-card${i}`, 'spades', 'A'),
+                card: createCard(
+                  `napoleon-card${i}`,
+                  SUIT_ENUM.SPADES,
+                  CARD_RANKS.ACE
+                ),
                 playerId: 'player_1',
                 order: 1,
               },
@@ -326,7 +383,11 @@ describe('Scoring', () => {
           id: 'citizen-trick1',
           cards: [
             {
-              card: createCard('citizen-card1', 'hearts', '2'),
+              card: createCard(
+                'citizen-card1',
+                SUIT_ENUM.HEARTS,
+                CARD_RANKS.TWO
+              ),
               playerId: 'player_3',
               order: 1,
             },
@@ -351,19 +412,27 @@ describe('Scoring', () => {
       mockGameState.napoleonDeclaration = {
         playerId: 'player_1',
         targetTricks: 15, // 15枚宣言
-        suit: 'hearts',
+        suit: SUIT_ENUM.HEARTS,
       }
 
       const trick: Trick = {
         id: 'trick1',
         cards: [
           {
-            card: createCard('hearts-A', 'hearts', 'A'),
+            card: createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.ACE}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.ACE
+            ),
             playerId: 'player_1',
             order: 1,
           },
           {
-            card: createCard('clubs-K', 'clubs', 'K'),
+            card: createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.KING
+            ),
             playerId: 'player_2',
             order: 2,
           },
@@ -385,7 +454,7 @@ describe('Scoring', () => {
       mockGameState.napoleonDeclaration = {
         playerId: 'player_1',
         targetTricks: 16,
-        suit: 'spades',
+        suit: SUIT_ENUM.SPADES,
       }
 
       // 16枚の絵札を獲得したフェーズを作成
@@ -393,22 +462,38 @@ describe('Scoring', () => {
         id: `trick${i + 1}`,
         cards: [
           {
-            card: createCard('hearts-A', 'hearts', 'A'),
+            card: createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.ACE}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.ACE
+            ),
             playerId: 'player_1',
             order: 1,
           },
           {
-            card: createCard('hearts-K', 'hearts', 'K'),
+            card: createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.KING
+            ),
             playerId: 'player_1',
             order: 2,
           },
           {
-            card: createCard('hearts-Q', 'hearts', 'Q'),
+            card: createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.QUEEN}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.QUEEN
+            ),
             playerId: 'player_1',
             order: 3,
           },
           {
-            card: createCard('hearts-J', 'hearts', 'J'),
+            card: createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.JACK}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.JACK
+            ),
             playerId: 'player_1',
             order: 4,
           },

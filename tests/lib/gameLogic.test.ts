@@ -1,3 +1,4 @@
+import { CARD_RANKS, GAME_PHASES, SUIT_ENUM } from '@/lib/constants'
 import {
   createNewTrick,
   declareNapoleon,
@@ -10,7 +11,13 @@ import {
   passNapoleonDeclaration,
   setAdjutant,
 } from '@/lib/gameLogic'
-import type { Card, GameState, NapoleonDeclaration, Trick } from '@/types/game'
+import type {
+  Card,
+  GameState,
+  NapoleonDeclaration,
+  Suit,
+  Trick,
+} from '@/types/game'
 
 describe('Game Logic', () => {
   let gameState: GameState
@@ -71,9 +78,9 @@ describe('Game Logic', () => {
         cards: [
           {
             card: {
-              id: 'hearts-7',
-              suit: 'hearts' as const,
-              rank: '7' as const,
+              id: `${SUIT_ENUM.HEARTS}-${CARD_RANKS.SEVEN}`,
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.SEVEN,
               value: 7,
             },
             playerId: 'p1',
@@ -81,9 +88,9 @@ describe('Game Logic', () => {
           },
           {
             card: {
-              id: 'hearts-K',
-              suit: 'hearts' as const,
-              rank: 'K' as const,
+              id: `${SUIT_ENUM.HEARTS}-${CARD_RANKS.KING}`,
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.KING,
               value: 13,
             },
             playerId: 'p2',
@@ -92,7 +99,7 @@ describe('Game Logic', () => {
           {
             card: {
               id: 'hearts-5',
-              suit: 'hearts' as const,
+              suit: SUIT_ENUM.HEARTS as Suit,
               rank: '5' as const,
               value: 5,
             },
@@ -102,7 +109,7 @@ describe('Game Logic', () => {
           {
             card: {
               id: 'hearts-A',
-              suit: 'hearts' as const,
+              suit: SUIT_ENUM.HEARTS as Suit,
               rank: 'A' as const,
               value: 14,
             },
@@ -111,7 +118,7 @@ describe('Game Logic', () => {
           },
         ],
         completed: false,
-        leadingSuit: 'hearts',
+        leadingSuit: SUIT_ENUM.HEARTS as Suit,
       }
 
       const winner = determineWinner(trick)
@@ -151,7 +158,7 @@ describe('Game Logic', () => {
       it('should throw error if not in napoleon phase', () => {
         const gameStateInWrongPhase = {
           ...gameState,
-          phase: 'playing' as const,
+          phase: GAME_PHASES.PLAYING,
         }
         const playerId = gameState.players[0].id
 
@@ -184,7 +191,7 @@ describe('Game Logic', () => {
       it('should throw error if not in napoleon phase', () => {
         const gameStateInWrongPhase = {
           ...gameState,
-          phase: 'playing' as const,
+          phase: GAME_PHASES.PLAYING,
         }
         const playerId = gameState.players[0].id
 
@@ -212,7 +219,7 @@ describe('Game Logic', () => {
         const declaration: NapoleonDeclaration = {
           playerId: gameState.players[0].id,
           targetTricks: 15,
-          suit: 'spades',
+          suit: SUIT_ENUM.SPADES,
           adjutantCard: gameState.players[0].hand[0],
         }
 
@@ -231,7 +238,7 @@ describe('Game Logic', () => {
         const firstDeclaration: NapoleonDeclaration = {
           playerId: gameState.players[0].id,
           targetTricks: 15,
-          suit: 'spades',
+          suit: SUIT_ENUM.SPADES,
         }
         let updatedState = declareNapoleonWithDeclaration(
           gameState,
@@ -242,7 +249,7 @@ describe('Game Logic', () => {
         const secondDeclaration: NapoleonDeclaration = {
           playerId: gameState.players[1].id,
           targetTricks: 16,
-          suit: 'spades',
+          suit: SUIT_ENUM.SPADES,
         }
         updatedState = declareNapoleonWithDeclaration(
           updatedState,
@@ -258,7 +265,7 @@ describe('Game Logic', () => {
         const invalidDeclaration: NapoleonDeclaration = {
           playerId: gameState.players[0].id,
           targetTricks: 5, // Too low
-          suit: 'spades',
+          suit: SUIT_ENUM.SPADES,
         }
 
         expect(() => {
@@ -293,15 +300,35 @@ describe('Game Logic', () => {
 
         // Mock hidden cards
         const hiddenCards: Card[] = [
-          { id: 'hidden-1', suit: 'hearts', rank: 'A', value: 14 },
-          { id: 'hidden-2', suit: 'diamonds', rank: 'K', value: 13 },
-          { id: 'hidden-3', suit: 'clubs', rank: 'Q', value: 12 },
-          { id: 'hidden-4', suit: 'spades', rank: 'J', value: 11 },
+          {
+            id: 'hidden-1',
+            suit: SUIT_ENUM.HEARTS,
+            rank: CARD_RANKS.ACE,
+            value: 14,
+          },
+          {
+            id: 'hidden-2',
+            suit: SUIT_ENUM.DIAMONDS,
+            rank: CARD_RANKS.KING,
+            value: 13,
+          },
+          {
+            id: 'hidden-3',
+            suit: SUIT_ENUM.CLUBS,
+            rank: CARD_RANKS.QUEEN,
+            value: 12,
+          },
+          {
+            id: 'hidden-4',
+            suit: SUIT_ENUM.SPADES,
+            rank: CARD_RANKS.JACK,
+            value: 11,
+          },
         ]
 
         const stateWithHidden = {
           ...napoleonState,
-          phase: 'adjutant' as const,
+          phase: GAME_PHASES.ADJUTANT,
           hiddenCards,
         }
 
@@ -329,7 +356,7 @@ describe('Game Logic', () => {
         )
         const stateWithAdjutant = {
           ...napoleonState,
-          phase: 'adjutant' as const,
+          phase: GAME_PHASES.ADJUTANT,
         }
 
         const adjutantCard = gameState.players[1].hand[0] // Card in player 2's hand
@@ -356,7 +383,7 @@ describe('Game Logic', () => {
         const declaration: NapoleonDeclaration = {
           playerId: gameState.players[0].id,
           targetTricks: 15,
-          suit: 'spades',
+          suit: SUIT_ENUM.SPADES,
         }
 
         const napoleonState = declareNapoleonWithDeclaration(
@@ -364,15 +391,35 @@ describe('Game Logic', () => {
           declaration
         )
         const hiddenCards: Card[] = [
-          { id: 'hidden-1', suit: 'hearts', rank: 'A', value: 14 },
-          { id: 'hidden-2', suit: 'diamonds', rank: 'K', value: 13 },
-          { id: 'hidden-3', suit: 'clubs', rank: 'Q', value: 12 },
-          { id: 'hidden-4', suit: 'spades', rank: 'J', value: 11 },
+          {
+            id: 'hidden-1',
+            suit: SUIT_ENUM.HEARTS,
+            rank: CARD_RANKS.ACE,
+            value: 14,
+          },
+          {
+            id: 'hidden-2',
+            suit: SUIT_ENUM.DIAMONDS,
+            rank: CARD_RANKS.KING,
+            value: 13,
+          },
+          {
+            id: 'hidden-3',
+            suit: SUIT_ENUM.CLUBS,
+            rank: CARD_RANKS.QUEEN,
+            value: 12,
+          },
+          {
+            id: 'hidden-4',
+            suit: SUIT_ENUM.SPADES,
+            rank: CARD_RANKS.JACK,
+            value: 11,
+          },
         ]
 
         const adjutantState = {
           ...napoleonState,
-          phase: 'adjutant' as const,
+          phase: GAME_PHASES.ADJUTANT,
           hiddenCards,
         }
 
@@ -415,7 +462,7 @@ describe('Game Logic', () => {
         const declaration: NapoleonDeclaration = {
           playerId: gameState.players[0].id,
           targetTricks: 15,
-          suit: 'spades',
+          suit: SUIT_ENUM.SPADES,
         }
 
         const napoleonState = declareNapoleonWithDeclaration(
@@ -424,7 +471,7 @@ describe('Game Logic', () => {
         )
         const stateWithExchange = {
           ...napoleonState,
-          phase: 'card_exchange' as const,
+          phase: GAME_PHASES.EXCHANGE,
         }
 
         const tooFewCards = [gameState.players[0].hand[0]]
@@ -455,12 +502,12 @@ describe('Game Logic', () => {
         const declaration: NapoleonDeclaration = {
           playerId: gameState.players[0].id,
           targetTricks: 15,
-          suit: 'spades',
+          suit: SUIT_ENUM.SPADES,
         }
 
         const stateWithExchange = {
           ...gameState,
-          phase: 'card_exchange' as const,
+          phase: GAME_PHASES.EXCHANGE,
           napoleonDeclaration: declaration,
         }
 

@@ -1,3 +1,4 @@
+import { GAME_PHASES, SUIT_ENUM } from '@/lib/constants'
 import { initializeGame } from '@/lib/gameLogic'
 import {
   canDeclareNapoleon,
@@ -21,7 +22,7 @@ describe('Napoleon Rules', () => {
       const declaration: NapoleonDeclaration = {
         playerId: 'player_1',
         targetTricks: MIN_NAPOLEON_FACE_CARDS,
-        suit: 'clubs',
+        suit: SUIT_ENUM.CLUBS,
       }
 
       expect(isValidNapoleonDeclaration(declaration)).toBe(true)
@@ -31,7 +32,7 @@ describe('Napoleon Rules', () => {
       const declaration: NapoleonDeclaration = {
         playerId: 'player_1',
         targetTricks: MAX_NAPOLEON_FACE_CARDS,
-        suit: 'spades',
+        suit: SUIT_ENUM.SPADES,
       }
 
       expect(isValidNapoleonDeclaration(declaration)).toBe(true)
@@ -41,7 +42,7 @@ describe('Napoleon Rules', () => {
       const declaration: NapoleonDeclaration = {
         playerId: 'player_1',
         targetTricks: MIN_NAPOLEON_FACE_CARDS - 1,
-        suit: 'clubs',
+        suit: SUIT_ENUM.CLUBS,
       }
 
       expect(isValidNapoleonDeclaration(declaration)).toBe(false)
@@ -51,7 +52,7 @@ describe('Napoleon Rules', () => {
       const declaration: NapoleonDeclaration = {
         playerId: 'player_1',
         targetTricks: MAX_NAPOLEON_FACE_CARDS + 1,
-        suit: 'clubs',
+        suit: SUIT_ENUM.CLUBS,
       }
 
       expect(isValidNapoleonDeclaration(declaration)).toBe(false)
@@ -61,13 +62,13 @@ describe('Napoleon Rules', () => {
       const currentDeclaration: NapoleonDeclaration = {
         playerId: 'player_1',
         targetTricks: 13,
-        suit: 'clubs',
+        suit: SUIT_ENUM.CLUBS,
       }
 
       const newDeclaration: NapoleonDeclaration = {
         playerId: 'player_2',
         targetTricks: 14,
-        suit: 'clubs',
+        suit: SUIT_ENUM.CLUBS,
       }
 
       expect(
@@ -79,13 +80,13 @@ describe('Napoleon Rules', () => {
       const currentDeclaration: NapoleonDeclaration = {
         playerId: 'player_1',
         targetTricks: 13,
-        suit: 'clubs',
+        suit: SUIT_ENUM.CLUBS,
       }
 
       const newDeclaration: NapoleonDeclaration = {
         playerId: 'player_2',
         targetTricks: 13,
-        suit: 'diamonds',
+        suit: SUIT_ENUM.DIAMONDS,
       }
 
       expect(
@@ -97,13 +98,13 @@ describe('Napoleon Rules', () => {
       const currentDeclaration: NapoleonDeclaration = {
         playerId: 'player_1',
         targetTricks: 13,
-        suit: 'clubs',
+        suit: SUIT_ENUM.CLUBS,
       }
 
       const newDeclaration: NapoleonDeclaration = {
         playerId: 'player_2',
         targetTricks: 13,
-        suit: 'clubs',
+        suit: SUIT_ENUM.CLUBS,
       }
 
       expect(
@@ -115,13 +116,13 @@ describe('Napoleon Rules', () => {
       const currentDeclaration: NapoleonDeclaration = {
         playerId: 'player_1',
         targetTricks: 13,
-        suit: 'diamonds',
+        suit: SUIT_ENUM.DIAMONDS,
       }
 
       const newDeclaration: NapoleonDeclaration = {
         playerId: 'player_2',
         targetTricks: 13,
-        suit: 'clubs',
+        suit: SUIT_ENUM.CLUBS,
       }
 
       expect(
@@ -136,10 +137,10 @@ describe('Napoleon Rules', () => {
 
       expect(result.minTricks).toBe(MIN_NAPOLEON_FACE_CARDS)
       expect(result.availableSuits).toEqual([
-        'clubs',
-        'diamonds',
-        'hearts',
-        'spades',
+        SUIT_ENUM.SPADES,
+        SUIT_ENUM.HEARTS,
+        SUIT_ENUM.DIAMONDS,
+        SUIT_ENUM.CLUBS,
       ])
     })
 
@@ -147,17 +148,17 @@ describe('Napoleon Rules', () => {
       const currentDeclaration: NapoleonDeclaration = {
         playerId: 'player_1',
         targetTricks: 15,
-        suit: 'spades', // 最強スート
+        suit: SUIT_ENUM.SPADES, // 最強スート
       }
 
       const result = getMinimumDeclaration(currentDeclaration)
 
       expect(result.minTricks).toBe(16)
       expect(result.availableSuits).toEqual([
-        'clubs',
-        'diamonds',
-        'hearts',
-        'spades',
+        SUIT_ENUM.SPADES,
+        SUIT_ENUM.HEARTS,
+        SUIT_ENUM.DIAMONDS,
+        SUIT_ENUM.CLUBS,
       ])
     })
 
@@ -165,14 +166,14 @@ describe('Napoleon Rules', () => {
       const currentDeclaration: NapoleonDeclaration = {
         playerId: 'player_1',
         targetTricks: 15,
-        suit: 'diamonds',
+        suit: SUIT_ENUM.DIAMONDS,
       }
 
       const result = getMinimumDeclaration(currentDeclaration)
 
       expect(result.minTricks).toBe(15)
-      expect(result.availableSuits).toContain('hearts')
-      expect(result.availableSuits).toContain('spades')
+      expect(result.availableSuits).toContain(SUIT_ENUM.HEARTS)
+      expect(result.availableSuits).toContain(SUIT_ENUM.SPADES)
       expect(result.availableSuits).toHaveLength(2)
     })
 
@@ -180,30 +181,30 @@ describe('Napoleon Rules', () => {
       const currentDeclaration: NapoleonDeclaration = {
         playerId: 'player_1',
         targetTricks: 15,
-        suit: 'hearts',
+        suit: SUIT_ENUM.HEARTS,
       }
 
       const result = getMinimumDeclaration(currentDeclaration)
 
       expect(result.minTricks).toBe(15)
-      expect(result.availableSuits).toEqual(['spades'])
+      expect(result.availableSuits).toEqual([SUIT_ENUM.SPADES])
     })
 
     it('should require higher face cards for strongest suit (spades)', () => {
       const currentDeclaration: NapoleonDeclaration = {
         playerId: 'player_1',
         targetTricks: 15,
-        suit: 'spades',
+        suit: SUIT_ENUM.SPADES,
       }
 
       const result = getMinimumDeclaration(currentDeclaration)
 
       expect(result.minTricks).toBe(16)
       expect(result.availableSuits).toEqual([
-        'clubs',
-        'diamonds',
-        'hearts',
-        'spades',
+        SUIT_ENUM.SPADES,
+        SUIT_ENUM.HEARTS,
+        SUIT_ENUM.DIAMONDS,
+        SUIT_ENUM.CLUBS,
       ])
     })
   })
@@ -216,7 +217,7 @@ describe('Napoleon Rules', () => {
     })
 
     it('should not allow declaration in other phases', () => {
-      const gameStateInWrongPhase = { ...gameState, phase: 'playing' as const }
+      const gameStateInWrongPhase = { ...gameState, phase: GAME_PHASES.PLAYING }
       const playerId = gameState.players[0].id
 
       expect(canDeclareNapoleon(gameStateInWrongPhase, playerId)).toBe(false)

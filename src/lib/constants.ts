@@ -1,6 +1,19 @@
 import type { Card, Rank, Suit } from '@/types/game'
 
-export const SUITS: Suit[] = ['spades', 'hearts', 'diamonds', 'clubs']
+// Suit enumeration for better readability
+export enum SUIT_ENUM {
+  SPADES = 'spades',
+  HEARTS = 'hearts',
+  DIAMONDS = 'diamonds',
+  CLUBS = 'clubs',
+}
+
+export const SUITS: Suit[] = [
+  SUIT_ENUM.SPADES,
+  SUIT_ENUM.HEARTS,
+  SUIT_ENUM.DIAMONDS,
+  SUIT_ENUM.CLUBS,
+]
 
 export const RANKS: Rank[] = [
   'A',
@@ -42,6 +55,104 @@ export const SUIT_ORDER: Record<Suit, number> = {
   diamonds: 2,
   clubs: 1,
 }
+// Card-specific constants
+export const SUIT_SYMBOLS = {
+  hearts: '♥',
+  diamonds: '♦',
+  clubs: '♣',
+  spades: '♠',
+} as const
+
+export const SUIT_NAMES = {
+  clubs: '♣ クラブ',
+  diamonds: '♦ ダイヤ',
+  hearts: '♥ ハート',
+  spades: '♠ スペード',
+} as const
+
+export const SUIT_COLORS = {
+  hearts: 'text-red-600',
+  diamonds: 'text-red-500',
+  clubs: 'text-black',
+  spades: 'text-black',
+} as const
+
+export const SUIT_DISPLAY_COLORS = {
+  spades: 'text-black font-bold',
+  hearts: 'text-red-700 font-bold',
+  diamonds: 'text-red-500 font-bold',
+  clubs: 'text-black font-bold',
+} as const
+
+// Card rank constants
+export const CARD_RANKS = {
+  ACE: 'A',
+  KING: 'K',
+  QUEEN: 'Q',
+  JACK: 'J',
+  TEN: '10',
+  NINE: '9',
+  EIGHT: '8',
+  SEVEN: '7',
+  SIX: '6',
+  FIVE: '5',
+  FOUR: '4',
+  THREE: '3',
+  TWO: '2',
+} as const
+
+// Special cards
+export const SPECIAL_CARDS = {
+  MIGHTY_SUIT: SUIT_ENUM.SPADES,
+  MIGHTY_RANK: CARD_RANKS.ACE,
+  HEART_QUEEN_SUIT: SUIT_ENUM.HEARTS,
+  HEART_QUEEN_RANK: CARD_RANKS.QUEEN,
+  SAME_TWO_RANK: CARD_RANKS.TWO,
+  JACK_RANK: CARD_RANKS.JACK,
+} as const
+
+// Game strength values
+export const CARD_STRENGTH = {
+  MIGHTY: 1000,
+  TRUMP_JACK: 900,
+  COUNTER_JACK: 800,
+  TRUMP_BASE: 700,
+  LEADING_BASE: 600,
+  OTHER_BASE: 0,
+} as const
+
+// Napoleon strength values
+export const NAPOLEON_BID_STRENGTH = {
+  [SUIT_ENUM.SPADES]: 4,
+  [SUIT_ENUM.HEARTS]: 3,
+  [SUIT_ENUM.DIAMONDS]: 2,
+  [SUIT_ENUM.CLUBS]: 1,
+} as const
+
+// Counter suit mapping
+export const COUNTER_SUITS = {
+  [SUIT_ENUM.SPADES]: SUIT_ENUM.CLUBS,
+  [SUIT_ENUM.CLUBS]: SUIT_ENUM.SPADES,
+  [SUIT_ENUM.HEARTS]: SUIT_ENUM.DIAMONDS,
+  [SUIT_ENUM.DIAMONDS]: SUIT_ENUM.HEARTS,
+} as const
+// Game phases
+export const GAME_PHASES = {
+  SETUP: 'setup',
+  DEALING: 'dealing',
+  NAPOLEON: 'napoleon',
+  ADJUTANT: 'adjutant',
+  EXCHANGE: 'card_exchange',
+  PLAYING: 'playing',
+  FINISHED: 'finished',
+} as const
+
+// Player roles
+export const PLAYER_ROLES = {
+  NAPOLEON: 'Napoleon',
+  ADJUTANT: 'Adjutant',
+  CITIZEN: 'Citizen',
+} as const
 
 export const GAME_CONFIG = {
   PLAYERS_COUNT: 4,
@@ -56,6 +167,12 @@ export const NAPOLEON_RULES = {
   NAPOLEON_BONUS: 100,
   BASE_POINTS: 10,
   ADJUTANT_BONUS: 50,
+} as const
+
+// Winner team constants
+export const WINNER_TEAMS = {
+  NAPOLEON: 'napoleon',
+  CITIZEN: 'citizen',
 } as const
 
 // Jokerを除外した52枚のトランプカードデッキを生成（スペード・ハート・ダイヤ・クラブ各13枚）
@@ -78,12 +195,19 @@ export const createDeck = (): Card[] => {
 
 // 使用する48枚のカード（通常は2のカードを除く）
 export const createGameDeck = (): Card[] => {
-  return createDeck().filter((card) => card.rank !== '2')
+  return createDeck().filter((card) => card.rank !== CARD_RANKS.TWO)
 }
 
 // 絵札（10、J、Q、K、A）かどうかを判定
 export const isFaceCard = (card: Card): boolean => {
-  return ['10', 'J', 'Q', 'K', 'A'].includes(card.rank)
+  const faceCards: Rank[] = [
+    CARD_RANKS.TEN,
+    CARD_RANKS.JACK,
+    CARD_RANKS.QUEEN,
+    CARD_RANKS.KING,
+    CARD_RANKS.ACE,
+  ]
+  return faceCards.includes(card.rank)
 }
 
 // カード配列から絵札の数を数える
