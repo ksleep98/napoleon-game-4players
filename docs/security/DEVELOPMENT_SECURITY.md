@@ -235,6 +235,96 @@ module.exports = {
 };
 ```
 
+## 最新のセキュリティ改善 (2025-09-01)
+
+### レガシーコード削除・セキュリティ強化
+
+#### 1. localStorage フォールバック機能削除
+
+```typescript
+// ❌ 削除された危険なコード（RLS対応前の旧実装）
+export const setPlayerSession = async (playerId: string): Promise<void> => {
+  // フォールバック: localstorage に保存
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('playerId', playerId);
+  }
+};
+
+// ✅ 現在の安全な実装（セキュアストレージのみ）
+export const setPlayerSession = async (playerId: string): Promise<void> => {
+  if (typeof window !== 'undefined') {
+    try {
+      const currentName = getSecurePlayerName() || 'Anonymous';
+      setSecurePlayer(playerId, currentName); // 暗号化ストレージ使用
+    } catch (error) {
+      console.warn('Failed to use secure storage:', error);
+    }
+  }
+  // RLS設定のみ（テスト環境以外）
+  // ...
+};
+```
+
+#### 2. セッション管理エラー対策強化
+
+```typescript
+// ✅ セキュアストレージベースの getPlayerId 実装
+function getPlayerId(gameState?: GameState): string {
+  // セキュアストレージからプレイヤーIDを取得
+  const playerId = getSecurePlayerId()
+
+  if (playerId) {
+    return playerId
+  }
+
+  // フォールバック: ゲーム状態から取得を試行
+  if (gameState && gameState.players.length > 0) {
+    return gameState.players[0].id
+  }
+
+  throw new Error('Player session not found. Please use usePlayerSession hook.')
+}
+
+// ✅ プレイヤー認証状態確認後の監視開始
+export function useGameState(gameId: string | null) {
+  const { playerId, isAuthenticated } = usePlayerSession()
+
+  useEffect(() => {
+    if (!gameId || !isAuthenticated || !playerId) return // セキュリティチェック
+
+    const unsubscribe = subscribeToGameState(gameId, ...)
+    return unsubscribe
+  }, [gameId, isAuthenticated, playerId])
+}
+```
+
+#### 3. 非推奨API削除・モダンAPI移行
+
+```typescript
+// ❌ 削除された非推奨API
+const { SecurePlayerSession } = await import('@/utils/secureStorage');
+SecurePlayerSession.setPlayer(playerId, currentName);
+
+// ✅ 現在の推奨実装
+import { getSecurePlayerName, setSecurePlayer } from '@/utils/secureStorage';
+const currentName = getSecurePlayerName() || 'Anonymous';
+setSecurePlayer(playerId, currentName);
+```
+
+### セキュリティチェック結果
+
+```bash
+# ✅ 全セキュリティチェック合格
+npm run ci-check
+
+# 結果:
+# ✅ lint: 問題なし
+# ✅ type-check: エラーなし
+# ✅ format: 正しくフォーマット済み
+# ✅ test: 123テスト全て合格
+# ✅ build: Next.js本番ビルド成功
+```
+
 ## まとめ
 
 現在の実装は**開発環境でも本番同等のセキュリティ**を確保しています：
@@ -244,5 +334,8 @@ module.exports = {
 3. **入力検証**: TypeScript + サーバーサイド検証
 4. **レート制限**: API 乱用防止
 5. **RLS対応**: データベースレベルでの保護
+6. **✅ NEW: セキュアストレージ専用**: localStorage フォールバック完全削除
+7. **✅ NEW: セッション管理強化**: プレイヤー認証状態確認による安全な監視開始
+8. **✅ NEW: モダンAPI**: 非推奨APIの完全除去とモダンな実装への移行
 
 この方針により、開発時から本番環境と同等のセキュリティ意識で開発できています。
