@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { getPlayerSession, setPlayerSession } from '@/lib/supabase/client'
+import { setPlayerSession } from '@/lib/supabase/client'
 import {
   setPlayerOffline,
   setPlayerOnline,
@@ -10,6 +10,13 @@ import {
   subscribeToGameState,
 } from '@/lib/supabase/secureGameService'
 import type { GameRoom, GameState, Player } from '@/types/game'
+import {
+  clearSecurePlayer,
+  getSecurePlayerId,
+  getSecurePlayerName,
+  isSecureSessionValid,
+  setSecurePlayer,
+} from '@/utils/secureStorage'
 
 // 接続状態フック
 export function useConnectionState() {
@@ -48,9 +55,10 @@ export function useGameState(gameId: string | null) {
   const [gameState, setGameState] = useState<GameState | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
+  const { playerId, isAuthenticated } = usePlayerSession()
 
   useEffect(() => {
-    if (!gameId) return
+    if (!gameId || !isAuthenticated || !playerId) return
 
     setLoading(true)
     setError(null)
@@ -68,7 +76,7 @@ export function useGameState(gameId: string | null) {
     )
 
     return unsubscribe
-  }, [gameId])
+  }, [gameId, isAuthenticated, playerId])
 
   return { gameState, loading, error }
 }
@@ -79,9 +87,10 @@ export function useGameRoom(roomId: string | null) {
   const [players, setPlayers] = useState<Player[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
+  const { playerId, isAuthenticated } = usePlayerSession()
 
   useEffect(() => {
-    if (!roomId) return
+    if (!roomId || !isAuthenticated || !playerId) return
 
     setLoading(true)
     setError(null)
@@ -107,7 +116,7 @@ export function useGameRoom(roomId: string | null) {
     })
 
     return unsubscribe
-  }, [roomId])
+  }, [roomId, isAuthenticated, playerId])
 
   return { room, players, loading, error }
 }
@@ -121,37 +130,16 @@ export function usePlayerSession() {
     // 初期化時にセキュアストレージから復元
     const initializeSession = async () => {
       try {
-        const { SecurePlayerSession } = await import('@/utils/secureStorage')
-
         // セキュアストレージから取得を試行
-        const securePlayerId = SecurePlayerSession.getPlayerId()
-        const securePlayerName = SecurePlayerSession.getPlayerName()
+        const securePlayerId = getSecurePlayerId()
+        const securePlayerName = getSecurePlayerName()
 
-        if (securePlayerId && SecurePlayerSession.isValid()) {
+        if (securePlayerId && isSecureSessionValid()) {
           setPlayerId(securePlayerId)
           setPlayerName(securePlayerName)
-        } else {
-          // フォールバック: 従来のlocalStorageから取得
-          const legacyPlayerId = getPlayerSession()
-          const legacyPlayerName = localStorage.getItem('napoleon_player_name')
-
-          if (legacyPlayerId && legacyPlayerName) {
-            // セキュアストレージに移行
-            SecurePlayerSession.setPlayer(legacyPlayerId, legacyPlayerName)
-            setPlayerId(legacyPlayerId)
-            setPlayerName(legacyPlayerName)
-          }
         }
       } catch (error) {
-        console.warn(
-          'Failed to initialize secure session, using fallback:',
-          error
-        )
-        // 完全なフォールバック
-        const savedPlayerId = getPlayerSession()
-        const savedPlayerName = localStorage.getItem('napoleon_player_name')
-        setPlayerId(savedPlayerId)
-        setPlayerName(savedPlayerName)
+        console.warn('Failed to initialize secure session:', error)
       }
     }
 
@@ -161,15 +149,11 @@ export function usePlayerSession() {
   const initializePlayer = useCallback(async (id: string, name: string) => {
     try {
       // セキュアストレージにプレイヤー情報を保存
-      const { SecurePlayerSession } = await import('@/utils/secureStorage')
-      SecurePlayerSession.setPlayer(id, name)
+      setSecurePlayer(id, name)
 
       await setPlayerSession(id)
       setPlayerId(id)
       setPlayerName(name)
-
-      // レガシーサポート（段階的移行のため）
-      localStorage.setItem('napoleon_player_name', name)
 
       // オンライン状態に設定
       await setPlayerOnline(id)
@@ -185,12 +169,7 @@ export function usePlayerSession() {
       }
 
       // セキュアストレージをクリア
-      const { SecurePlayerSession } = await import('@/utils/secureStorage')
-      SecurePlayerSession.clearPlayer()
-
-      // レガシーサポート
-      localStorage.removeItem('napoleon_player_id')
-      localStorage.removeItem('napoleon_player_name')
+      clearSecurePlayer()
 
       setPlayerId(null)
       setPlayerName(null)

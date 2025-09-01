@@ -25,6 +25,7 @@ import type {
   GameState,
   NapoleonDeclaration,
 } from '@/types/game'
+import { usePlayerSession } from './useSupabase'
 
 export function useGameState(
   gameId?: string,
@@ -35,6 +36,7 @@ export function useGameState(
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [initialized, setInitialized] = useState(false) // 初期化完了フラグ
+  const { isAuthenticated } = usePlayerSession()
 
   // ゲームの初期化
   const initGame = useCallback(
@@ -319,14 +321,14 @@ export function useGameState(
 
   // ゲーム状態の監視（リアルタイム）
   useEffect(() => {
-    if (!gameId) return
+    if (!gameId || !isAuthenticated) return
 
     const unsubscribe = subscribeToGameState(gameId, (updatedState) => {
       setGameState(updatedState)
     })
 
     return unsubscribe
-  }, [gameId])
+  }, [gameId, isAuthenticated])
 
   // 初期化処理
   useEffect(() => {

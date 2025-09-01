@@ -13,23 +13,24 @@ import {
   validateSessionAction,
 } from '@/app/actions/gameActions'
 import type { GameResult, GameRoom, GameState, Player } from '@/types/game'
-import { getPlayerSession, supabase } from './client'
+import { getSecurePlayerId } from '@/utils/secureStorage'
+import { supabase } from './client'
 
 // セキュアなゲームサービス関数（サーバーアクション使用）
 function getPlayerId(gameState?: GameState): string {
-  const playerId = getPlayerSession()
-  if (!playerId) {
-    // ゲーム状態が提供されている場合は最初のプレイヤーIDを使用
-    if (gameState && gameState.players.length > 0) {
-      const fallbackPlayerId = gameState.players[0].id
-      console.warn(
-        `Player session not found, using fallback: ${fallbackPlayerId}`
-      )
-      return fallbackPlayerId
-    }
-    throw new Error('Player session not found. Please refresh the page.')
+  // セキュアストレージからプレイヤーIDを取得
+  const playerId = getSecurePlayerId()
+
+  if (playerId) {
+    return playerId
   }
-  return playerId
+
+  // フォールバック: ゲーム状態から取得を試行
+  if (gameState && gameState.players.length > 0) {
+    return gameState.players[0].id
+  }
+
+  throw new Error('Player session not found. Please use usePlayerSession hook.')
 }
 
 /**
