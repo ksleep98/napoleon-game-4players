@@ -1,3 +1,9 @@
+import {
+  CARD_RANKS,
+  CARD_STRENGTH,
+  COUNTER_SUITS,
+  SPECIAL_CARDS,
+} from '@/lib/constants'
 import type { Card, PlayedCard, Suit, Trick } from '@/types/game'
 
 /**
@@ -8,27 +14,24 @@ import type { Card, PlayedCard, Suit, Trick } from '@/types/game'
  * 裏スートの関係を取得
  */
 export function getCounterSuit(suit: Suit): Suit {
-  const counterSuitMap: Record<Suit, Suit> = {
-    spades: 'clubs',
-    clubs: 'spades',
-    hearts: 'diamonds',
-    diamonds: 'hearts',
-  }
-  return counterSuitMap[suit]
+  return COUNTER_SUITS[suit]
 }
 
 /**
  * マイティーかどうかを判定（♠A）
  */
 export function isMighty(card: Card): boolean {
-  return card.suit === 'spades' && card.rank === 'A'
+  return (
+    card.suit === SPECIAL_CARDS.MIGHTY_SUIT &&
+    card.rank === SPECIAL_CARDS.MIGHTY_RANK
+  )
 }
 
 /**
  * 切り札ジャックかどうかを判定
  */
 export function isTrumpJack(card: Card, trumpSuit: Suit): boolean {
-  return card.suit === trumpSuit && card.rank === 'J'
+  return card.suit === trumpSuit && card.rank === CARD_RANKS.JACK
 }
 
 /**
@@ -36,7 +39,7 @@ export function isTrumpJack(card: Card, trumpSuit: Suit): boolean {
  */
 export function isCounterJack(card: Card, trumpSuit: Suit): boolean {
   const counterSuit = getCounterSuit(trumpSuit)
-  return card.suit === counterSuit && card.rank === 'J'
+  return card.suit === counterSuit && card.rank === CARD_RANKS.JACK
 }
 
 /**
@@ -50,7 +53,10 @@ export function isTrump(card: Card, trumpSuit: Suit): boolean {
  * ハートのQかどうかを判定（よろめき用）
  */
 export function isHeartQueen(card: Card): boolean {
-  return card.suit === 'hearts' && card.rank === 'Q'
+  return (
+    card.suit === SPECIAL_CARDS.HEART_QUEEN_SUIT &&
+    card.rank === SPECIAL_CARDS.HEART_QUEEN_RANK
+  )
 }
 
 /**
@@ -72,8 +78,8 @@ export function isHuntingJackPair(
     if (
       ((card1.suit === suit1 && card2.suit === suit2) ||
         (card1.suit === suit2 && card2.suit === suit1)) &&
-      card1.rank === 'J' &&
-      card2.rank === 'J'
+      card1.rank === CARD_RANKS.JACK &&
+      card2.rank === CARD_RANKS.JACK
     ) {
       // どちらかが切り札Jである必要がある
       return card1.suit === trumpSuit || card2.suit === trumpSuit
@@ -92,35 +98,35 @@ export function getCardStrength(
 ): number {
   // マイティー
   if (isMighty(card)) {
-    return 1000
+    return CARD_STRENGTH.MIGHTY
   }
 
   // 切り札ジャック
   if (isTrumpJack(card, trumpSuit)) {
-    return 900
+    return CARD_STRENGTH.TRUMP_JACK
   }
 
   // 裏ジャック
   if (isCounterJack(card, trumpSuit)) {
-    return 800
+    return CARD_STRENGTH.COUNTER_JACK
   }
 
   // その他の切り札
   if (isTrump(card, trumpSuit)) {
     // 切り札以外のJは最弱（値を1に設定）
-    const value = card.rank === 'J' ? 1 : card.value
-    return 700 + value
+    const value = card.rank === CARD_RANKS.JACK ? 1 : card.value
+    return CARD_STRENGTH.TRUMP_BASE + value
   }
 
   // リードスートのカード
   if (card.suit === leadingSuit) {
     // 切り札・裏J以外のJは最弱
-    const value = card.rank === 'J' ? 1 : card.value
-    return 600 + value
+    const value = card.rank === CARD_RANKS.JACK ? 1 : card.value
+    return CARD_STRENGTH.LEADING_BASE + value
   }
 
   // その他のスート（トリックを取れない）
-  return card.value
+  return CARD_STRENGTH.OTHER_BASE + card.value
 }
 
 /**
@@ -161,7 +167,7 @@ function checkSame2Conditions(
   if (!allSameSuit) return { isValid: false, twoCard: null }
 
   // 2が出ているかチェック
-  const twoCard = trick.cards.find((pc) => pc.card.rank === '2')
+  const twoCard = trick.cards.find((pc) => pc.card.rank === CARD_RANKS.TWO)
   if (!twoCard) return { isValid: false, twoCard: null }
 
   return { isValid: true, twoCard }
@@ -197,7 +203,7 @@ export function checkHuntingJackRule(
   trick: Trick,
   trumpSuit: Suit
 ): PlayedCard | null {
-  const jacks = trick.cards.filter((pc) => pc.card.rank === 'J')
+  const jacks = trick.cards.filter((pc) => pc.card.rank === CARD_RANKS.JACK)
   if (jacks.length < 2) return null
 
   // 狩りJペアを探す

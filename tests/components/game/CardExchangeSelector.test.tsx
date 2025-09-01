@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { CardExchangeSelector } from '@/components/game/CardExchangeSelector'
+import { CARD_RANKS, GAME_PHASES, SUIT_ENUM } from '@/lib/constants'
 import type { Card, GameState, NapoleonDeclaration } from '@/types/game'
 
 describe('CardExchangeSelector', () => {
@@ -7,29 +8,107 @@ describe('CardExchangeSelector', () => {
 
   const sampleCards: Card[] = [
     // Original hand cards (12 cards)
-    { id: 'spades-A', suit: 'spades', rank: 'A', value: 14 },
-    { id: 'spades-K', suit: 'spades', rank: 'K', value: 13 },
-    { id: 'hearts-Q', suit: 'hearts', rank: 'Q', value: 12 },
-    { id: 'hearts-J', suit: 'hearts', rank: 'J', value: 11 },
-    { id: 'diamonds-10', suit: 'diamonds', rank: '10', value: 10 },
-    { id: 'diamonds-9', suit: 'diamonds', rank: '9', value: 9 },
-    { id: 'clubs-8', suit: 'clubs', rank: '8', value: 8 },
-    { id: 'clubs-7', suit: 'clubs', rank: '7', value: 7 },
-    { id: 'spades-6', suit: 'spades', rank: '6', value: 6 },
-    { id: 'hearts-5', suit: 'hearts', rank: '5', value: 5 },
-    { id: 'diamonds-4', suit: 'diamonds', rank: '4', value: 4 },
-    { id: 'clubs-3', suit: 'clubs', rank: '3', value: 3 },
-    // Hidden cards (4 cards with wasHidden flag)
-    { id: 'hearts-A', suit: 'hearts', rank: 'A', value: 14, wasHidden: true },
     {
-      id: 'diamonds-A',
-      suit: 'diamonds',
-      rank: 'A',
+      id: `${SUIT_ENUM.SPADES}-${CARD_RANKS.ACE}`,
+      suit: SUIT_ENUM.SPADES,
+      rank: CARD_RANKS.ACE,
+      value: 14,
+    },
+    {
+      id: `${SUIT_ENUM.SPADES}-${CARD_RANKS.KING}`,
+      suit: SUIT_ENUM.SPADES,
+      rank: CARD_RANKS.KING,
+      value: 13,
+    },
+    {
+      id: `${SUIT_ENUM.HEARTS}-${CARD_RANKS.QUEEN}`,
+      suit: SUIT_ENUM.HEARTS,
+      rank: CARD_RANKS.QUEEN,
+      value: 12,
+    },
+    {
+      id: `${SUIT_ENUM.HEARTS}-${CARD_RANKS.JACK}`,
+      suit: SUIT_ENUM.HEARTS,
+      rank: CARD_RANKS.JACK,
+      value: 11,
+    },
+    {
+      id: `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.TEN}`,
+      suit: SUIT_ENUM.DIAMONDS,
+      rank: CARD_RANKS.TEN,
+      value: 10,
+    },
+    {
+      id: `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.NINE}`,
+      suit: SUIT_ENUM.DIAMONDS,
+      rank: CARD_RANKS.NINE,
+      value: 9,
+    },
+    {
+      id: `${SUIT_ENUM.CLUBS}-${CARD_RANKS.EIGHT}`,
+      suit: SUIT_ENUM.CLUBS,
+      rank: CARD_RANKS.EIGHT,
+      value: 8,
+    },
+    {
+      id: `${SUIT_ENUM.CLUBS}-${CARD_RANKS.SEVEN}`,
+      suit: SUIT_ENUM.CLUBS,
+      rank: CARD_RANKS.SEVEN,
+      value: 7,
+    },
+    {
+      id: `${SUIT_ENUM.SPADES}-${CARD_RANKS.SIX}`,
+      suit: SUIT_ENUM.SPADES,
+      rank: CARD_RANKS.SIX,
+      value: 6,
+    },
+    {
+      id: `${SUIT_ENUM.HEARTS}-${CARD_RANKS.FIVE}`,
+      suit: SUIT_ENUM.HEARTS,
+      rank: CARD_RANKS.FIVE,
+      value: 5,
+    },
+    {
+      id: `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.FOUR}`,
+      suit: SUIT_ENUM.DIAMONDS,
+      rank: CARD_RANKS.FOUR,
+      value: 4,
+    },
+    {
+      id: `${SUIT_ENUM.CLUBS}-${CARD_RANKS.THREE}`,
+      suit: SUIT_ENUM.CLUBS,
+      rank: CARD_RANKS.THREE,
+      value: 3,
+    },
+    // Hidden cards (4 cards with wasHidden flag)
+    {
+      id: `${SUIT_ENUM.HEARTS}-${CARD_RANKS.ACE}`,
+      suit: SUIT_ENUM.HEARTS,
+      rank: CARD_RANKS.ACE,
       value: 14,
       wasHidden: true,
     },
-    { id: 'clubs-A', suit: 'clubs', rank: 'A', value: 14, wasHidden: true },
-    { id: 'spades-2', suit: 'spades', rank: '2', value: 2, wasHidden: true },
+    {
+      id: `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.ACE}`,
+      suit: SUIT_ENUM.DIAMONDS,
+      rank: CARD_RANKS.ACE,
+      value: 14,
+      wasHidden: true,
+    },
+    {
+      id: `${SUIT_ENUM.CLUBS}-${CARD_RANKS.ACE}`,
+      suit: SUIT_ENUM.CLUBS,
+      rank: CARD_RANKS.ACE,
+      value: 14,
+      wasHidden: true,
+    },
+    {
+      id: `${SUIT_ENUM.SPADES}-${CARD_RANKS.TWO}`,
+      suit: SUIT_ENUM.SPADES,
+      rank: CARD_RANKS.TWO,
+      value: 2,
+      wasHidden: true,
+    },
   ]
 
   const mockGameState: GameState = {
@@ -79,7 +158,7 @@ describe('CardExchangeSelector', () => {
     },
     tricks: [],
     currentPlayerIndex: 0,
-    phase: 'card_exchange',
+    phase: GAME_PHASES.EXCHANGE,
     hiddenCards: [],
     passedPlayers: [],
     declarationTurn: 0,
@@ -89,7 +168,7 @@ describe('CardExchangeSelector', () => {
     napoleonDeclaration: {
       playerId: 'napoleon-player',
       targetTricks: 15,
-      suit: 'spades',
+      suit: SUIT_ENUM.SPADES,
     } as NapoleonDeclaration,
   }
 

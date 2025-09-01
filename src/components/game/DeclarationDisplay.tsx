@@ -1,6 +1,7 @@
 'use client'
 
-import type { NapoleonDeclaration } from '@/types/game'
+import { SUIT_DISPLAY_COLORS, SUIT_NAMES } from '@/lib/constants'
+import type { NapoleonDeclaration, Suit } from '@/types/game'
 
 interface DeclarationDisplayProps {
   declaration: NapoleonDeclaration
@@ -12,23 +13,11 @@ export function DeclarationDisplay({
   showTitle = true,
 }: DeclarationDisplayProps) {
   const getSuitDisplay = (suit: string) => {
-    const suitMap = {
-      clubs: '♣ クラブ',
-      diamonds: '♦ ダイヤ',
-      hearts: '♥ ハート',
-      spades: '♠ スペード',
-    }
-    return suitMap[suit as keyof typeof suitMap] || suit
+    return SUIT_NAMES[suit as Suit] || suit
   }
 
   const getSuitColor = (suit: string) => {
-    const colorMap = {
-      clubs: 'text-gray-800',
-      diamonds: 'text-red-500',
-      hearts: 'text-red-500',
-      spades: 'text-gray-800',
-    }
-    return colorMap[suit as keyof typeof colorMap] || 'text-gray-800'
+    return SUIT_DISPLAY_COLORS[suit as Suit] || 'text-gray-800'
   }
 
   return (

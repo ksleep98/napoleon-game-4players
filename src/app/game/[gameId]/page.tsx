@@ -10,6 +10,7 @@ import { NapoleonSelector } from '@/components/game/NapoleonSelector'
 import { PlayerHand } from '@/components/game/PlayerHand'
 import { TrickResult } from '@/components/game/TrickResult'
 import { useGameState } from '@/hooks/useGameState'
+import { GAME_PHASES } from '@/lib/constants'
 import { calculateGameResult, getPlayerFaceCardCount } from '@/lib/scoring'
 import type { Card as CardType, NapoleonDeclaration } from '@/types/game'
 
@@ -127,7 +128,7 @@ export default function GamePage() {
   }
 
   // ゲーム終了時の結果表示
-  if (gameState.phase === 'finished') {
+  if (gameState.phase === GAME_PHASES.FINISHED) {
     const result = calculateGameResult(gameState)
 
     return (
@@ -221,7 +222,7 @@ export default function GamePage() {
           {/* メインゲームエリア */}
           <div className="lg:col-span-3 space-y-6">
             {/* ナポレオン選択フェーズ */}
-            {gameState.phase === 'napoleon' && (
+            {gameState.phase === GAME_PHASES.NAPOLEON && (
               <NapoleonSelector
                 players={gameState.players}
                 currentPlayerId={currentPlayerId}
@@ -232,7 +233,7 @@ export default function GamePage() {
             )}
 
             {/* 副官選択フェーズ */}
-            {gameState.phase === 'adjutant' &&
+            {gameState.phase === GAME_PHASES.ADJUTANT &&
               currentPlayerId &&
               gameState.napoleonDeclaration &&
               gameState.napoleonDeclaration.playerId === currentPlayerId && (
@@ -244,7 +245,7 @@ export default function GamePage() {
               )}
 
             {/* カード交換フェーズ */}
-            {gameState.phase === 'card_exchange' &&
+            {gameState.phase === GAME_PHASES.EXCHANGE &&
               currentPlayerId &&
               gameState.napoleonDeclaration &&
               gameState.napoleonDeclaration.playerId === currentPlayerId && (
@@ -256,7 +257,7 @@ export default function GamePage() {
               )}
 
             {/* ゲームボード */}
-            {gameState.phase === 'playing' && (
+            {gameState.phase === GAME_PHASES.PLAYING && (
               <GameBoard
                 gameState={gameState}
                 currentPlayerId={currentPlayerId}

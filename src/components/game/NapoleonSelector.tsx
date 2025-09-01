@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useId, useState } from 'react'
+import { SUIT_DISPLAY_COLORS, SUIT_NAMES, SUITS } from '@/lib/constants'
 import { getMinimumDeclaration } from '@/lib/napoleonRules'
 import type {
   Card as CardType,
@@ -65,7 +66,7 @@ export function NapoleonSelector({
   const availableSuits: Suit[] =
     currentDeclaration && selectedTricks === currentDeclaration.targetTricks
       ? minDeclaration.availableSuits
-      : ['clubs', 'diamonds', 'hearts', 'spades']
+      : SUITS
 
   const handleCardSelect = (cardId: string) => {
     const card = currentPlayer.hand.find((c) => c.id === cardId)
@@ -87,23 +88,11 @@ export function NapoleonSelector({
   }
 
   const getSuitDisplay = (suit: Suit) => {
-    const suitMap = {
-      clubs: '♣ クラブ',
-      diamonds: '♦ ダイヤ',
-      hearts: '♥ ハート',
-      spades: '♠ スペード',
-    }
-    return suitMap[suit]
+    return SUIT_NAMES[suit]
   }
 
   const getSuitColor = (suit: Suit) => {
-    const colorMap = {
-      clubs: 'text-gray-800',
-      diamonds: 'text-red-500',
-      hearts: 'text-red-500',
-      spades: 'text-gray-800',
-    }
-    return colorMap[suit]
+    return SUIT_DISPLAY_COLORS[suit]
   }
 
   // 現在の宣言プレイヤー情報を取得
@@ -266,7 +255,7 @@ export function NapoleonSelector({
 
         {/* スート別に手札を表示 */}
         <div className="space-y-3">
-          {['spades', 'hearts', 'diamonds', 'clubs'].map((suit) => {
+          {SUITS.map((suit) => {
             const suitCards = sortHand(currentPlayer.hand).filter(
               (card) => card.suit === suit
             )

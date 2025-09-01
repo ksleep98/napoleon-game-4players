@@ -1,3 +1,4 @@
+import { GAME_PHASES, SUITS } from '@/lib/constants'
 import type {
   Card,
   GameState,
@@ -63,7 +64,7 @@ export function canDeclareNapoleon(
   playerId: string
 ): boolean {
   // ナポレオンフェーズでない場合は宣言不可
-  if (gameState.phase !== 'napoleon') {
+  if (gameState.phase !== GAME_PHASES.NAPOLEON) {
     return false
   }
 
@@ -87,7 +88,7 @@ export function getMinimumDeclaration(
   if (!currentDeclaration) {
     return {
       minTricks: MIN_NAPOLEON_FACE_CARDS,
-      availableSuits: ['clubs', 'diamonds', 'hearts', 'spades'],
+      availableSuits: SUITS,
     }
   }
 
@@ -115,7 +116,7 @@ export function getMinimumDeclaration(
   if (currentTricks < MAX_NAPOLEON_FACE_CARDS) {
     return {
       minTricks: currentTricks + 1,
-      availableSuits: ['clubs', 'diamonds', 'hearts', 'spades'],
+      availableSuits: SUITS,
     }
   }
 
@@ -131,7 +132,7 @@ export function getMinimumDeclaration(
  */
 export function shouldRedeal(gameState: GameState): boolean {
   return (
-    gameState.phase === 'napoleon' &&
+    gameState.phase === GAME_PHASES.NAPOLEON &&
     gameState.passedPlayers.length === gameState.players.length &&
     !gameState.napoleonDeclaration
   )
@@ -142,7 +143,7 @@ export function shouldRedeal(gameState: GameState): boolean {
  */
 export function getNextDeclarationPlayer(gameState: GameState): Player | null {
   // ナポレオンフェーズでない場合はnull
-  if (gameState.phase !== 'napoleon') {
+  if (gameState.phase !== GAME_PHASES.NAPOLEON) {
     return null
   }
 
@@ -196,7 +197,7 @@ export function advanceNapoleonPhase(gameState: GameState): GameState {
       // 誰かが宣言している場合は副官選択フェーズへ
       return {
         ...gameState,
-        phase: 'adjutant',
+        phase: GAME_PHASES.ADJUTANT,
         currentPlayerIndex: gameState.players.findIndex(
           (p) => p.id === gameState.napoleonDeclaration?.playerId
         ),

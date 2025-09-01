@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { GAME_PHASES } from '@/lib/constants'
 import { GameActionError } from '@/lib/errors/GameActionError'
 import {
   checkRateLimit,
@@ -54,7 +55,7 @@ export async function saveGameStateAction(
       phase: gameState.phase,
       updated_at: new Date().toISOString(),
       winner_team:
-        gameState.phase === 'finished'
+        gameState.phase === GAME_PHASES.FINISHED
           ? gameState.players.find((p) => p.isNapoleon)
             ? 'napoleon'
             : 'citizen'

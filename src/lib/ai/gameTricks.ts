@@ -1,3 +1,4 @@
+import { GAME_PHASES } from '@/lib/constants'
 import type { Card, GameState } from '@/types/game'
 import {
   declareNapoleonWithDeclaration,
@@ -22,7 +23,7 @@ export async function processNapoleonPhase(
     if (!currentPlayer && updatedGameState.napoleonDeclaration) {
       return {
         ...updatedGameState,
-        phase: 'adjutant',
+        phase: GAME_PHASES.ADJUTANT,
         currentPlayerIndex: updatedGameState.players.findIndex(
           (p) => p.id === updatedGameState.napoleonDeclaration?.playerId
         ),
@@ -85,7 +86,7 @@ export async function processAdjutantPhase(
 
   if (!updatedGameState.napoleonDeclaration?.adjutantCard) {
     // 副官カードが指定されていない場合はスキップ
-    updatedGameState.phase = 'card_exchange'
+    updatedGameState.phase = GAME_PHASES.EXCHANGE
     return updatedGameState
   }
 
@@ -171,7 +172,7 @@ export async function processAlliancePhase(
   }
 
   // 連合軍戦略が決まったらゲーム開始
-  updatedGameState.phase = 'playing'
+  updatedGameState.phase = GAME_PHASES.PLAYING
 
   return updatedGameState
 }
@@ -235,24 +236,24 @@ export async function processAllAIPhases(
   let updatedState = gameState
 
   // ナポレオンフェーズでは一度に一人だけ処理
-  if (gameState.phase === 'napoleon') {
+  if (gameState.phase === GAME_PHASES.NAPOLEON) {
     updatedState = await processNapoleonPhase(updatedState)
     // フェーズが変わったら処理停止（次回のAI処理で継続）
     return updatedState
   }
 
-  if (updatedState.phase === 'adjutant') {
+  if (updatedState.phase === GAME_PHASES.ADJUTANT) {
     updatedState = await processAdjutantPhase(updatedState)
     // 副官フェーズ後はカード交換に進む
     return updatedState
   }
 
-  if (updatedState.phase === 'card_exchange') {
+  if (updatedState.phase === GAME_PHASES.EXCHANGE) {
     updatedState = await processCardExchangePhase(updatedState)
     return updatedState
   }
 
-  if (updatedState.phase === 'playing') {
+  if (updatedState.phase === GAME_PHASES.PLAYING) {
     updatedState = await processAlliancePhase(updatedState)
     return updatedState
   }

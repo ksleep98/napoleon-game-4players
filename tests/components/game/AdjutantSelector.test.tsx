@@ -1,10 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { AdjutantSelector } from '@/components/game/AdjutantSelector'
-import { createDeck } from '@/lib/constants'
-import type { GameState, NapoleonDeclaration } from '@/types/game'
+import { CARD_RANKS, createDeck, GAME_PHASES, SUIT_ENUM } from '@/lib/constants'
+import type { Card, GameState, NapoleonDeclaration } from '@/types/game'
 
-// Mock the createDeck function
+// Mock only createDeck, keep actual constants
 jest.mock('@/lib/constants', () => ({
+  ...jest.requireActual('@/lib/constants'),
   createDeck: jest.fn(),
 }))
 
@@ -60,7 +61,7 @@ describe('AdjutantSelector', () => {
     },
     tricks: [],
     currentPlayerIndex: 0,
-    phase: 'adjutant',
+    phase: GAME_PHASES.ADJUTANT,
     hiddenCards: [],
     passedPlayers: [],
     declarationTurn: 0,
@@ -70,67 +71,67 @@ describe('AdjutantSelector', () => {
     napoleonDeclaration: {
       playerId: 'napoleon-player',
       targetTricks: 15,
-      suit: 'spades',
+      suit: SUIT_ENUM.SPADES,
     } as NapoleonDeclaration,
   }
 
-  const mockDeck = [
+  const mockDeck: Card[] = [
     // Mighty (Spades A)
     {
-      id: 'spades-A',
-      suit: 'spades' as const,
-      rank: 'A' as const,
+      id: `${SUIT_ENUM.SPADES}-${CARD_RANKS.ACE}`,
+      suit: SUIT_ENUM.SPADES,
+      rank: CARD_RANKS.ACE,
       value: 14,
     },
     // All Jacks
     {
-      id: 'spades-J',
-      suit: 'spades' as const,
-      rank: 'J' as const,
+      id: `${SUIT_ENUM.SPADES}-${CARD_RANKS.JACK}`,
+      suit: SUIT_ENUM.SPADES,
+      rank: CARD_RANKS.JACK,
       value: 11,
     },
     {
-      id: 'hearts-J',
-      suit: 'hearts' as const,
-      rank: 'J' as const,
+      id: `${SUIT_ENUM.HEARTS}-${CARD_RANKS.JACK}`,
+      suit: SUIT_ENUM.HEARTS,
+      rank: CARD_RANKS.JACK,
       value: 11,
     },
     {
-      id: 'diamonds-J',
-      suit: 'diamonds' as const,
-      rank: 'J' as const,
+      id: `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.JACK}`,
+      suit: SUIT_ENUM.DIAMONDS,
+      rank: CARD_RANKS.JACK,
       value: 11,
     },
     {
-      id: 'clubs-J',
-      suit: 'clubs' as const,
-      rank: 'J' as const,
+      id: `${SUIT_ENUM.CLUBS}-${CARD_RANKS.JACK}`,
+      suit: SUIT_ENUM.CLUBS,
+      rank: CARD_RANKS.JACK,
       value: 11,
     },
     // All Aces
     {
-      id: 'hearts-A',
-      suit: 'hearts' as const,
-      rank: 'A' as const,
+      id: `${SUIT_ENUM.HEARTS}-${CARD_RANKS.ACE}`,
+      suit: SUIT_ENUM.HEARTS,
+      rank: CARD_RANKS.ACE,
       value: 14,
     },
     {
-      id: 'diamonds-A',
-      suit: 'diamonds' as const,
-      rank: 'A' as const,
+      id: `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.ACE}`,
+      suit: SUIT_ENUM.DIAMONDS,
+      rank: CARD_RANKS.ACE,
       value: 14,
     },
     {
-      id: 'clubs-A',
-      suit: 'clubs' as const,
-      rank: 'A' as const,
+      id: `${SUIT_ENUM.CLUBS}-${CARD_RANKS.ACE}`,
+      suit: SUIT_ENUM.CLUBS,
+      rank: CARD_RANKS.ACE,
       value: 14,
     },
     // Sample other cards
     {
-      id: 'spades-K',
-      suit: 'spades' as const,
-      rank: 'K' as const,
+      id: `${SUIT_ENUM.SPADES}-${CARD_RANKS.KING}`,
+      suit: SUIT_ENUM.SPADES,
+      rank: CARD_RANKS.KING,
       value: 13,
     },
   ]

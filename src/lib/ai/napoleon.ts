@@ -1,3 +1,4 @@
+import { CARD_RANKS, SUITS } from '@/lib/constants'
 import type {
   Card,
   GameState,
@@ -48,12 +49,12 @@ function evaluateHandStrength(hand: Card[]): number {
   }
 
   // エースボーナス
-  const aces = hand.filter((card) => card.rank === 'A').length
+  const aces = hand.filter((card) => card.rank === CARD_RANKS.ACE).length
   strength += aces * 5
 
   // キング・クイーンボーナス
-  const kings = hand.filter((card) => card.rank === 'K').length
-  const queens = hand.filter((card) => card.rank === 'Q').length
+  const kings = hand.filter((card) => card.rank === CARD_RANKS.KING).length
+  const queens = hand.filter((card) => card.rank === CARD_RANKS.QUEEN).length
   strength += (kings + queens) * 2
 
   // 同じスートの枚数ボーナス（長いスートは有利）
@@ -102,13 +103,13 @@ export function selectAdjutantCard(hand: Card[]): Card | null {
 
   // エース優先
   const preferredRanks: Array<{ rank: string; value: number }> = [
-    { rank: 'A', value: 14 },
-    { rank: 'K', value: 13 },
-    { rank: 'Q', value: 12 },
-    { rank: 'J', value: 11 },
+    { rank: CARD_RANKS.ACE, value: 14 },
+    { rank: CARD_RANKS.KING, value: 13 },
+    { rank: CARD_RANKS.QUEEN, value: 12 },
+    { rank: CARD_RANKS.JACK, value: 11 },
   ]
 
-  const suits = ['spades', 'hearts', 'diamonds', 'clubs']
+  const suits = SUITS
 
   // 自分が持っていない強いカードを探す
   for (const preferredRank of preferredRanks) {

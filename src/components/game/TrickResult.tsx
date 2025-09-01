@@ -1,7 +1,7 @@
 'use client'
 
-import { isFaceCard } from '@/lib/constants'
-import type { PlayedCard, Trick } from '@/types/game'
+import { isFaceCard, SUIT_DISPLAY_COLORS, SUIT_SYMBOLS } from '@/lib/constants'
+import type { PlayedCard, Suit, Trick } from '@/types/game'
 
 interface TrickResultProps {
   trick: Trick
@@ -26,21 +26,9 @@ export function TrickResult({ trick, players, onContinue }: TrickResultProps) {
 
   const getCardDisplay = (playedCard: PlayedCard) => {
     const card = playedCard.card
-    const suitSymbols = {
-      spades: '♠',
-      hearts: '♥',
-      diamonds: '♦',
-      clubs: '♣',
-    }
-    const suitColors = {
-      spades: 'text-gray-800',
-      hearts: 'text-red-500',
-      diamonds: 'text-red-500',
-      clubs: 'text-gray-800',
-    }
     return {
-      text: `${suitSymbols[card.suit]}${card.rank}`,
-      color: suitColors[card.suit],
+      text: `${SUIT_SYMBOLS[card.suit as Suit]}${card.rank}`,
+      color: SUIT_DISPLAY_COLORS[card.suit as Suit],
     }
   }
 
