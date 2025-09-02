@@ -425,6 +425,11 @@ export function useGameState(
               }
             }
           }
+        } else if (gameState.phase === GAME_PHASES.FINISHED) {
+          // FINISHEDフェーズでもトリック結果表示中は待機
+          if (gameState.showingTrickResult) {
+            return // ユーザーが12ターン目の結果モーダルを閉じるまで待つ
+          }
         }
       } catch (error) {
         console.error('AI processing error:', error)

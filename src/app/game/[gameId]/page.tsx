@@ -129,7 +129,29 @@ export default function GamePage() {
 
   // ゲーム終了時の結果表示
   if (gameState.phase === GAME_PHASES.FINISHED) {
+    // 12ターン目のトリック結果表示中は結果画面を待機
+    if (gameState.showingTrickResult && gameState.lastCompletedTrick) {
+      console.log('🎯 FINISHED phase - Still showing trick result, waiting...')
+      // トリック結果表示を優先し、ゲーム結果画面は後で表示
+      return (
+        <div className="min-h-screen bg-gray-100 py-4">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-2xl font-bold">Napoleon Game</h1>
+            </div>
+            {/* 12ターン目のトリック結果表示 */}
+            <TrickResult
+              trick={gameState.lastCompletedTrick}
+              players={gameState.players}
+              onContinue={() => actions.closeTrickResult()}
+            />
+          </div>
+        </div>
+      )
+    }
+
     const result = calculateGameResult(gameState)
+    console.log('🎯 FINISHED phase - Showing final game results')
 
     return (
       <div className="min-h-screen bg-gray-100 py-8">
@@ -316,14 +338,16 @@ export default function GamePage() {
         </div>
       </div>
 
-      {/* トリック結果表示 */}
-      {gameState.showingTrickResult && gameState.lastCompletedTrick && (
-        <TrickResult
-          trick={gameState.lastCompletedTrick}
-          players={gameState.players}
-          onContinue={() => actions.closeTrickResult()}
-        />
-      )}
+      {/* トリック結果表示（PLAYINGフェーズ用） */}
+      {gameState.phase === GAME_PHASES.PLAYING &&
+        gameState.showingTrickResult &&
+        gameState.lastCompletedTrick && (
+          <TrickResult
+            trick={gameState.lastCompletedTrick}
+            players={gameState.players}
+            onContinue={() => actions.closeTrickResult()}
+          />
+        )}
     </div>
   )
 }

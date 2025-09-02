@@ -341,6 +341,55 @@ describe('Napoleon Card Rules', () => {
         const winner = checkSame2Rule(trick, SUIT_ENUM.HEARTS)
         expect(winner).toBeNull()
       })
+
+      it('should not apply same 2 rule when mighty is present (マイティ > セイム2)', () => {
+        const trick: Trick = {
+          id: 'test-trick',
+          cards: [
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.CLUBS}-${CARD_RANKS.KING}`,
+                SUIT_ENUM.CLUBS,
+                CARD_RANKS.KING
+              ),
+              'p1',
+              0
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.CLUBS}-${CARD_RANKS.TWO}`,
+                SUIT_ENUM.CLUBS,
+                CARD_RANKS.TWO
+              ),
+              'p2',
+              1
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.SPADES}-${CARD_RANKS.ACE}`,
+                SUIT_ENUM.SPADES,
+                CARD_RANKS.ACE
+              ),
+              'p3',
+              2
+            ), // マイティ
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.CLUBS}-${CARD_RANKS.ACE}`,
+                SUIT_ENUM.CLUBS,
+                CARD_RANKS.ACE
+              ),
+              'p4',
+              3
+            ),
+          ],
+          completed: true,
+        }
+
+        // セイム2の条件は満たされているが、マイティがあるので無効
+        const winner = checkSame2Rule(trick, SUIT_ENUM.HEARTS)
+        expect(winner).toBeNull()
+      })
     })
 
     describe('Yoromeki Rule', () => {
@@ -704,6 +753,301 @@ describe('Napoleon Card Rules', () => {
       )
       expect(winner).not.toBeNull()
       expect(winner?.playerId).toBe('p4') // 裏Jが勝利
+    })
+
+    it('should prioritize mighty over same 2 rule', () => {
+      // マイティとセイム2が両方存在する場合、マイティが勝利する
+      const trick: Trick = {
+        id: 'test-trick',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.KING
+            ),
+            'p1',
+            0
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.TWO}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.TWO
+            ),
+            'p2',
+            1
+          ), // セイム2候補
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.SPADES}-${CARD_RANKS.ACE}`,
+              SUIT_ENUM.SPADES,
+              CARD_RANKS.ACE
+            ),
+            'p3',
+            2
+          ), // マイティ
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.ACE}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.ACE
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.HEARTS,
+        false
+      )
+      expect(winner).not.toBeNull()
+      expect(winner?.playerId).toBe('p3') // マイティが勝利
+    })
+
+    it('should prioritize trump jack over counter jack (表J > 裏J)', () => {
+      // 表J（切り札のJ）と裏J（切り札でないが同色のJ）が直接対決
+      const trick: Trick = {
+        id: 'test-trick',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.JACK}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.JACK
+            ),
+            'p1',
+            0
+          ), // 表J (hearts trump)
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.JACK}`,
+              SUIT_ENUM.DIAMONDS,
+              CARD_RANKS.JACK
+            ),
+            'p2',
+            1
+          ), // 裏J (hearts trump時)
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.SEVEN}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.SEVEN
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.SPADES}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.SPADES,
+              CARD_RANKS.KING
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.HEARTS,
+        false
+      )
+      expect(winner).not.toBeNull()
+      expect(winner?.playerId).toBe('p1') // 表J（TRUMP_JACK:900）が裏J（COUNTER_JACK:800）に勝利
+    })
+
+    it('should NOT allow same 2 rule to defeat trump jack (表J > セイム2)', () => {
+      // セイム2ルールは発動するが、表J（900）が最終的に勝利する例
+      const trick: Trick = {
+        id: 'test-trick',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.KING
+            ),
+            'p1',
+            0
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.TWO}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.TWO
+            ),
+            'p2',
+            1
+          ), // セイム2候補
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.JACK}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.JACK
+            ),
+            'p3',
+            2
+          ), // 表J（hearts trump時）
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.ACE}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.ACE
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.HEARTS,
+        false
+      )
+      expect(winner).not.toBeNull()
+      expect(winner?.playerId).toBe('p3') // 実際は表Jが勝利（セイム2は発動するが表Jが最強）
+    })
+
+    it('should allow hunting jack to defeat trump jack in specific conditions', () => {
+      // 狩りJルールで表Jが負ける例（他に表J/裏Jがない場合）
+      const trick: Trick = {
+        id: 'test-trick',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.SPADES}-${CARD_RANKS.JACK}`,
+              SUIT_ENUM.SPADES,
+              CARD_RANKS.JACK
+            ),
+            'p1',
+            0
+          ), // 表J (spades trump)
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.JACK}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.JACK
+            ),
+            'p2',
+            1
+          ), // 対応する弱いJ
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.SEVEN}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.SEVEN
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.DIAMONDS,
+              CARD_RANKS.KING
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.SPADES,
+        false
+      )
+      expect(winner).not.toBeNull()
+      expect(winner?.playerId).toBe('p2') // 弱いJ（Hearts J）が狩りJルールで勝利
+    })
+
+    it('should maintain correct order: trump jack > counter jack > trump ace', () => {
+      // 表J（900）> 裏J（800）> 切り札A（714）の順序確認
+      const trick: Trick = {
+        id: 'test-trick',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.JACK}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.JACK
+            ),
+            'p1',
+            0
+          ), // 表J (hearts trump) = 900
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.JACK}`,
+              SUIT_ENUM.DIAMONDS,
+              CARD_RANKS.JACK
+            ),
+            'p2',
+            1
+          ), // 裏J (hearts trump時) = 800
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.ACE}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.ACE
+            ),
+            'p3',
+            2
+          ), // 切り札A (hearts trump) = 700+14=714
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.SPADES}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.SPADES,
+              CARD_RANKS.KING
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.HEARTS,
+        false
+      )
+      expect(winner).not.toBeNull()
+      expect(winner?.playerId).toBe('p1') // 表J（900）が最強で勝利
+    })
+
+    it('should confirm trump ace is NOT mighty and has lower priority', () => {
+      // ハートのAは切り札でもマイティ（スペードA）ではないことを確認
+      const heartsAce = createCard(
+        `${SUIT_ENUM.HEARTS}-${CARD_RANKS.ACE}`,
+        SUIT_ENUM.HEARTS,
+        CARD_RANKS.ACE
+      )
+      const spadesAce = createCard(
+        `${SUIT_ENUM.SPADES}-${CARD_RANKS.ACE}`,
+        SUIT_ENUM.SPADES,
+        CARD_RANKS.ACE
+      )
+
+      expect(isMighty(heartsAce)).toBe(false) // ハートAはマイティでない
+      expect(isMighty(spadesAce)).toBe(true) // スペードAのみがマイティ
+
+      // 強度確認
+      expect(
+        getCardStrength(heartsAce, SUIT_ENUM.HEARTS, SUIT_ENUM.CLUBS)
+      ).toBe(714) // 700+14
+      expect(
+        getCardStrength(spadesAce, SUIT_ENUM.HEARTS, SUIT_ENUM.CLUBS)
+      ).toBe(1000) // MIGHTY
     })
 
     it('should fall back to normal strength when no special rules apply', () => {
