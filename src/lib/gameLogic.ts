@@ -377,11 +377,25 @@ export function playCard(
     }
   }
 
+  // ナポレオンが副官指定カードを出した場合の特別処理
+  // 副官カードが隠しカードにあった場合、ナポレオンが出すと副官アイコンも表示
+  let playedCardFlags = {}
+  if (
+    player.isNapoleon &&
+    gameState.napoleonDeclaration?.adjutantCard &&
+    card.suit === gameState.napoleonDeclaration.adjutantCard.suit &&
+    card.rank === gameState.napoleonDeclaration.adjutantCard.rank &&
+    card.wasHidden // 隠しカードだった場合のフラグ
+  ) {
+    playedCardFlags = { revealsAdjutant: true }
+  }
+
   // カードをプレイ
   const playedCard: PlayedCard = {
     card,
     playerId,
     order: gameState.currentTrick.cards.length,
+    ...playedCardFlags,
   }
 
   // プレイヤーの手札からカードを削除

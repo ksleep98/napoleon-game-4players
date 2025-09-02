@@ -74,6 +74,7 @@ export interface PlayedCard {
   card: Card
   playerId: string
   order: number
+  revealsAdjutant?: boolean // ナポレオンが隠しカードの副官カードを出した場合
 }
 
 export type GamePhase =

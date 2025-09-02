@@ -11,6 +11,7 @@ import { PlayerHand } from '@/components/game/PlayerHand'
 import { TrickResult } from '@/components/game/TrickResult'
 import { useGameState } from '@/hooks/useGameState'
 import { GAME_PHASES } from '@/lib/constants'
+import { getNextDeclarationPlayer } from '@/lib/napoleonRules'
 import { calculateGameResult, getPlayerFaceCardCount } from '@/lib/scoring'
 import type { Card as CardType, NapoleonDeclaration } from '@/types/game'
 
@@ -249,6 +250,9 @@ export default function GamePage() {
                 players={gameState.players}
                 currentPlayerId={currentPlayerId}
                 currentDeclaration={gameState.napoleonDeclaration}
+                nextDeclarationPlayerId={
+                  getNextDeclarationPlayer(gameState)?.id || null
+                }
                 onNapoleonSelect={handleNapoleonSelect}
                 onPass={handleNapoleonPass}
               />

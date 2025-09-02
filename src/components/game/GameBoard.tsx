@@ -55,6 +55,62 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
   // プレイヤー別の取得絵札詳細
   const allPlayersFaceCardDetails = getAllPlayersWonFaceCards(gameState)
 
+  // プレイヤーのアイコン表示ロジックを統一化
+  const getPlayerIcons = (
+    player: { isNapoleon: boolean; isAdjutant: boolean },
+    playedCard?: PlayedCard
+  ) => {
+    const icons = []
+
+    // ナポレオンアイコン
+    if (player.isNapoleon) {
+      icons.push(
+        <span
+          key="napoleon"
+          className="px-1 bg-yellow-600 text-yellow-100 rounded text-xs"
+        >
+          N
+        </span>
+      )
+    }
+
+    // 通常の副官アイコン（副官プレイヤーが判明している場合）
+    const isAdjutantRevealed =
+      player.isAdjutant &&
+      gameState.tricks.some((trick) =>
+        trick.cards.some(
+          (playedCard) =>
+            gameState.napoleonCard &&
+            playedCard.card.id === gameState.napoleonCard.id
+        )
+      )
+
+    if (isAdjutantRevealed) {
+      icons.push(
+        <span
+          key="adjutant"
+          className="px-1 bg-green-600 text-green-100 rounded text-xs"
+        >
+          A
+        </span>
+      )
+    }
+
+    // 新機能：ナポレオンが隠しカードの副官カードを出した場合の副官アイコン
+    if (playedCard?.revealsAdjutant && player.isNapoleon) {
+      icons.push(
+        <span
+          key="adjutant-reveal"
+          className="px-1 bg-green-600 text-green-100 rounded text-xs"
+        >
+          A
+        </span>
+      )
+    }
+
+    return icons
+  }
+
   return (
     <div className="space-y-4">
       {/* メインゲームボード */}
@@ -107,17 +163,6 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
                 ? 'text-green-400'
                 : 'text-blue-400'
 
-            // 副官が判明しているかどうかをチェック
-            const isAdjutantRevealed =
-              data.player.isAdjutant &&
-              gameState.tricks.some((trick) =>
-                trick.cards.some(
-                  (playedCard) =>
-                    gameState.napoleonCard &&
-                    playedCard.card.id === gameState.napoleonCard.id
-                )
-              )
-
             return (
               <div
                 key={data.player.id}
@@ -136,16 +181,7 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
                     {data.player.name}
                     {data.isCurrentUser && ' (You)'}
                   </span>
-                  {data.player.isNapoleon && (
-                    <span className="px-1 bg-yellow-600 text-yellow-100 rounded text-xs">
-                      N
-                    </span>
-                  )}
-                  {isAdjutantRevealed && (
-                    <span className="px-1 bg-green-600 text-green-100 rounded text-xs">
-                      A
-                    </span>
-                  )}
+                  {getPlayerIcons(data.player)}
                 </div>
                 <span
                   className={`font-bold ${roleColor} ${
@@ -157,17 +193,6 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
               </div>
             )
           })}
-        </div>
-
-        {/* 現在のプレイヤー表示 */}
-        <div className="absolute bottom-2 right-2 bg-gray-900 bg-opacity-95 text-white rounded-lg p-3 text-sm shadow-lg border border-gray-700">
-          <div className="font-semibold">Current Turn</div>
-          <div>{currentPlayer.name}</div>
-          {gameState.leadingSuit && (
-            <div className="text-xs text-gray-300 mt-1">
-              Lead suit: {gameState.leadingSuit}
-            </div>
-          )}
         </div>
 
         {/* トリック表示エリア（中央） */}
@@ -184,29 +209,10 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
                     )
                     if (!player) return ''
 
-                    const isAdjutantRevealed =
-                      player.isAdjutant &&
-                      gameState.tricks.some((trick) =>
-                        trick.cards.some(
-                          (playedCard) =>
-                            gameState.napoleonCard &&
-                            playedCard.card.id === gameState.napoleonCard.id
-                        )
-                      )
-
                     return (
                       <div className="flex items-center justify-center gap-1">
                         <span>{player.name}</span>
-                        {player.isNapoleon && (
-                          <span className="px-1 bg-yellow-600 text-yellow-100 rounded text-xs">
-                            N
-                          </span>
-                        )}
-                        {isAdjutantRevealed && (
-                          <span className="px-1 bg-green-600 text-green-100 rounded text-xs">
-                            A
-                          </span>
-                        )}
+                        {getPlayerIcons(player, cardsByPosition.bottom)}
                       </div>
                     )
                   })()}
@@ -225,29 +231,10 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
                     )
                     if (!player) return ''
 
-                    const isAdjutantRevealed =
-                      player.isAdjutant &&
-                      gameState.tricks.some((trick) =>
-                        trick.cards.some(
-                          (playedCard) =>
-                            gameState.napoleonCard &&
-                            playedCard.card.id === gameState.napoleonCard.id
-                        )
-                      )
-
                     return (
                       <div className="flex items-center justify-center gap-1">
                         <span>{player.name}</span>
-                        {player.isNapoleon && (
-                          <span className="px-1 bg-yellow-600 text-yellow-100 rounded text-xs">
-                            N
-                          </span>
-                        )}
-                        {isAdjutantRevealed && (
-                          <span className="px-1 bg-green-600 text-green-100 rounded text-xs">
-                            A
-                          </span>
-                        )}
+                        {getPlayerIcons(player, cardsByPosition.left)}
                       </div>
                     )
                   })()}
@@ -266,29 +253,10 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
                     )
                     if (!player) return ''
 
-                    const isAdjutantRevealed =
-                      player.isAdjutant &&
-                      gameState.tricks.some((trick) =>
-                        trick.cards.some(
-                          (playedCard) =>
-                            gameState.napoleonCard &&
-                            playedCard.card.id === gameState.napoleonCard.id
-                        )
-                      )
-
                     return (
                       <div className="flex items-center justify-center gap-1">
                         <span>{player.name}</span>
-                        {player.isNapoleon && (
-                          <span className="px-1 bg-yellow-600 text-yellow-100 rounded text-xs">
-                            N
-                          </span>
-                        )}
-                        {isAdjutantRevealed && (
-                          <span className="px-1 bg-green-600 text-green-100 rounded text-xs">
-                            A
-                          </span>
-                        )}
+                        {getPlayerIcons(player, cardsByPosition.top)}
                       </div>
                     )
                   })()}
@@ -307,156 +275,92 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
                     )
                     if (!player) return ''
 
-                    const isAdjutantRevealed =
-                      player.isAdjutant &&
-                      gameState.tricks.some((trick) =>
-                        trick.cards.some(
-                          (playedCard) =>
-                            gameState.napoleonCard &&
-                            playedCard.card.id === gameState.napoleonCard.id
-                        )
-                      )
-
                     return (
                       <div className="flex items-center justify-center gap-1">
                         <span>{player.name}</span>
-                        {player.isNapoleon && (
-                          <span className="px-1 bg-yellow-600 text-yellow-100 rounded text-xs">
-                            N
-                          </span>
-                        )}
-                        {isAdjutantRevealed && (
-                          <span className="px-1 bg-green-600 text-green-100 rounded text-xs">
-                            A
-                          </span>
-                        )}
+                        {getPlayerIcons(player, cardsByPosition.right)}
                       </div>
                     )
                   })()}
                 </div>
               </div>
             )}
-
-            {/* 中央にトリック番号表示 */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="bg-white bg-opacity-80 rounded-full w-16 h-16 flex items-center justify-center">
-                <div className="text-center">
-                  <div className="font-bold text-lg">
-                    {progress.tricksPlayed + 1}
-                  </div>
-                  <div className="text-xs">Trick</div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
-        {/* 最後に勝ったトリック表示 */}
-        {gameState.tricks.length > 0 && (
-          <div className="absolute bottom-2 left-2 bg-gray-900 bg-opacity-95 text-white rounded-lg p-2 text-xs shadow-lg border border-gray-700">
-            <div className="font-semibold">Last Trick Winner:</div>
-            <div>
-              {
-                gameState.players.find(
-                  (p) =>
-                    p.id ===
-                    gameState.tricks[gameState.tricks.length - 1].winnerPlayerId
-                )?.name
-              }
-            </div>
+        {/* 現在のプレイヤーと手番情報 */}
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-900 bg-opacity-95 text-white rounded-lg p-2 text-sm shadow-lg border border-gray-700">
+          <div className="flex items-center gap-2">
+            <span>Turn:</span>
+            <span className="font-bold text-blue-400">
+              {currentPlayer?.name}
+            </span>
+            {currentPlayer?.isNapoleon && (
+              <span className="px-1 bg-yellow-600 text-yellow-100 rounded text-xs">
+                N
+              </span>
+            )}
+            {currentPlayer?.isAdjutant && (
+              <span className="px-1 bg-green-600 text-green-100 rounded text-xs">
+                A
+              </span>
+            )}
           </div>
-        )}
-
-        {/* 最後のフェーズで全カードが出た場合のトリック結果表示 */}
-        {currentTrick.cards.length === 4 && (
-          <div className="absolute inset-x-0 bottom-20 flex justify-center">
-            <div className="bg-yellow-400 text-yellow-900 px-4 py-2 rounded-lg font-bold shadow-lg">
-              <div className="text-sm">Trick Complete!</div>
-              <div className="text-xs">Determining winner...</div>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
 
-      {/* プレイヤー別取得絵札表示 */}
-      <div className="w-full max-w-4xl mx-auto">
-        <h3 className="text-lg font-semibold text-center mb-4 text-gray-800">
-          取得した絵札 (Face Cards Won)
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {allPlayersFaceCardDetails.map((playerData) => {
-            const isCurrentUser = playerData.player.id === currentPlayerId
-            const roleColor = playerData.player.isNapoleon
-              ? 'text-yellow-600'
-              : playerData.player.isAdjutant
-                ? 'text-green-600'
-                : 'text-blue-600'
+      {/* プレイヤー獲得絵札詳細 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {allPlayersFaceCardDetails.map((playerData) => (
+          <div
+            key={playerData.player.id}
+            className="bg-white p-4 rounded-lg shadow border"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <h3 className="font-semibold text-gray-800">
+                {playerData.player.name}
+              </h3>
+              {playerData.player.isNapoleon && (
+                <span className="px-2 py-1 bg-yellow-600 text-yellow-100 rounded text-xs">
+                  Napoleon
+                </span>
+              )}
+              {(() => {
+                const isAdjutantRevealed =
+                  playerData.player.isAdjutant &&
+                  gameState.tricks.some((trick) =>
+                    trick.cards.some(
+                      (playedCard) =>
+                        gameState.napoleonCard &&
+                        playedCard.card.id === gameState.napoleonCard.id
+                    )
+                  )
 
-            // 副官が判明しているかどうかをチェック
-            const isAdjutantRevealed =
-              playerData.player.isAdjutant &&
-              gameState.tricks.some((trick) =>
-                trick.cards.some(
-                  (playedCard) =>
-                    gameState.napoleonCard &&
-                    playedCard.card.id === gameState.napoleonCard.id
+                return (
+                  isAdjutantRevealed && (
+                    <span className="px-2 py-1 bg-green-600 text-green-100 rounded text-xs">
+                      Adjutant
+                    </span>
+                  )
                 )
-              )
+              })()}
+            </div>
 
-            return (
-              <div
-                key={playerData.player.id}
-                className={`border rounded-lg p-3 bg-white ${
-                  isCurrentUser
-                    ? 'border-blue-300 bg-blue-50'
-                    : 'border-gray-200'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <h4
-                      className={`font-semibold ${roleColor} ${
-                        isCurrentUser ? 'font-bold' : ''
-                      }`}
-                    >
-                      {playerData.player.name}
-                      {isCurrentUser && ' (You)'}
-                    </h4>
-                    {playerData.player.isNapoleon && (
-                      <span className="px-1 py-0.5 bg-yellow-200 text-yellow-700 rounded text-xs">
-                        N
-                      </span>
-                    )}
-                    {isAdjutantRevealed && (
-                      <span className="px-1 py-0.5 bg-green-200 text-green-700 rounded text-xs">
-                        A
-                      </span>
-                    )}
-                  </div>
-                  <div className={`text-sm font-bold ${roleColor}`}>
-                    {playerData.faceCards.length}枚
-                  </div>
-                </div>
+            <div className="text-sm text-gray-600 mb-2">
+              Face Cards Won: {playerData.faceCards.length}
+            </div>
 
-                {playerData.faceCards.length > 0 ? (
-                  <div className="grid grid-cols-4 gap-1">
-                    {playerData.faceCards.map((card, index) => (
-                      <Card
-                        key={`${card.suit}-${card.rank}-${index}`}
-                        card={card}
-                        size="small"
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-gray-500 text-center py-2 text-xs">
-                    まだ絵札なし
-                  </div>
-                )}
+            {playerData.faceCards.length > 0 ? (
+              <div className="flex flex-wrap gap-1">
+                {playerData.faceCards.map((card, index) => (
+                  <Card key={`${card.id}-${index}`} card={card} size="tiny" />
+                ))}
               </div>
-            )
-          })}
-        </div>
+            ) : (
+              <div className="text-gray-400 text-sm">No face cards won yet</div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   )

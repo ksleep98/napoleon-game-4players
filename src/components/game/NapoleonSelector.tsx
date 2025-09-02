@@ -16,6 +16,7 @@ interface NapoleonSelectorProps {
   players: Player[]
   currentPlayerId: string | null
   currentDeclaration?: NapoleonDeclaration
+  nextDeclarationPlayerId?: string | null // 次に宣言するプレイヤーのID
   onNapoleonSelect: (playerId: string, declaration: NapoleonDeclaration) => void
   onPass: (playerId: string) => void
 }
@@ -24,6 +25,7 @@ export function NapoleonSelector({
   players,
   currentPlayerId,
   currentDeclaration,
+  nextDeclarationPlayerId,
   onNapoleonSelect,
   onPass,
 }: NapoleonSelectorProps) {
@@ -99,6 +101,115 @@ export function NapoleonSelector({
   const currentDeclarationPlayer = currentDeclaration
     ? players.find((p) => p.id === currentDeclaration.playerId)
     : null
+
+  // 次の宣言プレイヤー情報を取得
+  const nextDeclarationPlayer = nextDeclarationPlayerId
+    ? players.find((p) => p.id === nextDeclarationPlayerId)
+    : null
+
+  // 現在のプレイヤーが宣言順番でない場合（他のプレイヤーが宣言中）
+  const isWaitingForOtherPlayer =
+    nextDeclarationPlayer && nextDeclarationPlayer.id !== currentPlayerId
+
+  if (isWaitingForOtherPlayer) {
+    return (
+      <div className="space-y-6 p-6 bg-white rounded-lg shadow-lg">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">
+            🎩 Napoleon Declaration Phase
+          </h2>
+        </div>
+
+        {/* 現在の最高宣言表示 */}
+        {currentDeclaration && currentDeclarationPlayer && (
+          <div className="border border-yellow-300 bg-yellow-50 p-4 rounded-lg">
+            <h3 className="font-semibold text-yellow-800 mb-3 text-center">
+              🏆 Current Highest Bid
+            </h3>
+            <div className="bg-white rounded-lg p-4 border border-yellow-200">
+              <div className="flex items-center justify-center gap-4">
+                <div className="text-center">
+                  <div className="text-sm text-gray-600">Player</div>
+                  <div className="text-lg font-bold text-yellow-700">
+                    {currentDeclarationPlayer.name}
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-sm text-gray-600">Face Cards</div>
+                  <div className="text-2xl font-bold text-yellow-700">
+                    {currentDeclaration.targetTricks}
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-sm text-gray-600">Trump Suit</div>
+                  <div
+                    className={`text-2xl font-bold ${getSuitColor(currentDeclaration.suit)}`}
+                  >
+                    {getSuitDisplay(currentDeclaration.suit)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 他のプレイヤーが宣言中の表示 */}
+        <div className="border border-blue-300 bg-blue-50 p-6 rounded-lg">
+          <div className="text-center space-y-4">
+            <div className="flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+              <h3 className="font-semibold text-blue-800 text-lg">
+                Waiting for Declaration
+              </h3>
+            </div>
+            <div className="bg-white rounded-lg p-4 border border-blue-200">
+              <div className="text-center">
+                <div className="text-sm text-blue-600 mb-2">
+                  Currently declaring:
+                </div>
+                <div className="text-xl font-bold text-blue-700">
+                  {nextDeclarationPlayer.name}
+                  {nextDeclarationPlayer.isAI && ' (COM)'}
+                </div>
+              </div>
+            </div>
+            <p className="text-sm text-blue-600">
+              <span className="font-semibold">
+                {nextDeclarationPlayer.name}
+              </span>{' '}
+              is making their Napoleon declaration. Please wait for your turn.
+            </p>
+          </div>
+        </div>
+
+        {/* プレイヤー順番表示 */}
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h4 className="text-sm font-medium text-gray-700 mb-3 text-center">
+            Declaration Order:
+          </h4>
+          <div className="flex justify-center space-x-4">
+            {players.map((player) => (
+              <div
+                key={player.id}
+                className={`px-3 py-2 rounded-lg text-sm font-medium ${
+                  player.id === nextDeclarationPlayerId
+                    ? 'bg-blue-600 text-white animate-pulse'
+                    : player.id === currentPlayerId
+                      ? 'bg-green-100 text-green-700 border border-green-300'
+                      : 'bg-gray-200 text-gray-600'
+                }`}
+              >
+                {player.name}
+                {player.id === nextDeclarationPlayerId && ' ⏳'}
+                {player.id === currentPlayerId && ' (You)'}
+                {player.isAI && ' 🤖'}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 p-6 bg-white rounded-lg shadow-lg">
@@ -176,10 +287,14 @@ export function NapoleonSelector({
               id={tricksSelectId}
               value={selectedTricks}
               onChange={(e) => setSelectedTricks(Number(e.target.value))}
-              className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-transparent text-lg font-medium"
+              className="w-full p-3 border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 text-lg font-medium bg-gradient-to-b from-white to-gray-50 text-gray-800 shadow-sm hover:border-gray-400 transition-colors"
             >
               {availableTricks.map((tricks) => (
-                <option key={tricks} value={tricks}>
+                <option
+                  key={tricks}
+                  value={tricks}
+                  className="bg-white text-gray-800 py-2"
+                >
                   {tricks} face cards
                 </option>
               ))}
@@ -198,13 +313,14 @@ export function NapoleonSelector({
               id={suitSelectId}
               value={selectedSuit}
               onChange={(e) => setSelectedSuit(e.target.value as Suit)}
-              className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-transparent text-lg font-medium"
+              className="w-full p-3 border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 text-lg font-medium bg-gradient-to-b from-white to-gray-50 text-gray-800 shadow-sm hover:border-gray-400 transition-colors"
             >
               {availableSuits.map((suit) => (
                 <option
                   key={suit}
                   value={suit}
                   disabled={!availableSuits.includes(suit)}
+                  className="bg-white text-gray-800 py-2"
                 >
                   {getSuitDisplay(suit)}
                 </option>
