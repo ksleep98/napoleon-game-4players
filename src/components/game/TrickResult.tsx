@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { isFaceCard, SUIT_DISPLAY_COLORS, SUIT_SYMBOLS } from '@/lib/constants'
 import type { PlayedCard, Suit, Trick } from '@/types/game'
 
@@ -15,6 +16,8 @@ interface TrickResultProps {
 }
 
 export function TrickResult({ trick, players, onContinue }: TrickResultProps) {
+  const [isClosing, setIsClosing] = useState(false)
+
   if (!trick.completed || !trick.winnerPlayerId) {
     return null
   }
@@ -30,6 +33,18 @@ export function TrickResult({ trick, players, onContinue }: TrickResultProps) {
       text: `${SUIT_SYMBOLS[card.suit as Suit]}${card.rank}`,
       color: SUIT_DISPLAY_COLORS[card.suit as Suit],
     }
+  }
+
+  const handleContinue = () => {
+    if (isClosing) return // 既に閉じ中の場合は何もしない
+
+    setIsClosing(true)
+    onContinue()
+
+    // 少し遅延を入れてから状態をリセット（次回のモーダル表示のため）
+    setTimeout(() => {
+      setIsClosing(false)
+    }, 500)
   }
 
   return (
@@ -140,10 +155,15 @@ export function TrickResult({ trick, players, onContinue }: TrickResultProps) {
         <div className="pt-2">
           <button
             type="button"
-            onClick={onContinue}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors shadow-lg"
+            onClick={handleContinue}
+            disabled={isClosing}
+            className={`w-full py-3 font-bold rounded-lg transition-colors shadow-lg ${
+              isClosing
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            }`}
           >
-            ✨ Continue Game
+            {isClosing ? '⏳ Closing...' : '✨ Continue Game'}
           </button>
         </div>
       </div>

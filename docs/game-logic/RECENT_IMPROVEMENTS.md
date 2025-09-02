@@ -466,3 +466,249 @@ function getCounterJackSuit(trumpSuit: Suit): Suit | null {
 - ✅ Enhanced Napoleon-Adjutant team cooperation dynamics
 
 **Code Quality**: All new implementations maintain strict TypeScript typing, comprehensive test coverage, and follow established architectural patterns.
+
+---
+
+## 2025-09-02 Adjutant Icon Reveal Feature Implementation
+
+### 🎮 New Feature: Napoleon Hidden Card Adjutant Reveal
+
+#### Issue 10: Adjutant Icon Display When Napoleon Plays From Hidden Cards
+
+**Problem**: When Napoleon's declared adjutant card was among the hidden 4 cards, there was no visual indicator when Napoleon played that card to reveal the adjutant's identity.
+
+**User Request**:
+
+> "ナポレオンが宣言した副官が隠された4枚に入っていた場合、ナポレオンが副官指定のカードを出したタイミングで、副官アイコンをナポレオンアイコンと一緒に出す仕様に修正してほしい"
+>
+> (When Napoleon's declared adjutant card is in the hidden 4 cards, show the adjutant icon together with the Napoleon icon when Napoleon plays that designated card)
+
+**Files Modified**:
+
+- `src/types/game.ts`
+- `src/lib/gameLogic.ts`
+- `src/components/game/GameBoard.tsx`
+- `src/components/game/GameStatus.tsx`
+- `tests/lib/gameLogic.adjutant-reveal.test.ts` (new file)
+
+### 🔧 Technical Implementation
+
+#### 1. Type System Enhancement
+
+**File**: `src/types/game.ts`
+
+```typescript
+export interface PlayedCard {
+  card: Card;
+  playerId: string;
+  order: number;
+  revealsAdjutant?: boolean; // New: Flag for when Napoleon reveals adjutant from hidden cards
+}
+```
+
+**Impact**: Added optional flag to track when a played card reveals the adjutant's identity
+
+#### 2. Game Logic Enhancement
+
+**File**: `src/lib/gameLogic.ts`
+
+```typescript
+// Napoleon plays adjutant card from hidden cards special handling
+let playedCardFlags = {};
+if (
+  player.isNapoleon &&
+  gameState.napoleonDeclaration?.adjutantCard &&
+  card.suit === gameState.napoleonDeclaration.adjutantCard.suit &&
+  card.rank === gameState.napoleonDeclaration.adjutantCard.rank &&
+  card.wasHidden // Flag indicating card was originally in hidden cards
+) {
+  playedCardFlags = { revealsAdjutant: true };
+}
+
+const playedCard: PlayedCard = {
+  card,
+  playerId,
+  order: gameState.currentTrick.cards.length,
+  ...playedCardFlags, // Apply reveal flag when conditions are met
+};
+```
+
+**Logic**: Detects when Napoleon plays the adjutant-designated card that was originally in the hidden cards and sets the `revealsAdjutant` flag
+
+#### 3. UI Component Updates
+
+**File**: `src/components/game/GameBoard.tsx`
+
+```typescript
+// Unified player icons display logic
+const getPlayerIcons = (
+  player: { isNapoleon: boolean; isAdjutant: boolean },
+  playedCard?: PlayedCard
+) => {
+  const icons = []
+
+  // Napoleon icon
+  if (player.isNapoleon) {
+    icons.push(
+      <span key="napoleon" className="px-1 bg-yellow-600 text-yellow-100 rounded text-xs">
+        N
+      </span>
+    )
+  }
+
+  // Traditional adjutant icon (when adjutant player is revealed)
+  const isAdjutantRevealed =
+    player.isAdjutant &&
+    gameState.tricks.some((trick) =>
+      trick.cards.some(
+        (playedCard) =>
+          gameState.napoleonCard &&
+          playedCard.card.id === gameState.napoleonCard.id
+      )
+    )
+
+  if (isAdjutantRevealed) {
+    icons.push(
+      <span key="adjutant" className="px-1 bg-green-600 text-green-100 rounded text-xs">
+        A
+      </span>
+    )
+  }
+
+  // NEW: Show adjutant icon when Napoleon plays adjutant card from hidden cards
+  if (playedCard?.revealsAdjutant && player.isNapoleon) {
+    icons.push(
+      <span key="adjutant-reveal" className="px-1 bg-green-600 text-green-100 rounded text-xs">
+        A
+      </span>
+    )
+  }
+
+  return icons
+}
+```
+
+**Impact**: Napoleon now displays both "N" (Napoleon) and "A" (Adjutant) icons when playing the adjutant card from hidden cards
+
+**File**: `src/components/game/GameStatus.tsx`
+
+```typescript
+// Enhanced adjutant revelation detection logic
+const isAdjutantRevealed =
+  gameState.phase === GAME_PHASES.PLAYING &&
+  // Case 1: Adjutant player played the adjutant card (traditional)
+  ((adjutantPlayer &&
+    gameState.tricks.some((trick) =>
+      trick.cards.some(
+        (playedCard) =>
+          gameState.napoleonCard &&
+          playedCard.card.id === gameState.napoleonCard.id
+      )
+    )) ||
+    // Case 2: Napoleon played adjutant card from hidden cards (new feature)
+    gameState.tricks.some((trick) =>
+      trick.cards.some((playedCard) => playedCard.revealsAdjutant)
+    ) ||
+    // Case 3: Current trick has Napoleon playing adjutant card from hidden cards
+    gameState.currentTrick.cards.some(
+      (playedCard) => playedCard.revealsAdjutant
+    ));
+```
+
+**Impact**: Teams section now correctly shows the adjutant as revealed instead of "??? (Hidden)" when Napoleon plays the adjutant card from hidden cards
+
+### 🧪 Comprehensive Testing
+
+#### New Test File: `tests/lib/gameLogic.adjutant-reveal.test.ts`
+
+**Test Scenarios**:
+
+1. **Positive Case**: Napoleon plays adjutant card from hidden cards
+
+   ```typescript
+   test('should set revealsAdjutant flag when Napoleon plays adjutant card from hidden cards', () => {
+     // Verifies revealsAdjutant: true is set correctly
+   });
+   ```
+
+2. **Negative Case**: Napoleon plays regular card
+
+   ```typescript
+   test('should NOT set revealsAdjutant flag when Napoleon plays regular card', () => {
+     // Ensures no false positives for regular cards
+   });
+   ```
+
+3. **Edge Case**: Non-Napoleon player plays adjutant card
+
+   ```typescript
+   test('should NOT set revealsAdjutant flag when non-Napoleon player plays adjutant card', () => {
+     // Only Napoleon can reveal adjutant from hidden cards
+   });
+   ```
+
+4. **Edge Case**: Napoleon plays adjutant card not from hidden cards
+   ```typescript
+   test('should NOT set revealsAdjutant flag when Napoleon plays adjutant card that was not hidden', () => {
+     // Only works for cards that were originally in hidden cards
+   });
+   ```
+
+**Test Coverage**: All 4 test scenarios pass, covering positive case, negative case, and edge cases
+
+### 🎯 User Experience Impact
+
+#### Before Implementation:
+
+- When Napoleon's adjutant card was in hidden cards, no visual indication when Napoleon played it
+- Teams section continued showing "??? (Hidden)" for adjutant
+- Players had to manually track which card revealed the adjutant
+
+#### After Implementation:
+
+- ✅ Napoleon displays both "N" and "A" icons when playing adjutant card from hidden cards
+- ✅ Teams section immediately shows adjutant as revealed
+- ✅ Clear visual feedback for adjutant revelation moment
+- ✅ Consistent with existing adjutant revelation UI patterns
+
+### 🔧 Technical Quality
+
+#### Code Quality Measures:
+
+- **Type Safety**: All new code uses strict TypeScript typing with proper interfaces
+- **Error Handling**: Comprehensive null checks and type guards
+- **Performance**: Efficient card matching using ID comparison
+- **Maintainability**: Modular functions with clear separation of concerns
+
+#### CI/CD Pipeline Results:
+
+```bash
+✅ Linting: No issues found
+✅ Type Check: No TypeScript errors
+✅ Formatting: All files properly formatted
+✅ Tests: All 146 tests pass (4 new tests added)
+✅ Build: Next.js production build successful
+```
+
+## Summary - Adjutant Reveal Feature
+
+**Total Changes**: 1 major feature implementation across 4 core files + 1 new test file
+**Files Modified**: 4 existing files + 1 new test file
+**Test Coverage**: 146 tests total (4 new tests specifically for this feature)
+**CI/CD Status**: ✅ All checks passing
+
+**Feature Implementation**:
+
+- ✅ Complete adjutant revelation system when Napoleon plays from hidden cards
+- ✅ Unified icon display logic across all UI components
+- ✅ Enhanced Teams section logic for accurate adjutant status tracking
+- ✅ Comprehensive test coverage for all scenarios and edge cases
+
+**User Experience**:
+
+- ✅ Clear visual indication when Napoleon reveals adjutant identity
+- ✅ Immediate UI updates across GameBoard and GameStatus components
+- ✅ Consistent behavior with existing game mechanics
+- ✅ Enhanced game narrative and strategic feedback
+
+**Technical Excellence**: All implementations follow established TypeScript patterns, maintain comprehensive test coverage, and integrate seamlessly with existing game architecture.

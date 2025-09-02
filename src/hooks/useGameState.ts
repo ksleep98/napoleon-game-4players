@@ -125,7 +125,12 @@ export function useGameState(
         const updatedGame = playCard(gameState, playerId, cardId)
 
         // AIモードの場合、次のプレイヤーがAIなら自動でプレイ
-        if (isAI && updatedGame.phase === GAME_PHASES.PLAYING) {
+        // ただし、トリック結果表示中の場合は待機
+        if (
+          isAI &&
+          updatedGame.phase === GAME_PHASES.PLAYING &&
+          !updatedGame.showingTrickResult
+        ) {
           const currentPlayer = getCurrentPlayer(updatedGame)
           if (currentPlayer?.isAI) {
             // AI処理用に少し遅延を入れる
@@ -284,12 +289,35 @@ export function useGameState(
       if (gameId && process.env.NODE_ENV === 'production') {
         await saveGameState(updatedGame)
       }
+
+      // AIモードで、トリック結果を閉じた後にCOMプレイヤーが次にプレイする場合の処理
+      if (isAI && updatedGame.phase === GAME_PHASES.PLAYING) {
+        const currentPlayer = getCurrentPlayer(updatedGame)
+        if (currentPlayer?.isAI) {
+          // 少し遅延を入れてAIの動作を見せる
+          setTimeout(async () => {
+            try {
+              const { processAIPlayingPhase } = await import(
+                '@/lib/ai/gameTricks'
+              )
+              const aiUpdatedGame = await processAIPlayingPhase(updatedGame)
+              setGameState(aiUpdatedGame)
+
+              if (gameId && process.env.NODE_ENV === 'production') {
+                await saveGameState(aiUpdatedGame)
+              }
+            } catch (aiError) {
+              console.error('AI playing error after trick result:', aiError)
+            }
+          }, 1000)
+        }
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Failed to close trick result'
       )
     }
-  }, [gameState, gameId])
+  }, [gameState, gameId, isAI])
 
   // プレイ可能なカードを取得
   const getPlayableCards = useCallback(

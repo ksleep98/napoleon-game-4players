@@ -49,17 +49,28 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
     return roleMap[role as keyof typeof roleMap] || role
   }
 
-  // 副官が判明しているかどうかをチェック（副官指定カードが実際にプレイされた場合のみ表示）
+  // 副官が判明しているかどうかをチェック
+  // 1. 副官プレイヤーが副官指定カードを出した場合（従来）
+  // 2. ナポレオンが隠しカードから副官指定カードを出した場合（新機能）
   const isAdjutantRevealed =
-    adjutantPlayer &&
     gameState.phase === GAME_PHASES.PLAYING &&
-    gameState.tricks.some((trick) =>
-      trick.cards.some(
-        (playedCard) =>
-          gameState.napoleonCard &&
-          playedCard.card.id === gameState.napoleonCard.id
-      )
-    )
+    // ケース1: 副官プレイヤーが副官指定カードを出した
+    ((adjutantPlayer &&
+      gameState.tricks.some((trick) =>
+        trick.cards.some(
+          (playedCard) =>
+            gameState.napoleonCard &&
+            playedCard.card.id === gameState.napoleonCard.id
+        )
+      )) ||
+      // ケース2: ナポレオンが隠しカードから副官指定カードを出した
+      gameState.tricks.some((trick) =>
+        trick.cards.some((playedCard) => playedCard.revealsAdjutant)
+      ) ||
+      // ケース3: 現在のトリックでナポレオンが隠しカードから副官カードを出した
+      gameState.currentTrick.cards.some(
+        (playedCard) => playedCard.revealsAdjutant
+      ))
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4 space-y-4">
