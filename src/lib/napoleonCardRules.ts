@@ -139,6 +139,10 @@ export function checkSame2Rule(
   const conditions = checkSame2Conditions(trick, trumpSuit)
   if (!conditions.isValid) return null
 
+  // マイティが出ている場合はセイム2ルール無効（マイティが最強）
+  const mightyCard = trick.cards.find((pc) => isMighty(pc.card))
+  if (mightyCard) return null
+
   // 裏Jが出ている場合はセイム2より裏Jが強い
   const counterJackCard = trick.cards.find((pc) =>
     isCounterJack(pc.card, trumpSuit)
@@ -258,20 +262,11 @@ export function determineWinnerWithSpecialRules(
   if (yoromekiWinner) return yoromekiWinner
 
   // 3. セイム2ルール（最初のトリック以外）
-  // ただし、裏Jがある場合はセイム2より裏Jが優先
   if (!isFirstTrick) {
-    // 裏Jがある場合は、セイム2のチェック前に裏Jを返す
-    const counterJackCard = trick.cards.find((pc) =>
-      isCounterJack(pc.card, trumpSuit)
-    )
-    if (counterJackCard) {
-      return counterJackCard
-    }
-
-    // 裏Jがない場合のみセイム2をチェック
-    const same2Conditions = checkSame2Conditions(trick, trumpSuit)
-    if (same2Conditions.isValid) {
-      return same2Conditions.twoCard
+    // checkSame2Rule関数を使用（マイティと裏Jの両方をチェック）
+    const same2Winner = checkSame2Rule(trick, trumpSuit)
+    if (same2Winner) {
+      return same2Winner
     }
   }
 

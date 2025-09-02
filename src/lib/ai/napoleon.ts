@@ -96,12 +96,49 @@ function canWinWithDeclaration(
 }
 
 // AI がナポレオンになった場合の副官カード選択
-export function selectAdjutantCard(hand: Card[]): Card | null {
-  // 自分の手札にない強いカードを副官として選ぶ
-  const _handsuits = new Set(hand.map((card) => card.suit))
-  const _handRanks = new Set(hand.map((card) => card.rank))
+export function selectAdjutantCard(
+  hand: Card[],
+  trumpSuit?: Suit
+): Card | null {
+  const currentTrumpSuit = trumpSuit || 'spades'
 
-  // エース優先
+  // 1. 最優先：マイティー（スペードA）- 自分が持っていない場合
+  const mighty = {
+    id: 'spades-A',
+    suit: 'spades' as Suit,
+    rank: 'A' as Rank,
+    value: 14,
+  }
+  if (!hand.some((card) => card.id === mighty.id)) {
+    return mighty
+  }
+
+  // 2. 第二優先：表J（切り札スートのJ）- 自分が持っていない場合
+  const trumpJack = {
+    id: `${currentTrumpSuit}-J`,
+    suit: currentTrumpSuit,
+    rank: 'J' as Rank,
+    value: 11,
+  }
+  if (!hand.some((card) => card.id === trumpJack.id)) {
+    return trumpJack
+  }
+
+  // 3. 第三優先：裏J（切り札と同色の反対スートのJ）- 自分が持っていない場合
+  const counterJackSuit = getCounterJackSuit(currentTrumpSuit)
+  if (counterJackSuit) {
+    const counterJack = {
+      id: `${counterJackSuit}-J`,
+      suit: counterJackSuit,
+      rank: 'J' as Rank,
+      value: 11,
+    }
+    if (!hand.some((card) => card.id === counterJack.id)) {
+      return counterJack
+    }
+  }
+
+  // 4. フォールバック：従来のロジック（強いカードを順に選択）
   const preferredRanks: Array<{ rank: string; value: number }> = [
     { rank: CARD_RANKS.ACE, value: 14 },
     { rank: CARD_RANKS.KING, value: 13 },
@@ -127,6 +164,24 @@ export function selectAdjutantCard(hand: Card[]): Card | null {
   }
 
   return null
+}
+
+/**
+ * 切り札スートに対応する裏Jのスートを取得
+ */
+function getCounterJackSuit(trumpSuit: Suit): Suit | null {
+  switch (trumpSuit) {
+    case 'spades':
+      return 'clubs' // 黒同士
+    case 'clubs':
+      return 'spades' // 黒同士
+    case 'hearts':
+      return 'diamonds' // 赤同士
+    case 'diamonds':
+      return 'hearts' // 赤同士
+    default:
+      return null
+  }
 }
 
 // ナポレオン AI の戦略的思考（改善版）
@@ -155,8 +210,8 @@ export function napoleonAIStrategy(
       playerId,
     }
 
-    // 副官カードを選択
-    const adjutantCard = selectAdjutantCard(player.hand)
+    // 副官カードを選択（切り札スートを渡す）
+    const adjutantCard = selectAdjutantCard(player.hand, declaration.suit)
     if (adjutantCard) {
       declaration.adjutantCard = adjutantCard
     }

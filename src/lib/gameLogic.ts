@@ -445,13 +445,15 @@ export function completeTrick(gameState: GameState): GameState {
 
   const allTricks = [...gameState.tricks, completedTrick]
 
-  // ゲーム終了チェック
+  // ゲーム終了チェック（12ターン目）
   if (allTricks.length === 12) {
     return {
       ...gameState,
       currentTrick: completedTrick,
       tricks: allTricks,
       phase: GAME_PHASES.FINISHED,
+      showingTrickResult: true, // 12ターン目でもトリック結果を表示
+      lastCompletedTrick: completedTrick,
       updatedAt: new Date(),
     }
   }
