@@ -12,9 +12,10 @@ import {
   setPlayerOnlineAction,
   validateSessionAction,
 } from '@/app/actions/gameActions'
+import { CONNECTION_STATES } from '@/lib/constants'
 import type { GameResult, GameRoom, GameState, Player } from '@/types/game'
 import { getSecurePlayerId } from '@/utils/secureStorage'
-import { supabase } from './client'
+import { setPlayerSession, supabase } from './client'
 
 // セキュアなゲームサービス関数（サーバーアクション使用）
 function getPlayerId(gameState?: GameState): string {
@@ -40,32 +41,57 @@ export async function secureGameStateSave(gameState: GameState): Promise<void> {
   const playerId = getPlayerId(gameState)
 
   // プレイヤーセッションを現在のゲーム状態の実際のプレイヤーIDに更新
+  let actualPlayerId = playerId
   if (gameState.players.length > 0) {
-    const actualPlayerId = gameState.players[0].id
+    actualPlayerId = gameState.players[0].id
     if (playerId !== actualPlayerId) {
       console.log(
         `Updating player session from ${playerId} to ${actualPlayerId}`
       )
       try {
-        const { setPlayerSession } = await import('./client')
         await setPlayerSession(actualPlayerId)
       } catch (sessionError) {
         console.warn('Failed to update player session:', sessionError)
       }
     }
-    // 実際のプレイヤーIDを使用してサーバーアクションを呼び出し
+  }
+
+  // ゲーム状態保存の実行
+  try {
     const result = await saveGameStateAction(gameState, actualPlayerId)
 
     if (!result.success) {
-      throw new Error(result.error || 'Failed to save game state')
-    }
-  } else {
-    // フォールバック: プレイヤーがいない場合はセッションのIDを使用
-    const result = await saveGameStateAction(gameState, playerId)
+      console.error('Server action failed:', result.error)
 
-    if (!result.success) {
+      // RLS関連エラーの詳細診断
+      if (result.error?.includes('row-level security policy')) {
+        console.error('🔒 RLS Policy Violation Detected:')
+        console.error('- Game ID:', gameState.id)
+        console.error('- Player ID:', actualPlayerId)
+        console.error(
+          '- Players in game:',
+          gameState.players.map((p) => ({ id: p.id, name: p.name }))
+        )
+        console.error('- Game phase:', gameState.phase)
+
+        // 開発環境での追加デバッグ情報
+        if (process.env.NODE_ENV === 'development') {
+          console.error('🔍 Debug info:')
+          console.error(
+            '- Current URL:',
+            typeof window !== 'undefined' ? window.location.href : 'N/A'
+          )
+          console.error('- Timestamp:', new Date().toISOString())
+        }
+      }
+
       throw new Error(result.error || 'Failed to save game state')
     }
+
+    console.log('✅ Game state saved successfully')
+  } catch (actionError) {
+    console.error('Server action threw error:', actionError)
+    throw actionError
   }
 }
 
@@ -158,9 +184,9 @@ export function secureSubscribeToGameState(
     )
     .subscribe((status) => {
       if (
-        status === 'CLOSED' ||
-        status === 'CHANNEL_ERROR' ||
-        status === 'TIMED_OUT'
+        status === CONNECTION_STATES.CLOSED ||
+        status === CONNECTION_STATES.CHANNEL_ERROR ||
+        status === CONNECTION_STATES.TIMED_OUT
       ) {
         onError?.(new Error('Failed to subscribe to game updates'))
       }

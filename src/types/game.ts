@@ -1,18 +1,13 @@
-export type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades'
-export type Rank =
-  | 'A'
-  | '2'
-  | '3'
-  | '4'
-  | '5'
-  | '6'
-  | '7'
-  | '8'
-  | '9'
-  | '10'
-  | 'J'
-  | 'Q'
-  | 'K'
+import type {
+  ACTION_TYPES,
+  GAME_PHASES,
+  GAME_ROOM_STATUS,
+  RANKS,
+  SUITS,
+} from '@/lib/constants'
+
+export type Suit = (typeof SUITS)[number]
+export type Rank = (typeof RANKS)[number]
 
 export interface Card {
   id: string
@@ -78,20 +73,47 @@ export interface PlayedCard {
 }
 
 export type GamePhase =
-  | 'setup' // ゲーム開始前
-  | 'dealing' // カード配布
-  | 'napoleon' // ナポレオン宣言
-  | 'adjutant' // 副官選択
-  | 'card_exchange' // 埋まっている4枚との交換
-  | 'playing' // ゲームプレイ
-  | 'finished' // ゲーム終了
+  | typeof GAME_PHASES.SETUP // ゲーム開始前
+  | typeof GAME_PHASES.DEALING // カード配布
+  | typeof GAME_PHASES.NAPOLEON // ナポレオン宣言
+  | typeof GAME_PHASES.ADJUTANT // 副官選択
+  | typeof GAME_PHASES.EXCHANGE // 埋まっている4枚との交換
+  | typeof GAME_PHASES.PLAYING // ゲームプレイ
+  | typeof GAME_PHASES.FINISHED // ゲーム終了
+
+// Context state management types
+export interface GameContextState {
+  gameState: GameState | null
+  loading: boolean
+  error: string | null
+  initialized: boolean
+}
+
+export interface GameAction {
+  type:
+    | typeof ACTION_TYPES.GAME.SET_LOADING
+    | typeof ACTION_TYPES.GAME.SET_ERROR
+    | typeof ACTION_TYPES.GAME.SET_GAME_STATE
+    | typeof ACTION_TYPES.GAME.SET_INITIALIZED
+    | typeof ACTION_TYPES.GAME.RESET_ERROR
+    | typeof ACTION_TYPES.GAME.RESET_STATE
+  payload?: {
+    gameState?: GameState | null
+    error?: string | null
+    loading?: boolean
+    initialized?: boolean
+  }
+}
 
 export interface GameRoom {
   id: string
   name: string
   playerCount: number
   maxPlayers: number
-  status: 'waiting' | 'playing' | 'finished'
+  status:
+    | typeof GAME_ROOM_STATUS.WAITING
+    | typeof GAME_ROOM_STATUS.PLAYING
+    | typeof GAME_ROOM_STATUS.FINISHED
   createdAt: Date
   hostPlayerId: string
 }

@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useReducer, useState } from 'react'
+import { ACTION_TYPES, CONNECTION_STATES } from '@/lib/constants'
 import { setPlayerSession } from '@/lib/supabase/client'
 import {
   setPlayerOffline,
@@ -21,8 +22,8 @@ import {
 // 接続状態フック
 export function useConnectionState() {
   const [connectionState, setConnectionState] = useState<
-    'CONNECTING' | 'OPEN' | 'CLOSED'
-  >('CONNECTING')
+    keyof typeof CONNECTION_STATES
+  >(CONNECTION_STATES.CONNECTING)
   const [isOnline, setIsOnline] = useState(true)
 
   useEffect(() => {
@@ -46,7 +47,7 @@ export function useConnectionState() {
   return {
     connectionState,
     isOnline,
-    isConnected: connectionState === 'OPEN' && isOnline,
+    isConnected: connectionState === CONNECTION_STATES.OPEN && isOnline,
   }
 }
 
@@ -122,21 +123,69 @@ export function useGameRoom(roomId: string | null) {
 }
 
 // プレイヤーセッション管理フック
+interface PlayerSessionState {
+  playerId: string | null
+  playerName: string | null
+  isAuthenticated: boolean
+}
+
+interface PlayerSessionAction {
+  type:
+    | typeof ACTION_TYPES.PLAYER_SESSION.INITIALIZE_PLAYER
+    | typeof ACTION_TYPES.PLAYER_SESSION.CLEAR_PLAYER
+    | typeof ACTION_TYPES.PLAYER_SESSION.SET_SESSION_FROM_SECURE
+  payload?: {
+    id?: string | null
+    name?: string | null
+  }
+}
+
+function playerSessionReducer(
+  state: PlayerSessionState,
+  action: PlayerSessionAction
+): PlayerSessionState {
+  switch (action.type) {
+    case ACTION_TYPES.PLAYER_SESSION.INITIALIZE_PLAYER:
+      return {
+        playerId: action.payload?.id || null,
+        playerName: action.payload?.name || null,
+        isAuthenticated: !!action.payload?.id,
+      }
+    case ACTION_TYPES.PLAYER_SESSION.SET_SESSION_FROM_SECURE:
+      return {
+        playerId: action.payload?.id || null,
+        playerName: action.payload?.name || null,
+        isAuthenticated: !!action.payload?.id,
+      }
+    case ACTION_TYPES.PLAYER_SESSION.CLEAR_PLAYER:
+      return {
+        playerId: null,
+        playerName: null,
+        isAuthenticated: false,
+      }
+    default:
+      return state
+  }
+}
+
 export function usePlayerSession() {
-  const [playerId, setPlayerId] = useState<string | null>(null)
-  const [playerName, setPlayerName] = useState<string | null>(null)
+  const [state, dispatch] = useReducer(playerSessionReducer, {
+    playerId: null,
+    playerName: null,
+    isAuthenticated: false,
+  })
 
   useEffect(() => {
-    // 初期化時にセキュアストレージから復元
     const initializeSession = async () => {
       try {
-        // セキュアストレージから取得を試行
         const securePlayerId = getSecurePlayerId()
         const securePlayerName = getSecurePlayerName()
 
         if (securePlayerId && isSecureSessionValid()) {
-          setPlayerId(securePlayerId)
-          setPlayerName(securePlayerName)
+          dispatch({
+            type: ACTION_TYPES.PLAYER_SESSION.SET_SESSION_FROM_SECURE,
+            payload: { id: securePlayerId, name: securePlayerName },
+          })
         }
       } catch (error) {
         console.warn('Failed to initialize secure session:', error)
@@ -148,14 +197,14 @@ export function usePlayerSession() {
 
   const initializePlayer = useCallback(async (id: string, name: string) => {
     try {
-      // セキュアストレージにプレイヤー情報を保存
       setSecurePlayer(id, name)
-
       await setPlayerSession(id)
-      setPlayerId(id)
-      setPlayerName(name)
 
-      // オンライン状態に設定
+      dispatch({
+        type: ACTION_TYPES.PLAYER_SESSION.INITIALIZE_PLAYER,
+        payload: { id, name },
+      })
+
       await setPlayerOnline(id)
     } catch (error) {
       throw new Error(`Failed to initialize player: ${error}`)
@@ -164,24 +213,21 @@ export function usePlayerSession() {
 
   const clearPlayer = useCallback(async () => {
     try {
-      if (playerId) {
-        await setPlayerOffline(playerId)
+      if (state.playerId) {
+        await setPlayerOffline(state.playerId)
       }
 
-      // セキュアストレージをクリア
       clearSecurePlayer()
-
-      setPlayerId(null)
-      setPlayerName(null)
+      dispatch({ type: ACTION_TYPES.PLAYER_SESSION.CLEAR_PLAYER })
     } catch (error) {
       console.warn('Failed to clear player session:', error)
     }
-  }, [playerId])
+  }, [state.playerId])
 
   return {
-    playerId,
-    playerName,
-    isAuthenticated: !!playerId,
+    playerId: state.playerId,
+    playerName: state.playerName,
+    isAuthenticated: state.isAuthenticated,
     initializePlayer,
     clearPlayer,
   }

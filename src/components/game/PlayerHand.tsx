@@ -23,11 +23,13 @@ export function PlayerHand({
 }: PlayerHandProps) {
   const sortedHand = sortHand(player.hand)
 
-  // デバッグ: 手札枚数をログ出力
-  console.log(
-    `Player ${player.name} has ${player.hand.length} cards:`,
-    player.hand.map((c) => `${c.rank}${c.suit}`).join(', ')
-  )
+  // デバッグ: 手札枚数をログ出力（開発環境のみ）
+  if (process.env.NODE_ENV === 'development') {
+    console.log(
+      `Player ${player.name} has ${player.hand.length} cards:`,
+      player.hand.map((c) => `${c.rank}${c.suit}`).join(', ')
+    )
+  }
 
   if (!showCards) {
     // 他のプレイヤーの手札は裏面で表示

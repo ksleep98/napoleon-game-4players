@@ -383,8 +383,7 @@ export function playCard(
   if (
     player.isNapoleon &&
     gameState.napoleonDeclaration?.adjutantCard &&
-    card.suit === gameState.napoleonDeclaration.adjutantCard.suit &&
-    card.rank === gameState.napoleonDeclaration.adjutantCard.rank &&
+    card.id === gameState.napoleonDeclaration.adjutantCard.id &&
     card.wasHidden // 隠しカードだった場合のフラグ
   ) {
     playedCardFlags = { revealsAdjutant: true }

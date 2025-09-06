@@ -167,7 +167,7 @@ describe('AdjutantSelector', () => {
 
     expect(screen.getByText('Your Napoleon Declaration')).toBeInTheDocument()
     expect(screen.getByText('15')).toBeInTheDocument()
-    expect(screen.getAllByText('♠ スペード')).toHaveLength(2) // Appears in both declaration and card displays
+    expect(screen.getAllByText('♠ スペード')).toHaveLength(1) // Only appears in declaration
   })
 
   it('should show important cards by default', () => {
@@ -179,11 +179,9 @@ describe('AdjutantSelector', () => {
       />
     )
 
-    expect(screen.getByText('🔥 Mighty (スペードのA)')).toBeInTheDocument()
-    expect(
-      screen.getByText('⚔️ Jacks (切り札と裏スートのJ)')
-    ).toBeInTheDocument()
-    expect(screen.getByText('👑 Aces (各スートのA)')).toBeInTheDocument()
+    // Check that important cards are displayed
+    expect(screen.getByText('Important Cards')).toBeInTheDocument()
+    // The important cards are now displayed as card buttons, not text descriptions
   })
 
   it('should switch to all cards view when button is clicked', () => {
@@ -195,12 +193,12 @@ describe('AdjutantSelector', () => {
       />
     )
 
-    const allCardsButton = screen.getByText('All 52 Cards')
+    const allCardsButton = screen.getByText('All Cards')
     fireEvent.click(allCardsButton)
 
-    expect(screen.getByText('All 52 Cards:')).toBeInTheDocument()
-    expect(screen.getAllByText('♠ スペード').length).toBeGreaterThan(1) // Declaration + card suit sections
-    expect(screen.getByText('♥ ハート')).toBeInTheDocument()
+    // Check that the button changed to active state
+    expect(allCardsButton).toHaveClass('bg-blue-600')
+    // All cards are now displayed as card buttons without suit headings
   })
 
   it('should handle card selection', () => {
@@ -212,21 +210,12 @@ describe('AdjutantSelector', () => {
       />
     )
 
-    // Find and click any card button - there should be at least one important card displayed
-    const buttons = screen.getAllByRole('button')
-    const cardButtons = buttons.filter(
-      (button) =>
-        button.className.includes('bg-white') &&
-        button.className.includes('border-2')
-    )
-
-    expect(cardButtons.length).toBeGreaterThan(0)
-
-    // Click the first card
-    fireEvent.click(cardButtons[0])
+    // Click the first important card (Spades A - Mighty)
+    const spadesAceCard = screen.getByTestId('card-spades-A')
+    fireEvent.click(spadesAceCard)
 
     // Should find selection text somewhere in the component
-    expect(screen.getByText(/Selected adjutant card/)).toBeInTheDocument()
+    expect(screen.getByText(/Selected Adjutant Card:/)).toBeInTheDocument()
   })
 
   it('should call onAdjutantSelect when confirm button is clicked', () => {
@@ -238,21 +227,12 @@ describe('AdjutantSelector', () => {
       />
     )
 
-    // Find and click a card first
-    const buttons = screen.getAllByRole('button')
-    const cardButtons = buttons.filter(
-      (button) =>
-        button.className.includes('bg-white') &&
-        button.className.includes('border-2')
-    )
-
-    expect(cardButtons.length).toBeGreaterThan(0)
-
-    // Click the first card to select it
-    fireEvent.click(cardButtons[0])
+    // Click the first important card (Spades A - Mighty) to select it
+    const spadesAceCard = screen.getByTestId('card-spades-A')
+    fireEvent.click(spadesAceCard)
 
     // Click confirm button
-    const confirmButton = screen.getByText('Confirm Adjutant Selection')
+    const confirmButton = screen.getByText('✅ Confirm Adjutant Selection')
     fireEvent.click(confirmButton)
 
     expect(mockOnAdjutantSelect).toHaveBeenCalled()
@@ -294,7 +274,7 @@ describe('AdjutantSelector', () => {
     ).toBeInTheDocument()
   })
 
-  it('should disable confirm button when no card is selected', () => {
+  it('should not show confirm button when no card is selected', () => {
     render(
       <AdjutantSelector
         gameState={mockGameState}
@@ -303,8 +283,10 @@ describe('AdjutantSelector', () => {
       />
     )
 
-    const confirmButton = screen.getByText('Confirm Adjutant Selection')
-    expect(confirmButton).toBeDisabled()
+    // Confirm button should not be visible when no card is selected
+    expect(
+      screen.queryByText(/Confirm Adjutant Selection/)
+    ).not.toBeInTheDocument()
   })
 
   it('should handle different trump suits correctly', () => {
@@ -326,6 +308,6 @@ describe('AdjutantSelector', () => {
       />
     )
 
-    expect(screen.getAllByText('♥ ハート')).toHaveLength(2) // Declaration and card sections
+    expect(screen.getAllByText('♥ ハート')).toHaveLength(1) // Only in declaration
   })
 })

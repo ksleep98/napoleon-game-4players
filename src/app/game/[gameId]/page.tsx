@@ -9,34 +9,25 @@ import { GameStatus } from '@/components/game/GameStatus'
 import { NapoleonSelector } from '@/components/game/NapoleonSelector'
 import { PlayerHand } from '@/components/game/PlayerHand'
 import { TrickResult } from '@/components/game/TrickResult'
-import { useGameState } from '@/hooks/useGameState'
+import { GameProvider, useGame } from '@/contexts/GameContext'
 import { GAME_PHASES } from '@/lib/constants'
 import { getNextDeclarationPlayer } from '@/lib/napoleonRules'
 import { calculateGameResult, getPlayerFaceCardCount } from '@/lib/scoring'
 import type { Card as CardType, NapoleonDeclaration } from '@/types/game'
 
-export default function GamePage() {
+function GamePageContent() {
   const params = useParams()
-  const searchParams = useSearchParams()
-  const gameId = params.gameId as string
+  const _gameId = params.gameId as string
   const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null) // 実際の実装では認証から取得
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
 
-  // URLクエリパラメータを取得
-  const playersParam = searchParams.get('players')
-  const isAI = searchParams.get('ai') === 'true'
-  const playerNames = playersParam ? playersParam.split(',') : undefined
-
-  const { gameState, loading, error, actions, utils } = useGameState(
-    gameId,
-    playerNames,
-    isAI
-  )
+  const { gameState, loading, error, actions, utils } = useGame()
 
   // プレイヤーIDを設定（AIモードでは人間プレイヤー、通常モードでは最初のプレイヤー）
   useEffect(() => {
     if (gameState && gameState.players.length > 0) {
-      if (isAI) {
+      const hasAI = gameState.players.some((p) => p.isAI)
+      if (hasAI) {
         const humanPlayer = gameState.players.find((p) => !p.isAI)
         if (humanPlayer && humanPlayer.id !== currentPlayerId) {
           setCurrentPlayerId(humanPlayer.id)
@@ -46,7 +37,7 @@ export default function GamePage() {
         setCurrentPlayerId(gameState.players[0].id)
       }
     }
-  }, [gameState, isAI, currentPlayerId])
+  }, [gameState, currentPlayerId])
 
   if (loading) {
     return (
@@ -228,7 +219,7 @@ export default function GamePage() {
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Napoleon Game</h1>
-          {isAI && (
+          {gameState?.players.some((p) => p.isAI) && (
             <button
               type="button"
               onClick={() => {
@@ -353,5 +344,22 @@ export default function GamePage() {
           />
         )}
     </div>
+  )
+}
+
+export default function GamePage() {
+  const params = useParams()
+  const searchParams = useSearchParams()
+  const gameId = params.gameId as string
+
+  // URLクエリパラメータを取得
+  const playersParam = searchParams.get('players')
+  const isAI = searchParams.get('ai') === 'true'
+  const playerNames = playersParam ? playersParam.split(',') : undefined
+
+  return (
+    <GameProvider gameId={gameId} playerNames={playerNames} isAI={isAI}>
+      <GamePageContent />
+    </GameProvider>
   )
 }
