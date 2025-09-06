@@ -19,9 +19,41 @@ RLSポリシーの有効化により、以下のセキュリティが強化さ�
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
-# Server-side Supabase Configuration (for RLS bypass)
+# Server-side Supabase Configuration (REQUIRED for RLS bypass)
+# ⚠️ Without this key, game saves will fail with RLS policy violations
+# 📝 2025-09-06: 新API Keys形式 (sb_secret_*) と Legacy JWT (eyJ*) の両方に対応
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
+
+## 🔄 2025-09-06 Authentication Update
+
+### 新API Keys認証システム
+
+**✅ 完了した改善**:
+
+- 新Supabase API Keys形式 (`sb_secret_*`) 完全対応
+- Legacy JWT形式 (`eyJ*`) との互換性維持
+- 認証失敗時のREST APIフォールバック機能
+- Service Role Key自動診断機能
+
+**実装詳細**:
+
+```typescript
+// 自動診断によるAPI Key形式検出
+const diagnosis = diagnoseServiceRoleKey();
+if (diagnosis.isNewApiKey) {
+  // 新API Keys専用の認証設定
+  headers.apikey = serviceRoleKey;
+  headers.Authorization = `Bearer ${serviceRoleKey}`;
+}
+```
+
+**トラブルシューティング実績**:
+
+- ❌ 問題: "new row violates row-level security policy"
+- ✅ 解決: クライアントサイドの直接DB呼び出しをServer Actions化
+- ❌ 問題: POST 401 Unauthorized
+- ✅ 解決: 新API Keys形式対応 + REST APIフォールバック
 
 ## RLSポリシー設定手順
 

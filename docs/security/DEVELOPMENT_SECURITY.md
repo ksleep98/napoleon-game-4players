@@ -10,7 +10,54 @@
 
 ## 実装済みセキュリティ対策
 
-### 1. サーバーアクション (`src/app/actions/gameActions.ts`)
+### 1. 新しいSupabase API Keys認証システム (2025-09-06更新)
+
+**✅ 新API Keys形式対応完了**
+
+- Legacy JWT (`eyJ` prefix) と新API Keys (`sb_secret_` prefix) の両方に対応
+- 認証失敗時のREST APIフォールバック機能実装
+- クライアントサイドからの直接DBアクセスを完全廃止
+
+**主要改善点:**
+
+```typescript
+// Service Role Key診断機能
+const diagnosis = diagnoseServiceRoleKey();
+if (diagnosis.isNewApiKey) {
+  // 新API Keys専用クライアント作成
+  clientForOperation = createClient(envUrl, envServiceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
+// REST API フォールバック
+if (
+  saveResult.error?.includes('401') ||
+  saveResult.error?.includes('unauthorized')
+) {
+  const restResult = await saveGameStateViaRestAPI(
+    gameData,
+    envServiceRoleKey,
+    envUrl
+  );
+}
+```
+
+### 2. セキュリティアーキテクチャの完全分離
+
+**✅ クライアント・サーバー分離強化**
+
+- `gameService.ts`: 安全なsubscription機能のみ（読み取り専用）
+- `secureGameService.ts`: Server Actions経由でのセキュアな操作
+- 危険な直接Supabase呼び出し関数をすべて削除
+
+**移行完了:**
+
+- `useGameActions.ts`: secureGameService使用
+- `useAIProcessing.ts`: secureGameService使用
+- `src/app/rooms/page.tsx`: secureGameService使用
+
+### 3. サーバーアクション (`src/app/actions/gameActions.ts`)
 
 ```typescript
 export async function saveGameStateAction(
@@ -18,6 +65,15 @@ export async function saveGameStateAction(
   playerId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // ✅ Service Role Key診断・新API Keys対応
+    const diagnosis = diagnoseServiceRoleKey();
+    let clientForOperation = supabaseAdmin;
+
+    if (diagnosis.isNewApiKey) {
+      // 新API Keys専用クライアント作成
+      clientForOperation = createClient(envUrl, envServiceRoleKey, {...});
+    }
+
     // ✅ 入力検証
     if (!validateGameId(gameState.id)) {
       throw new GameActionError('Invalid game ID', 'INVALID_GAME_ID');
@@ -39,8 +95,9 @@ export async function saveGameStateAction(
       throw new GameActionError('Player not in game', 'PLAYER_NOT_IN_GAME');
     }
 
-    // ✅ Service Role Key使用 - クライアントから直接DBアクセス不可
-    const { error } = await supabaseAdmin.from('games').upsert({
+    // ✅ Service Role Key使用 - RLS適用下での安全なDB操作
+    // 401エラー時のREST APIフォールバック機能付き
+    const saveResult = await clientForOperation.from('games').upsert({
       id: gameState.id,
       state: gameState,
       // ...
@@ -302,7 +359,7 @@ export function useGameState(gameId: string | null) {
 
 ```typescript
 // ❌ 削除された非推奨API
-const { SecurePlayerSession } = await import('@/utils/secureStorage');
+import { SecurePlayerSession } from '@/utils/secureStorage';
 SecurePlayerSession.setPlayer(playerId, currentName);
 
 // ✅ 現在の推奨実装

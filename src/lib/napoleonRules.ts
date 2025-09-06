@@ -88,7 +88,7 @@ export function getMinimumDeclaration(
   if (!currentDeclaration) {
     return {
       minTricks: MIN_NAPOLEON_FACE_CARDS,
-      availableSuits: SUITS,
+      availableSuits: [...SUITS],
     }
   }
 
@@ -116,7 +116,7 @@ export function getMinimumDeclaration(
   if (currentTricks < MAX_NAPOLEON_FACE_CARDS) {
     return {
       minTricks: currentTricks + 1,
-      availableSuits: SUITS,
+      availableSuits: [...SUITS],
     }
   }
 

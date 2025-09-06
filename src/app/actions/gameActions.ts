@@ -19,6 +19,47 @@ export async function saveGameStateAction(
   playerId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // 環境変数の確認
+    const envServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const _envAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+
+    // Service Role Key の診断
+    const { diagnoseServiceRoleKey } = await import('../../lib/supabase/server')
+    const diagnosis = diagnoseServiceRoleKey()
+
+    if (!diagnosis.exists) {
+      throw new GameActionError(
+        'Service Role Key is required for server actions. Please set SUPABASE_SERVICE_ROLE_KEY in your .env.local file.',
+        'SERVICE_ROLE_MISSING'
+      )
+    }
+
+    // 新しいAPI Keys形式の場合、専用クライアントを作成
+    let clientForOperation = supabaseAdmin
+
+    if (diagnosis.isNewApiKey) {
+      try {
+        const { createClient } = await import('@supabase/supabase-js')
+        if (!envUrl || !envServiceRoleKey) {
+          throw new GameActionError(
+            'Missing environment variables for client creation',
+            'MISSING_ENV_VARS'
+          )
+        }
+
+        clientForOperation = createClient(envUrl, envServiceRoleKey, {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+          },
+        })
+      } catch (clientError) {
+        console.error('Failed to create dedicated client:', clientError)
+        clientForOperation = supabaseAdmin
+      }
+    }
+
     // 入力検証
     if (!validateGameId(gameState.id)) {
       throw new GameActionError('Invalid game ID', 'INVALID_GAME_ID')
@@ -36,20 +77,11 @@ export async function saveGameStateAction(
     // プレイヤーがゲームに参加しているかチェック
     const playerInGame = gameState.players.some((p) => p.id === playerId)
     if (!playerInGame) {
-      // 開発環境ではより詳細なログを出力してデバッグを支援
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Player not found in game:')
-        console.log('- Requested playerId:', playerId)
-        console.log(
-          '- Game players:',
-          gameState.players.map((p) => ({ id: p.id, name: p.name }))
-        )
-      }
       throw new GameActionError('Player not in game', 'PLAYER_NOT_IN_GAME')
     }
 
     // ゲーム状態をSupabaseに保存
-    const { error } = await supabaseAdmin.from('games').upsert({
+    const gameData = {
       id: gameState.id,
       state: gameState,
       phase: gameState.phase,
@@ -60,22 +92,105 @@ export async function saveGameStateAction(
             ? 'napoleon'
             : 'citizen'
           : null,
-    })
+    }
 
-    if (error) {
-      console.error('Database error:', error)
+    // データベース操作
+    let saveResult: {
+      data: unknown
+      error: { message?: string; code?: string; details?: string } | null
+    } | null = null
+
+    // 既存のゲームを確認
+    const existingGame = await clientForOperation
+      .from('games')
+      .select('id')
+      .eq('id', gameData.id)
+      .single()
+
+    try {
+      if (existingGame.data) {
+        // ゲームが存在する場合は UPDATE
+        saveResult = await clientForOperation
+          .from('games')
+          .update(gameData)
+          .eq('id', gameData.id)
+      } else {
+        // ゲームが存在しない場合は INSERT
+        saveResult = await clientForOperation.from('games').insert(gameData)
+      }
+
+      // 401エラーまたはRLSエラーの場合はREST APIフォールバック
+      if (
+        saveResult.error &&
+        (saveResult.error.message?.includes('401') ||
+          saveResult.error.message?.toLowerCase().includes('unauthorized') ||
+          saveResult.error.message?.includes('row-level security policy'))
+      ) {
+        if (!envServiceRoleKey || !envUrl) {
+          throw new GameActionError(
+            'Missing environment variables for REST API fallback',
+            'MISSING_ENV_VARS'
+          )
+        }
+
+        const restResult = await saveGameStateViaRestAPI(
+          gameData,
+          envServiceRoleKey,
+          envUrl
+        )
+        saveResult = { data: restResult, error: null }
+      }
+    } catch (_clientError) {
+      // クライアントエラーの場合もREST APIフォールバック
+      if (!envServiceRoleKey || !envUrl) {
+        throw new GameActionError(
+          'Missing environment variables for REST API fallback',
+          'MISSING_ENV_VARS'
+        )
+      }
+
+      const restResult = await saveGameStateViaRestAPI(
+        gameData,
+        envServiceRoleKey,
+        envUrl
+      )
+      saveResult = { data: restResult, error: null }
+    }
+
+    if (saveResult?.error) {
       throw new GameActionError(
-        `Failed to save game state: ${error.message}`,
+        `Database operation failed: ${saveResult.error.message}`,
         'DATABASE_ERROR'
       )
     }
 
-    // キャッシュ無効化（必要に応じて）
+    // データが返されない場合はREST APIで確認
+    if (
+      !saveResult?.data ||
+      (Array.isArray(saveResult.data) && saveResult.data.length === 0)
+    ) {
+      if (!envServiceRoleKey || !envUrl) {
+        throw new GameActionError(
+          'Missing environment variables for confirmation REST API',
+          'MISSING_ENV_VARS'
+        )
+      }
+
+      const restResult = await saveGameStateViaRestAPI(
+        gameData,
+        envServiceRoleKey,
+        envUrl
+      )
+      saveResult = { data: restResult, error: null }
+    }
+
+    // キャッシュ無効化
     revalidatePath(`/game/${gameState.id}`)
 
     return { success: true }
   } catch (error) {
     console.error('Game save error:', error)
+
     return {
       success: false,
       error:
@@ -84,6 +199,73 @@ export async function saveGameStateAction(
           : 'Unknown error occurred',
     }
   }
+}
+
+// 新API Keys形式用のダイレクトAPI呼び出し（フォールバック）
+async function saveGameStateViaRestAPI(
+  gameData: {
+    id: string
+    state: GameState
+    phase: string
+    updated_at: string
+    winner_team: string | null
+  },
+  serviceRoleKey: string,
+  supabaseUrl: string
+): Promise<unknown> {
+  // New API Keys format requires different authentication
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Prefer: 'resolution=merge-duplicates',
+  }
+
+  if (serviceRoleKey.startsWith('sb_secret_')) {
+    // New API Keys format
+    headers.apikey = serviceRoleKey
+    headers.Authorization = `Bearer ${serviceRoleKey}`
+  } else {
+    // Legacy JWT format
+    headers.apikey = serviceRoleKey
+    headers.Authorization = `Bearer ${serviceRoleKey}`
+  }
+
+  const response = await fetch(`${supabaseUrl}/rest/v1/games`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(gameData),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(
+      `REST API failed: ${response.status} ${response.statusText} - ${errorText}`
+    )
+  }
+
+  // Handle different response types
+  const contentType = response.headers.get('content-type')
+  let result: unknown
+
+  if (!contentType || contentType.includes('application/json')) {
+    const text = await response.text()
+
+    if (text.trim() === '') {
+      // 空のレスポンスは成功と見なす
+      result = { success: true, message: 'Operation completed successfully' }
+    } else {
+      try {
+        result = JSON.parse(text)
+      } catch (_parseError) {
+        result = { success: true, data: text }
+      }
+    }
+  } else {
+    // 非JSON レスポンス
+    const text = await response.text()
+    result = { success: true, data: text }
+  }
+
+  return result
 }
 
 /**

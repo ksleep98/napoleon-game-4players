@@ -42,13 +42,13 @@ export const setPlayerSession = async (playerId: string): Promise<void> => {
     }
   }
 
-  // テスト環境でのみ RLS 関数呼び出しをスキップ
-  // 開発環境では実際のRLS設定を試行する
+  // テスト環境でのみRLS関数呼び出しをスキップ
   if (process.env.NODE_ENV === 'test') {
     console.log('Test mode: Skipping RLS setup')
     return
   }
 
+  // 開発・本番問わずRLS設定を試行（セキュリティ担保のため）
   try {
     const { error } = await supabase.rpc('set_config', {
       setting_name: 'app.player_id',
@@ -57,17 +57,39 @@ export const setPlayerSession = async (playerId: string): Promise<void> => {
     })
 
     if (error) {
-      console.warn('Failed to set player session:', error)
-      // 開発環境ではRLS関数が存在しない場合があるので警告のみ
-      if (process.env.NODE_ENV === 'production') {
-        throw error
+      // 関数が見つからない場合のハンドリング
+      if (error.code === 'PGRST202') {
+        console.warn(
+          '⚠️  RLS set_config function not available. Please run the RLS policies in Supabase SQL Editor.',
+          '\n   Game will continue but with reduced security in development.'
+        )
+
+        // 開発環境では警告して続行、本番環境では停止
+        if (process.env.NODE_ENV === 'production') {
+          throw new Error('RLS configuration required in production')
+        }
+        return
       }
+
+      // その他のエラー
+      console.error('RLS setup failed:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+      })
+
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error(`RLS setup failed: ${error.message}`)
+      }
+    } else {
+      console.log('✅ RLS player session configured:', playerId)
     }
   } catch (err) {
-    console.warn('Failed to set player session:', err)
-    // 開発環境ではRLS関数が存在しない場合があるので警告のみ
+    const errorMessage = err instanceof Error ? err.message : String(err)
+    console.error('RLS setup error:', errorMessage)
+
     if (process.env.NODE_ENV === 'production') {
-      throw err
+      throw new Error(`RLS setup failed: ${errorMessage}`)
     }
   }
 }

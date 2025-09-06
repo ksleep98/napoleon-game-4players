@@ -3,12 +3,19 @@ import type { Card, GameState } from '@/types/game'
 import {
   declareNapoleonWithDeclaration,
   exchangeCards,
+  getCurrentPlayer,
   passNapoleonDeclaration,
+  playCard,
   setAdjutant,
 } from '../gameLogic'
-import { getNextDeclarationPlayer } from '../napoleonRules'
+import {
+  advanceNapoleonPhase,
+  canDeclareNapoleon,
+  getNextDeclarationPlayer,
+} from '../napoleonRules'
 import { allianceAIStrategy } from './alliance'
 import { napoleonAIStrategy } from './napoleon'
+import { selectBestStrategicCard } from './strategicCardEvaluator'
 
 // ナポレオン決定フェーズの AI 処理（改善版）
 export async function processNapoleonPhase(
@@ -35,9 +42,6 @@ export async function processNapoleonPhase(
   console.log(`Processing Napoleon phase for AI player: ${currentPlayer.name}`)
 
   // そのプレイヤーが実際に宣言可能かチェック
-  const { canDeclareNapoleon, advanceNapoleonPhase } = await import(
-    '../napoleonRules'
-  )
   if (!canDeclareNapoleon(updatedGameState, currentPlayer.id)) {
     console.log(
       `AI Player ${currentPlayer.name} cannot declare Napoleon (already passed)`
@@ -184,7 +188,6 @@ export async function processAIPlayingPhase(
   let updatedState = { ...gameState }
 
   // 現在のプレイヤーがAIかチェック
-  const { getCurrentPlayer } = await import('../gameLogic')
   const currentPlayer = getCurrentPlayer(updatedState)
 
   if (!currentPlayer?.isAI) {
@@ -195,7 +198,6 @@ export async function processAIPlayingPhase(
   const cardToPlay = await selectAICard(currentPlayer.hand, updatedState)
 
   if (cardToPlay) {
-    const { playCard } = await import('../gameLogic')
     updatedState = playCard(updatedState, currentPlayer.id, cardToPlay.id)
     console.log(
       `AI ${currentPlayer.name} plays ${cardToPlay.suit}-${cardToPlay.rank}`
@@ -232,7 +234,6 @@ async function selectAICard(
 
   // 戦略的AI評価システムを使用
   try {
-    const { selectBestStrategicCard } = await import('./strategicCardEvaluator')
     const selectedCard = selectBestStrategicCard(
       playableCards,
       gameState,

@@ -1,4 +1,4 @@
-import type { Card, Rank, Suit } from '@/types/game'
+export const SUITS = ['spades', 'hearts', 'diamonds', 'clubs'] as const
 
 // Suit enumeration for better readability
 export enum SUIT_ENUM {
@@ -8,14 +8,7 @@ export enum SUIT_ENUM {
   CLUBS = 'clubs',
 }
 
-export const SUITS: Suit[] = [
-  SUIT_ENUM.SPADES,
-  SUIT_ENUM.HEARTS,
-  SUIT_ENUM.DIAMONDS,
-  SUIT_ENUM.CLUBS,
-]
-
-export const RANKS: Rank[] = [
+export const RANKS = [
   'A',
   '2',
   '3',
@@ -29,7 +22,9 @@ export const RANKS: Rank[] = [
   'J',
   'Q',
   'K',
-]
+] as const
+
+import type { Card, Rank, Suit } from '@/types/game'
 
 // ナポレオンゲームでのカードの強さ（数字が大きいほど強い）
 export const CARD_VALUES: Record<Rank, number> = {
@@ -63,11 +58,19 @@ export const SUIT_SYMBOLS = {
   spades: '♠',
 } as const
 
+// Suit name parts as constants
+export const SUIT_NAME_PARTS = {
+  clubs: 'クラブ',
+  diamonds: 'ダイヤ',
+  hearts: 'ハート',
+  spades: 'スペード',
+} as const
+
 export const SUIT_NAMES = {
-  clubs: '♣ クラブ',
-  diamonds: '♦ ダイヤ',
-  hearts: '♥ ハート',
-  spades: '♠ スペード',
+  clubs: `♣ ${SUIT_NAME_PARTS.clubs}`,
+  diamonds: `♦ ${SUIT_NAME_PARTS.diamonds}`,
+  hearts: `♥ ${SUIT_NAME_PARTS.hearts}`,
+  spades: `♠ ${SUIT_NAME_PARTS.spades}`,
 } as const
 
 export const SUIT_COLORS = {
@@ -78,10 +81,17 @@ export const SUIT_COLORS = {
 } as const
 
 export const SUIT_DISPLAY_COLORS = {
-  spades: 'text-black font-bold',
+  spades: 'text-gray-900 font-bold',
   hearts: 'text-red-700 font-bold',
   diamonds: 'text-red-500 font-bold',
-  clubs: 'text-black font-bold',
+  clubs: 'text-gray-600 font-bold',
+} as const
+
+export const SUIT_TEXT_COLORS = {
+  clubs: 'text-gray-800',
+  diamonds: 'text-red-500',
+  hearts: 'text-red-500',
+  spades: 'text-gray-800',
 } as const
 
 // Card rank constants
@@ -175,6 +185,22 @@ export const WINNER_TEAMS = {
   CITIZEN: 'citizen',
 } as const
 
+// Game room status constants
+export const GAME_ROOM_STATUS = {
+  WAITING: 'waiting',
+  PLAYING: 'playing',
+  FINISHED: 'finished',
+} as const
+
+// Connection state constants
+export const CONNECTION_STATES = {
+  CONNECTING: 'CONNECTING',
+  OPEN: 'OPEN',
+  CLOSED: 'CLOSED',
+  CHANNEL_ERROR: 'CHANNEL_ERROR',
+  TIMED_OUT: 'TIMED_OUT',
+} as const
+
 // Jokerを除外した52枚のトランプカードデッキを生成（スペード・ハート・ダイヤ・クラブ各13枚）
 export const createDeck = (): Card[] => {
   const deck: Card[] = []
@@ -214,3 +240,34 @@ export const isFaceCard = (card: Card): boolean => {
 export const countFaceCards = (cards: Card[]): number => {
   return cards.filter(isFaceCard).length
 }
+
+// Action Types for State Management
+export const ACTION_TYPES = {
+  // Game Context Actions
+  GAME: {
+    SET_LOADING: 'SET_LOADING',
+    SET_ERROR: 'SET_ERROR',
+    SET_GAME_STATE: 'SET_GAME_STATE',
+    SET_INITIALIZED: 'SET_INITIALIZED',
+    RESET_ERROR: 'RESET_ERROR',
+    RESET_STATE: 'RESET_STATE',
+  },
+  // Napoleon Selector Actions
+  NAPOLEON_SELECTOR: {
+    SET_SELECTED_CARD: 'SET_SELECTED_CARD',
+    SET_SELECTED_TRICKS: 'SET_SELECTED_TRICKS',
+    SET_SELECTED_SUIT: 'SET_SELECTED_SUIT',
+    RESET_TO_MIN_DECLARATION: 'RESET_TO_MIN_DECLARATION',
+  },
+  // Adjutant Selector Actions
+  ADJUTANT_SELECTOR: {
+    SET_SELECTED_CARD: 'SET_SELECTED_CARD',
+    SET_VIEW_MODE: 'SET_VIEW_MODE',
+  },
+  // Player Session Actions
+  PLAYER_SESSION: {
+    INITIALIZE_PLAYER: 'INITIALIZE_PLAYER',
+    SET_SESSION_FROM_SECURE: 'SET_SESSION_FROM_SECURE',
+    CLEAR_PLAYER: 'CLEAR_PLAYER',
+  },
+} as const
