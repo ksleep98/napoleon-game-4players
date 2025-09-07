@@ -1,50 +1,54 @@
 # 開発コマンド一覧
 
+## パッケージマネージャー
+
+**推奨:** pnpm（npmより高速・効率的）
+
 ## 開発サーバー
 
 ```bash
-npm run dev           # 開発サーバー起動 (http://localhost:3000)
-npm run build         # プロダクションビルド
-npm run start         # プロダクションサーバー起動
+pnpm dev              # 開発サーバー起動 (http://localhost:3000)
+pnpm build            # プロダクションビルド
+pnpm start            # プロダクションサーバー起動
 ```
 
 ## コード品質
 
 ```bash
-npm run lint          # Biome リント + フォーマットチェック
-npm run lint:fix      # Biome 自動修正
-npm run format        # Biome フォーマット実行
-npm run format:check  # フォーマットチェック（修正なし）
-npm run type-check    # TypeScript型チェック
-npm run type-check:fast # 高速型チェック（skipLibCheck）
+pnpm lint             # Biome リント + フォーマットチェック
+pnpm lint:fix         # Biome 自動修正
+pnpm format           # Biome フォーマット実行
+pnpm format:check     # フォーマットチェック（修正なし）
+pnpm type-check       # TypeScript型チェック
+pnpm type-check:fast  # 高速型チェック（skipLibCheck）
 ```
 
 ## テスト
 
 ```bash
-npm test              # Jest テスト実行
-npm run test:watch    # Jest ウォッチモード
-npm run test:coverage # カバレッジ付きテスト
+pnpm test             # Jest テスト実行
+pnpm test:watch       # Jest ウォッチモード
+pnpm test:coverage    # カバレッジ付きテスト
 ```
 
 ## CI/CD
 
 ```bash
-npm run ci-check      # 全品質チェック実行 (lint + type-check + format:check + test + build)
-npm run lint:fast     # 高速lintチェック（compact reporter）
+pnpm ci-check         # 全品質チェック実行 (lint + type-check + format:check + test + build)
+pnpm lint:fast        # 高速lintチェック（compact reporter）
 ```
 
 ## 使い分けガイド
 
 ### 開発中
 
-- `npm run dev` - 開発サーバー起動
-- `npm run test:watch` - テスト監視モード
+- `pnpm dev` - 開発サーバー起動
+- `pnpm test:watch` - テスト監視モード
 
 ### コミット前
 
-- `npm run ci-check` - 全チェック実行（推奨）
-- `npm run lint:fix` - 自動修正
+- `pnpm ci-check` - 全チェック実行（推奨）
+- `pnpm lint:fix` - 自動修正
 
 ### CI/CD環境
 

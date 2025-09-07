@@ -109,11 +109,11 @@ Time:        ~800ms
 
 ```bash
 # 全テスト実行
-npm test
+pnpm test
 
 # ウォッチモード
-npm run test:watch
+pnpm test:watch
 
 # カバレッジレポート
-npm run test:coverage
+pnpm test:coverage
 ```

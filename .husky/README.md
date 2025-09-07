@@ -19,11 +19,11 @@ git commit -m "message" --no-verify
 
 ```bash
 # 全体的な品質チェック
-npm run ci-check
+pnpm ci-check
 
 # 個別実行
-npm run lint:fix      # 自動修正
-npm run type-check    # 型チェック
-npm test              # テスト実行
-npm run format        # フォーマット
+pnpm lint:fix      # 自動修正
+pnpm type-check    # 型チェック
+pnpm test              # テスト実行
+pnpm format        # フォーマット
 ```

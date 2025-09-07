@@ -25,8 +25,8 @@ npx @biomejs/biome format --write  # フォーマット
 **2. プロジェクト全体チェック:**
 
 ```bash
-npm run type-check  # TypeScript型チェック
-npm test           # Jest テスト実行
+pnpm type-check  # TypeScript型チェック
+pnpm test           # Jest テスト実行
 ```
 
 ## Pre-commit バリエーション
@@ -99,7 +99,7 @@ Please remove the following two lines from .husky/pre-commit:
 ### 推奨ワークフロー
 
 1. コード変更
-2. `npm run ci-check` で事前確認
+2. `pnpm ci-check` で事前確認
 3. `git add .`
 4. `git commit -m "message"` （自動チェック実行）
 5. 問題修正後に再コミット

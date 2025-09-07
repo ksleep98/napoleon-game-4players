@@ -21,23 +21,28 @@ jobs:
           # Only fetch current commit for speed
           fetch-depth: 1
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
       - name: Setup Node.js with cache
         uses: actions/setup-node@v4
         with:
           node-version: "22.14.0"
-          cache: "npm"
+          cache: "pnpm"
 
       - name: Install dependencies and fix Biome
         run: |
           echo "📦 Installing dependencies..."
-          npm ci --prefer-offline --no-audit --no-fund
+          pnpm install --frozen-lockfile
 
           echo "🔧 Fixing Biome installation for Linux..."
           # Remove potentially corrupted Biome installation
           rm -rf node_modules/@biomejs/biome node_modules/.bin/biome 2>/dev/null || true
 
           # Fresh install of Biome with correct platform binary
-          npm install @biomejs/biome@latest
+          pnpm add @biomejs/biome@latest
 
           # Verify installation
           if npx @biomejs/biome --version; then
@@ -57,10 +62,10 @@ jobs:
             echo "⚠️ Biome unavailable, running TypeScript and test checks..."
 
             # Run type check and tests when Biome is not available
-            npm run type-check &
+            pnpm type-check &
             PID_TYPE=$!
 
-            npm run test:ci &
+            pnpm test:ci &
             PID_TEST=$!
 
             wait $PID_TYPE
@@ -80,16 +85,16 @@ jobs:
             echo "🎉 Type check and tests passed! (Biome checks skipped)"
           else
             # Run full quality checks in parallel
-            npm run lint &
+            pnpm lint &
             PID_LINT=$!
 
-            npm run type-check &
+            pnpm type-check &
             PID_TYPE=$!
 
-            npm run format:check &
+            pnpm format:check &
             PID_FORMAT=$!
 
-            npm run test:ci &
+            pnpm test:ci &
             PID_TEST=$!
 
             # Wait for all processes and capture exit codes
@@ -130,4 +135,4 @@ jobs:
           NEXT_TELEMETRY_DISABLED: "1"
         run: |
           echo "🏗️ Fast build verification..."
-          npm run build
+          pnpm build

@@ -260,7 +260,7 @@ describe('GameLogic', () => {
 - [ ] 文字列リテラルを定数参照に置換
 - [ ] 動的importを静的importに変更
 - [ ] TypeScript型エラー0件
-- [ ] `npm run ci-check` 全項目合格
+- [ ] `pnpm ci-check` 全項目合格
 - [ ] テスト追加・既存テスト合格
 - [ ] エラーハンドリング適切実装
 - [ ] セキュリティ検証実装（Server Actions）

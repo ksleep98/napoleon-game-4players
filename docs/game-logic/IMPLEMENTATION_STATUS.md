@@ -89,7 +89,7 @@
 
 - ✅ Yarn → NPM移行完了
 - ✅ package-lock.json生成
-- ✅ npm run devコマンド対応
+- ✅ pnpm devコマンド対応
 
 ### 🛠️ 開発ツール
 
@@ -121,7 +121,7 @@
 
 ## 動作確認
 
-- ✅ npm run dev で開発サーバー起動（http://localhost:3000）
+- ✅ pnpm dev で開発サーバー起動（http://localhost:3000）
 - ✅ TypeScript型チェック通過
 - ✅ Biome リント・フォーマット正常動作
 - ✅ GitHub Actions CI/CD正常動作

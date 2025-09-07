@@ -242,9 +242,6 @@ export function setAdjutant(
   // ナポレオンプレイヤーに隠しカード4枚を追加（隠しカードフラグ付き）
   const finalPlayers = updatedPlayers.map((player) => {
     if (player.isNapoleon) {
-      console.log(
-        `Adding ${gameState.hiddenCards.length} hidden cards to Napoleon ${player.name}. Current hand: ${player.hand.length} cards`
-      )
       const hiddenCardsWithFlag = gameState.hiddenCards.map((card) => ({
         ...card,
         wasHidden: true,
