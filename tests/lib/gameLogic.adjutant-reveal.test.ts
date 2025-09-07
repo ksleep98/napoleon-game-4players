@@ -20,8 +20,16 @@ describe('Adjutant Card Reveal Feature', () => {
     )
     expect(adjutantCard).toBeDefined()
 
+    // Get actual Napoleon player ID
+    const napoleon = gameState.players.find((p) => p.isNapoleon)
+    expect(napoleon).toBeDefined()
+
+    if (!napoleon) {
+      throw new Error('Napoleon player not found')
+    }
+
     gameState.napoleonDeclaration = {
-      playerId: 'player_1',
+      playerId: napoleon.id,
       targetTricks: 11,
       suit: 'spades',
       adjutantCard: adjutantCard as Card,
@@ -36,9 +44,6 @@ describe('Adjutant Card Reveal Feature', () => {
     ]
 
     // Add hidden cards to Napoleon's hand (simulating the exchange phase)
-    const napoleon = gameState.players.find((p) => p.isNapoleon)
-    expect(napoleon).toBeDefined()
-
     if (napoleon) {
       napoleon.hand = [
         ...napoleon.hand.slice(0, 8), // Keep some original cards
@@ -137,19 +142,21 @@ describe('Adjutant Card Reveal Feature', () => {
     expect(testAdjutantCard).toBeDefined()
 
     if (testAdjutantCard) {
-      cleanGameState.napoleonDeclaration = {
-        playerId: 'player_1',
-        targetTricks: 11,
-        suit: 'spades',
-        adjutantCard: testAdjutantCard,
-      }
-
-      // Give Napoleon the adjutant card in original hand (no wasHidden flag)
-      const adjutantCardNotHidden = { ...testAdjutantCard }
+      // Get actual Napoleon player ID for clean game state
       const napoleonClean = cleanGameState.players.find((p) => p.isNapoleon)
       expect(napoleonClean).toBeDefined()
 
       if (napoleonClean) {
+        cleanGameState.napoleonDeclaration = {
+          playerId: napoleonClean.id,
+          targetTricks: 11,
+          suit: 'spades',
+          adjutantCard: testAdjutantCard,
+        }
+
+        // Give Napoleon the adjutant card in original hand (no wasHidden flag)
+        const adjutantCardNotHidden = { ...testAdjutantCard }
+
         napoleonClean.hand = [
           ...napoleonClean.hand.slice(0, 8),
           adjutantCardNotHidden,
