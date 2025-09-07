@@ -428,19 +428,10 @@ export async function playCardAction(
     }
 
     // ゲームロジック実行
-    let updatedGameState = playCard(currentGameState, playerId, cardId)
+    const updatedGameState = playCard(currentGameState, playerId, cardId)
 
-    // AI処理が必要な場合は実行
-    if (
-      updatedGameState.phase === GAME_PHASES.PLAYING &&
-      !updatedGameState.showingTrickResult
-    ) {
-      const nextPlayer = getCurrentPlayer(updatedGameState)
-      if (nextPlayer?.isAI) {
-        // AIの処理を実行（サーバーサイドで）
-        updatedGameState = await processAIPlayingPhase(updatedGameState)
-      }
-    }
+    // AI処理はクライアントサイドで行うため、ここでは実行しない
+    // これによりプレイヤーのモーダルが閉じるまでAIが待機する
 
     // 状態保存
     const saveResult = await saveGameStateAction(updatedGameState, playerId)

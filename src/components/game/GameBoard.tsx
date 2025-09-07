@@ -114,7 +114,7 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
   return (
     <div className="space-y-4">
       {/* メインゲームボード */}
-      <div className="relative w-full max-w-4xl mx-auto h-96 bg-green-700 rounded-xl shadow-lg border-4 border-green-800">
+      <div className="relative w-full max-w-6xl mx-auto h-[600px] bg-green-700 rounded-xl shadow-lg border-4 border-green-800">
         {/* ゲーム情報 */}
         <div className="absolute top-2 left-2 bg-gray-900 bg-opacity-95 text-white rounded-lg p-3 text-sm shadow-lg border border-gray-700">
           <div className="font-semibold mb-1">Game Progress</div>
@@ -197,12 +197,12 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
 
         {/* トリック表示エリア（中央） */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="relative w-48 h-48">
+          <div className="relative w-96 h-96">
             {/* 下（自分） */}
             {cardsByPosition.bottom && (
-              <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2">
+              <div className="absolute bottom-12 left-1/2 transform -translate-x-1/2 flex flex-col items-center">
                 <Card card={cardsByPosition.bottom.card} size="medium" />
-                <div className="text-center text-xs text-white mt-1">
+                <div className="text-center text-xs text-white mt-4 bg-black bg-opacity-60 rounded px-2 py-1">
                   {(() => {
                     const player = gameState.players.find(
                       (p) => p.id === cardsByPosition.bottom?.playerId
@@ -222,9 +222,9 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
 
             {/* 左 */}
             {cardsByPosition.left && (
-              <div className="absolute left-0 top-1/2 transform -translate-y-1/2">
+              <div className="absolute left-12 top-1/2 transform -translate-y-1/2 flex flex-col items-center">
                 <Card card={cardsByPosition.left.card} size="medium" />
-                <div className="text-center text-xs text-white mt-1">
+                <div className="text-center text-xs text-white mt-4 bg-black bg-opacity-60 rounded px-2 py-1">
                   {(() => {
                     const player = gameState.players.find(
                       (p) => p.id === cardsByPosition.left?.playerId
@@ -244,9 +244,8 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
 
             {/* 上 */}
             {cardsByPosition.top && (
-              <div className="absolute top-0 left-1/2 transform -translate-x-1/2">
-                <Card card={cardsByPosition.top.card} size="medium" />
-                <div className="text-center text-xs text-white mt-1">
+              <div className="absolute top-12 left-1/2 transform -translate-x-1/2 flex flex-col items-center">
+                <div className="text-center text-xs text-white mb-4 bg-black bg-opacity-60 rounded px-2 py-1">
                   {(() => {
                     const player = gameState.players.find(
                       (p) => p.id === cardsByPosition.top?.playerId
@@ -261,14 +260,15 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
                     )
                   })()}
                 </div>
+                <Card card={cardsByPosition.top.card} size="medium" />
               </div>
             )}
 
             {/* 右 */}
             {cardsByPosition.right && (
-              <div className="absolute right-0 top-1/2 transform -translate-y-1/2">
+              <div className="absolute right-12 top-1/2 transform -translate-y-1/2 flex flex-col items-center">
                 <Card card={cardsByPosition.right.card} size="medium" />
-                <div className="text-center text-xs text-white mt-1">
+                <div className="text-center text-xs text-white mt-4 bg-black bg-opacity-60 rounded px-2 py-1">
                   {(() => {
                     const player = gameState.players.find(
                       (p) => p.id === cardsByPosition.right?.playerId

@@ -94,45 +94,25 @@ export async function saveGameStateAction(
           : null,
     }
 
-    // データベース操作
+    // データベース操作 - 最初にUPSERTを試行（PostgreSQLの機能を活用）
     let saveResult: {
       data: unknown
       error: { message?: string; code?: string; details?: string } | null
     } | null = null
 
-    // 既存のゲームを確認
-    console.log('Checking if game exists:', gameData.id)
-    const existingGame = await clientForOperation
-      .from('games')
-      .select('id')
-      .eq('id', gameData.id)
-      .single()
-
-    console.log(
-      'Existing game check result:',
-      existingGame.data ? 'exists' : 'not found'
-    )
-
     try {
-      if (existingGame.data) {
-        // ゲームが存在する場合は UPDATE
-        console.log('Updating existing game:', gameData.id)
-        saveResult = await clientForOperation
-          .from('games')
-          .update(gameData)
-          .eq('id', gameData.id)
-      } else {
-        // ゲームが存在しない場合は INSERT
-        console.log('Inserting new game:', gameData.id)
-        saveResult = await clientForOperation.from('games').insert(gameData)
-      }
+      console.log('Attempting UPSERT for game:', gameData.id)
+      // UPSERTを使用して存在チェックとINSERT/UPDATEを一度に実行
+      saveResult = await clientForOperation.from('games').upsert(gameData, {
+        onConflict: 'id',
+      })
 
       console.log(
-        'Save operation result:',
+        'UPSERT operation result:',
         saveResult.error ? 'failed' : 'success'
       )
       if (saveResult.error) {
-        console.error('Save operation error:', saveResult.error)
+        console.error('UPSERT operation error:', saveResult.error)
       }
 
       // 401エラーまたはRLSエラーの場合はREST APIフォールバック
@@ -165,6 +145,7 @@ export async function saveGameStateAction(
         )
       }
 
+      console.log('UPSERT failed, falling back to REST API')
       const restResult = await saveGameStateViaRestAPI(
         gameData,
         envServiceRoleKey,
