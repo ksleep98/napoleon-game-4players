@@ -1,4 +1,4 @@
-import { processAllAIPhases } from '@/lib/ai/gameTricks'
+import { processAIPlayingPhase, processAllAIPhases } from '@/lib/ai/gameTricks'
 import { GAME_PHASES } from '@/lib/constants'
 import { determineWinnerWithSpecialRules } from '@/lib/napoleonCardRules'
 import type {
@@ -334,6 +334,10 @@ export async function processAITurn(gameState: GameState): Promise<GameState> {
     gameState.phase === GAME_PHASES.EXCHANGE
   ) {
     return await processAllAIPhases(gameState)
+  }
+
+  if (gameState.phase === GAME_PHASES.PLAYING) {
+    return await processAIPlayingPhase(gameState)
   }
 
   return gameState

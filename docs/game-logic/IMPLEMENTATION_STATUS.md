@@ -223,8 +223,8 @@
 7. **処理全般のリファクタリング**
    - ✅ 不適切な変数名の修正
    - ✅ 不必要な処理を削除
-   - next.jsにおけるuse effectやuse stateなどの使い方の見直し
-   - next.jsにおけるserver actionを使った実装の設計
+   - ✅ next.jsにおけるuse effectやuse stateなどの使い方の見直し
+   - ✅ next.jsにおけるserver actionを使った実装の設計
    - ✅ DBアクセス処理のセキュリティ向上
 
 8. **COMプレイヤーの判断性能向上** ✅ **完了 (2025-09-02)**
@@ -264,6 +264,24 @@
      - ✅ `tests/lib/gameLogic.adjutant-reveal.test.ts` - 4テスト（機能検証・エッジケース）
      - ✅ ナポレオンが隠しカードから副官カードを出す場合のテスト
      - ✅ 通常カード・非ナポレオンプレイヤー・非隠しカードの除外テスト
+
+10. **Server Action定数化・AI処理修正** ✅ **完了 (2025-09-07)**
+
+- ✅ **Server Action定数化完了**
+  - `aiStrategyActions.ts`, `gameInitActions.ts`, `gameLogicActions.ts`, `gameResultActions.ts`
+  - 文字列リテラル (`'napoleon'`, `'playing'` 等) → 定数参照 (`GAME_PHASES.NAPOLEON`)
+  - GameActionErrorコード定数化 (`'UNAUTHORIZED'` → `GAME_ACTION_ERROR_CODES.UNAUTHORIZED`)
+
+- ✅ **AI処理システム修正**
+  - ゲームID不一致問題解決 (URL gameId vs 実際 gameId)
+  - `useAIProcessing.ts`: 動的import削除・静的import採用
+  - AI自動処理復旧 (Napoleon宣言→副官選択→カード交換→カードプレイ)
+  - 無限ループ防止・依存関係最適化
+
+- ✅ **データベース制約対応**
+  - `card_exchange` フェーズ許可制約追加
+  - RLS関連エラー解消
+  - ci-check全項目合格 (lint/type-check/format/test/build)
 
 ### 📋 今後の拡張
 

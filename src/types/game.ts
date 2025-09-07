@@ -53,6 +53,8 @@ export interface GameState {
   exchangedCards?: Card[] // ナポレオンが交換で捨てたカード
   showingTrickResult?: boolean // トリック結果を表示中かどうか
   lastCompletedTrick?: Trick // 最後に完了したトリック
+  reshuffleCount?: number // リシャッフル回数
+  lastReshuffleReason?: string // 最後のリシャッフル理由
   createdAt: Date
   updatedAt: Date
 }

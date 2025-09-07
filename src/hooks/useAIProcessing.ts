@@ -1,11 +1,10 @@
 'use client'
 
 import { useEffect } from 'react'
-import { processAIPlayingPhase } from '@/lib/ai/gameTricks'
+import { processAITurnAction } from '@/app/actions/aiStrategyActions'
 import { GAME_PHASES } from '@/lib/constants'
-import { getCurrentPlayer, processAITurn } from '@/lib/gameLogic'
+import { getCurrentPlayer } from '@/lib/gameLogic'
 import { getNextDeclarationPlayer } from '@/lib/napoleonRules'
-import { saveGameState } from '@/lib/supabase/secureGameService'
 import type { GameState } from '@/types/game'
 
 interface UseAIProcessingProps {
@@ -24,6 +23,10 @@ export function useAIProcessing({
   useEffect(() => {
     if (!gameState || !isAI) return
 
+    // ゲーム状態から実際のゲームIDを取得（URLのgameIdではなく）
+    const actualGameId = gameState.id || gameId
+    if (!actualGameId) return
+
     const processAI = async () => {
       try {
         if (gameState.phase === GAME_PHASES.NAPOLEON) {
@@ -31,28 +34,60 @@ export function useAIProcessing({
           if (!nextPlayer || !nextPlayer.isAI) {
             return
           }
-        }
 
-        if (
-          gameState.phase === GAME_PHASES.NAPOLEON ||
-          gameState.phase === GAME_PHASES.ADJUTANT ||
-          gameState.phase === GAME_PHASES.EXCHANGE
-        ) {
-          const updatedState = await processAITurn(gameState)
-          if (
-            updatedState !== gameState &&
-            JSON.stringify(updatedState) !== JSON.stringify(gameState)
-          ) {
-            onGameStateUpdate(updatedState)
-            if (gameId && process.env.NODE_ENV === 'production') {
-              try {
-                await saveGameState(updatedState)
-              } catch (saveError) {
-                console.error(
-                  'Failed to save game state, but continuing:',
-                  saveError
-                )
-              }
+          console.log(
+            `AI processing Napoleon phase for player: ${nextPlayer.name} with gameId: ${actualGameId}`
+          )
+
+          const result = await processAITurnAction(
+            actualGameId,
+            gameState.players[0]?.id || 'player_0'
+          )
+
+          if (result.success && result.data) {
+            onGameStateUpdate(result.data)
+            console.log('AI Napoleon processing completed successfully')
+          } else {
+            console.error('AI Napoleon processing failed:', result.error)
+          }
+        } else if (gameState.phase === GAME_PHASES.ADJUTANT) {
+          // 副官フェーズでのAI処理
+          const napoleonPlayer = gameState.players.find((p) => p.isNapoleon)
+          if (napoleonPlayer?.isAI) {
+            console.log(
+              `AI processing Adjutant phase for Napoleon: ${napoleonPlayer.name} with gameId: ${actualGameId}`
+            )
+
+            const result = await processAITurnAction(
+              actualGameId,
+              gameState.players[0]?.id || 'player_0'
+            )
+
+            if (result.success && result.data) {
+              onGameStateUpdate(result.data)
+              console.log('AI Adjutant processing completed successfully')
+            } else {
+              console.error('AI Adjutant processing failed:', result.error)
+            }
+          }
+        } else if (gameState.phase === GAME_PHASES.EXCHANGE) {
+          // カード交換フェーズでのAI処理
+          const napoleonPlayer = gameState.players.find((p) => p.isNapoleon)
+          if (napoleonPlayer?.isAI) {
+            console.log(
+              `AI processing Exchange phase for Napoleon: ${napoleonPlayer.name} with gameId: ${actualGameId}`
+            )
+
+            const result = await processAITurnAction(
+              actualGameId,
+              gameState.players[0]?.id || 'player_0'
+            )
+
+            if (result.success && result.data) {
+              onGameStateUpdate(result.data)
+              console.log('AI Exchange processing completed successfully')
+            } else {
+              console.error('AI Exchange processing failed:', result.error)
             }
           }
         } else if (gameState.phase === GAME_PHASES.PLAYING) {
@@ -62,19 +97,20 @@ export function useAIProcessing({
 
           const currentPlayer = getCurrentPlayer(gameState)
           if (currentPlayer?.isAI) {
-            const updatedState = await processAIPlayingPhase(gameState)
-            if (
-              updatedState !== gameState &&
-              JSON.stringify(updatedState) !== JSON.stringify(gameState)
-            ) {
-              onGameStateUpdate(updatedState)
-              if (gameId && process.env.NODE_ENV === 'production') {
-                try {
-                  await saveGameState(updatedState)
-                } catch (saveError) {
-                  console.error('Failed to save AI playing state:', saveError)
-                }
-              }
+            console.log(
+              `AI processing Playing phase for player: ${currentPlayer.name} with gameId: ${actualGameId}`
+            )
+
+            const result = await processAITurnAction(
+              actualGameId,
+              gameState.players[0]?.id || 'player_0'
+            )
+
+            if (result.success && result.data) {
+              onGameStateUpdate(result.data)
+              console.log('AI Playing processing completed successfully')
+            } else {
+              console.error('AI Playing processing failed:', result.error)
             }
           }
         } else if (gameState.phase === GAME_PHASES.FINISHED) {
