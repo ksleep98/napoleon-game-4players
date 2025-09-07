@@ -149,13 +149,13 @@ CREATE POLICY "games_select_policy" ON games
 
 ```bash
 # 総合セキュリティチェック
-npm run security:check
+pnpm security:check
 
 # 脆弱性スキャン
-npm run security:audit
+pnpm security:audit
 
 # 型安全性チェック
-npm run type-check
+pnpm type-check
 ```
 
 ### 手動チェックポイント
@@ -372,7 +372,7 @@ setSecurePlayer(playerId, currentName);
 
 ```bash
 # ✅ 全セキュリティチェック合格
-npm run ci-check
+pnpm ci-check
 
 # 結果:
 # ✅ lint: 問題なし

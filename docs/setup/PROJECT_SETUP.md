@@ -31,24 +31,24 @@ mkdir -p src tests docs
 npm init -y
 
 # Next.js + TypeScript セットアップ
-npm install next@15.4 react@latest react-dom@latest
-npm install -D typescript @types/react @types/react-dom @types/node
+pnpm install next@15.4 react@latest react-dom@latest
+pnpm install -D typescript @types/react @types/react-dom @types/node
 
 # Tailwind CSS セットアップ
-npm install -D tailwindcss postcss autoprefixer
+pnpm install -D tailwindcss postcss autoprefixer
 
 # Supabase セットアップ
-npm install @supabase/supabase-js
+pnpm install @supabase/supabase-js
 
 # Jest テストセットアップ
-npm install -D jest @types/jest jest-environment-jsdom @testing-library/react @testing-library/jest-dom @testing-library/dom
+pnpm install -D jest @types/jest jest-environment-jsdom @testing-library/react @testing-library/jest-dom @testing-library/dom
 
 # Biome セットアップ (ESLint/Prettier代替)
-npm install -D @biomejs/biome
+pnpm install -D @biomejs/biome
 npx @biomejs/biome init
 
 # Husky + lint-staged セットアップ
-npm install -D husky lint-staged
+pnpm install -D husky lint-staged
 npx husky init
 ```
 
@@ -69,6 +69,6 @@ npx husky init
 ## インストール手順
 
 1. リポジトリクローン
-2. `npm install` で依存関係解決
-3. 開発サーバー起動: `npm run dev`
+2. `pnpm install` で依存関係解決
+3. 開発サーバー起動: `pnpm dev`
 4. http://localhost:3000 でアクセス確認

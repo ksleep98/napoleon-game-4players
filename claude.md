@@ -27,7 +27,7 @@
 ## 開発環境
 
 - Node.js 22.14.0
-- npm (package manager)
+- pnpm (package manager) - 高速・効率的
 - VSCode推奨 + Biome拡張
 
 ## クイック スタート
@@ -38,16 +38,16 @@ git clone https://github.com/ksleep98/napoleon-game-4players.git
 cd napoleon-game-4players
 
 # 2. 依存関係インストール
-npm install
+pnpm install
 
 # 3. 開発サーバー起動
-npm run dev
+pnpm dev
 # → http://localhost:3000
 
 # 4. マージ後の自動クリーンアップ
-npm run setup:auto-cleanup enable  # 自動実行を有効化
-npm run cleanup        # 手動インタラクティブ版
-npm run cleanup:smart  # 手動スマート版（GitHub CLI連携）
+pnpm setup:auto-cleanup enable  # 自動実行を有効化
+pnpm cleanup        # 手動インタラクティブ版
+pnpm cleanup:smart  # 手動スマート版（GitHub CLI連携）
 ```
 
 ## 詳細ドキュメント
@@ -55,7 +55,7 @@ npm run cleanup:smart  # 手動スマート版（GitHub CLI連携）
 ### 📋 セットアップ・環境構築
 
 - [プロジェクトセットアップ](./docs/setup/PROJECT_SETUP.md) - 技術スタック・初期設定
-- [開発コマンド一覧](./docs/development/COMMANDS.md) - npm scripts・使い方
+- [開発コマンド一覧](./docs/development/COMMANDS.md) - pnpm scripts・使い方
 - [フォーマット設定](./docs/development/FORMATTING_SETUP.md) - Biome/Prettier統合・VSCode設定
 - [コーディングルール](./docs/development/CODING_RULES.md) - 定数参照・静的import・品質基準
 - [Post-merge自動化](./scripts/) - マージ後のブランチクリーンアップ自動化
@@ -126,7 +126,7 @@ npm run cleanup:smart  # 手動スマート版（GitHub CLI連携）
 ### 開発フロー
 
 1. `feature/xxx` ブランチで開発
-2. `npm run ci-check` で品質確認
+2. `pnpm ci-check` で品質確認
 3. `git commit` で自動チェック実行
 4. Pull Request作成・レビュー
 5. `develop` → `main` へマージ
@@ -142,14 +142,14 @@ npm run cleanup:smart  # 手動スマート版（GitHub CLI連携）
 
 **自動実行設定:**
 
-- `npm run setup:auto-cleanup enable` - 自動クリーンアップ有効化
-- `npm run setup:auto-cleanup disable` - 自動クリーンアップ無効化
-- `npm run setup:auto-cleanup status` - 設定状況確認
+- `pnpm setup:auto-cleanup enable` - 自動クリーンアップ有効化
+- `pnpm setup:auto-cleanup disable` - 自動クリーンアップ無効化
+- `pnpm setup:auto-cleanup status` - 設定状況確認
 
 **手動実行:**
 
-- `npm run cleanup` - インタラクティブ版（確認あり）
-- `npm run cleanup:smart` - スマート版（GitHub CLI連携）
+- `pnpm cleanup` - インタラクティブ版（確認あり）
+- `pnpm cleanup:smart` - スマート版（GitHub CLI連携）
   - `-- --force` - 自動削除（確認なし）
   - `-- --keep` - ブランチ保持
   - `-- --help` - 使用方法表示

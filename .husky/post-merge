@@ -92,7 +92,7 @@ if [[ ! "$CURRENT_BRANCH" =~ ^(feature|hotfix|chore)/ ]]; then
         fi
         
         print_info "Auto-cleanup cannot determine target branch"
-        print_info "💡 Manual cleanup: npm run cleanup:smart"
+        print_info "💡 Manual cleanup: pnpm cleanup:smart"
         exit 0
     fi
 fi
@@ -130,4 +130,4 @@ git remote prune origin
 
 print_success "🎉 Auto-cleanup completed!"
 print_info "💡 Disable: remove .husky/post-merge"
-print_info "💡 Manual cleanup: npm run cleanup:smart"
+print_info "💡 Manual cleanup: pnpm cleanup:smart"

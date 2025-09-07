@@ -960,13 +960,13 @@ import type {
 
 ```bash
 # Before fixes:
-> npm run type-check
+> pnpm type-check
 src/types/game.ts(9,13): error TS2456: Type alias 'Suit' has a circular reference to itself.
 src/types/game.ts(10,13): error TS2456: Type alias 'Rank' has a circular reference to itself.
 # ... 20+ additional type errors
 
 # After fixes:
-> npm run type-check
+> pnpm type-check
 # ✅ No errors - clean compilation
 ```
 

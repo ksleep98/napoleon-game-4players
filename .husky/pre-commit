@@ -1,5 +1,3 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
 
 echo "🚀 Pre-commit checks starting..."
 
@@ -12,14 +10,14 @@ echo "🔍 Running comprehensive quality checks..."
 
 # Run type check on entire project
 echo "🔧 TypeScript type checking..."
-if ! npm run type-check; then
+if ! pnpm type-check; then
   echo "❌ Type check failed. Please fix TypeScript errors before committing."
   exit 1
 fi
 
 # Run all tests with consistent environment variables (same as CI)
 echo "🧪 Running tests..."
-if ! npm run test:ci -- --passWithNoTests; then
+if ! pnpm test:ci; then
   echo "❌ Tests failed. Please fix failing tests before committing."
   exit 1
 fi

@@ -32,9 +32,9 @@ show_usage() {
     echo "  -h, --help      Show this help message"
     echo ""
     echo "Examples:"
-    echo "  npm run cleanup:smart              # Interactive mode"
-    echo "  npm run cleanup:smart -- --force   # Auto-delete mode"
-    echo "  npm run cleanup:smart -- --keep    # Keep branch mode"
+    echo "  pnpm cleanup:smart              # Interactive mode"
+    echo "  pnpm cleanup:smart -- --force   # Auto-delete mode"
+    echo "  pnpm cleanup:smart -- --keep    # Keep branch mode"
 }
 
 # デフォルト設定
@@ -199,4 +199,4 @@ print_success "✅ Current branch: $(git branch --show-current)"
 print_success "✅ Latest commit: $(git log --oneline -1)"
 
 print_success "🎉 Smart cleanup completed!"
-print_info "💡 Tip: Use 'npm run cleanup:smart -- --force' for fully automated cleanup"
+print_info "💡 Tip: Use 'pnpm cleanup:smart -- --force' for fully automated cleanup"

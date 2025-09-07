@@ -18,7 +18,7 @@ A web-based Napoleon card game implementation built with modern web technologies
 ### Prerequisites
 
 - Node.js 22.14.0 or higher
-- npm (package manager)
+- pnpm (package manager) - fast, efficient
 
 ### Installation
 
@@ -32,7 +32,7 @@ cd napoleon-game-4players
 2. Install dependencies:
 
 ```bash
-npm install
+pnpm install
 ```
 
 3. Set up environment variables:
@@ -52,7 +52,7 @@ cp .env.local.example .env.local
 5. Start the development server:
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
@@ -73,26 +73,26 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### Development
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
+- `pnpm dev` - Start development server
+- `pnpm build` - Build for production
+- `pnpm start` - Start production server
 
 ### Code Quality
 
-- `npm run lint` - Biome lint + format check
-- `npm run lint:fix` - Biome automatic fixes
-- `npm run format` - Biome format execution
-- `npm run type-check` - TypeScript type checking
+- `pnpm lint` - Biome lint + format check
+- `pnpm lint:fix` - Biome automatic fixes
+- `pnpm format` - Biome format execution
+- `pnpm type-check` - TypeScript type checking
 
 ### Testing
 
-- `npm test` - Run Jest tests
-- `npm run test:watch` - Jest watch mode
-- `npm run test:coverage` - Coverage report
+- `pnpm test` - Run Jest tests
+- `pnpm test:watch` - Jest watch mode
+- `pnpm test:coverage` - Coverage report
 
 ### CI/CD
 
-- `npm run ci-check` - Run all quality checks (lint, type-check, format, test, build)
+- `pnpm ci-check` - Run all quality checks (lint, type-check, format, test, build)
 
 ## Development Workflow
 
@@ -130,7 +130,7 @@ git commit -m "your message" --no-verify
 ### Recommended Workflow:
 
 1. Make changes to your code
-2. Run `npm run ci-check` manually to verify all is good
+2. Run `pnpm ci-check` manually to verify all is good
 3. `git add .` - stage your changes
 4. `git commit -m "message"` - automatic checks run
 5. Fix any issues if checks fail

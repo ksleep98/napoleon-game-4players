@@ -105,7 +105,7 @@ CREATE POLICY "Game participants can view games" ON games
 #### 接続テスト
 
 ```bash
-npm run dev
+pnpm dev
 # ブラウザで http://localhost:3000 にアクセス
 # デベロッパーツールでSupabase接続エラーがないか確認
 ```

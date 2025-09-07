@@ -30,9 +30,9 @@ show_usage() {
     echo "  status   Show current status"
     echo ""
     echo "Examples:"
-    echo "  npm run setup:auto-cleanup enable"
-    echo "  npm run setup:auto-cleanup disable"
-    echo "  npm run setup:auto-cleanup status"
+    echo "  pnpm setup:auto-cleanup enable"
+    echo "  pnpm setup:auto-cleanup disable"
+    echo "  pnpm setup:auto-cleanup status"
 }
 
 # デフォルトは status
@@ -62,7 +62,7 @@ case $ACTION in
         
         print_success "🎉 Auto-cleanup is now enabled!"
         print_info "💡 Next merge to develop branch will trigger automatic cleanup"
-        print_info "💡 Disable with: npm run setup:auto-cleanup disable"
+        print_info "💡 Disable with: pnpm setup:auto-cleanup disable"
         ;;
         
     disable)
@@ -77,8 +77,8 @@ case $ACTION in
         fi
         
         print_success "🎉 Auto-cleanup is now disabled!"
-        print_info "💡 Use manual cleanup: npm run cleanup:smart"
-        print_info "💡 Re-enable with: npm run setup:auto-cleanup enable"
+        print_info "💡 Use manual cleanup: pnpm cleanup:smart"
+        print_info "💡 Re-enable with: pnpm setup:auto-cleanup enable"
         ;;
         
     status)
@@ -108,9 +108,9 @@ case $ACTION in
         print_info "📍 Current branch: $CURRENT_BRANCH"
         
         echo ""
-        print_info "💡 Enable:  npm run setup:auto-cleanup enable"
-        print_info "💡 Disable: npm run setup:auto-cleanup disable"
-        print_info "💡 Manual:  npm run cleanup:smart"
+        print_info "💡 Enable:  pnpm setup:auto-cleanup enable"
+        print_info "💡 Disable: pnpm setup:auto-cleanup disable"
+        print_info "💡 Manual:  pnpm cleanup:smart"
         ;;
         
     *)

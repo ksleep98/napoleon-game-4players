@@ -49,7 +49,7 @@
 ```yaml
 # Biome再インストールとバイナリ修正
 rm -rf node_modules/@biomejs/biome node_modules/.bin/biome
-npm install @biomejs/biome@latest
+pnpm install @biomejs/biome@latest
 
 # 検証とフォールバック
 if npx @biomejs/biome --version; then

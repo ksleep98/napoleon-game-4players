@@ -199,8 +199,8 @@ jobs:
             echo "" >> pr_description.md
             echo "\`\`\`bash" >> pr_description.md
             echo "git checkout ${{ github.head_ref }}" >> pr_description.md
-            echo "npm install" >> pr_description.md
-            echo "npm run dev" >> pr_description.md
+            echo "pnpm install" >> pr_description.md
+            echo "pnpm dev" >> pr_description.md
             echo "# Visit http://localhost:3000" >> pr_description.md
             echo "\`\`\`" >> pr_description.md
             echo "" >> pr_description.md
