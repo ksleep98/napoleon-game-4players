@@ -1,22 +1,22 @@
 'use client'
 
 import { useCallback, useTransition } from 'react'
-import { processAIPlayingPhase } from '@/lib/ai/gameTricks'
-import { ACTION_TYPES, GAME_PHASES } from '@/lib/constants'
 import {
-  closeTrickResult,
-  declareNapoleon,
-  declareNapoleonWithDeclaration,
-  exchangeCards,
-  getCurrentPlayer,
-  initializeAIGame,
-  initializeGame,
-  passNapoleonDeclaration,
-  playCard,
-  setAdjutant,
-} from '@/lib/gameLogic'
+  initializeAIGameAction,
+  initializeGameAction,
+} from '@/app/actions/gameInitActions'
+import {
+  closeTrickResultAction,
+  declareNapoleonAction,
+  declareNapoleonWithDeclarationAction,
+  exchangeCardsAction,
+  passNapoleonAction,
+  playCardAction,
+  setAdjutantAction,
+} from '@/app/actions/gameLogicActions'
+import { ACTION_TYPES } from '@/lib/constants'
 import { setPlayerSession } from '@/lib/supabase/client'
-import { loadGameState, saveGameState } from '@/lib/supabase/secureGameService'
+import { loadGameState } from '@/lib/supabase/secureGameService'
 import type {
   Card,
   GameAction,
@@ -55,84 +55,54 @@ export function useGameActions({
             payload: { initialized: true },
           })
 
-          const newGame = isAI ? initializeAIGame('You') : initializeGame(names)
+          // Server Action経由でセキュアなゲーム初期化
+          // 一意のプレイヤーIDを生成（実際のセッション管理で使用）
+          const playerId = `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+          console.log('Generated player ID for game initialization:', playerId)
 
-          const playerId = newGame.players[0]?.id || 'player_1'
+          let result: Awaited<
+            ReturnType<
+              typeof initializeGameAction | typeof initializeAIGameAction
+            >
+          >
 
-          if (gameId) {
-            newGame.id = gameId
+          if (isAI) {
+            // AIゲーム初期化（Server Action）
+            result = await initializeAIGameAction('You', playerId)
+          } else {
+            // マルチプレイヤーゲーム初期化（Server Action）
+            result = await initializeGameAction(names, playerId)
           }
 
-          dispatch({
-            type: ACTION_TYPES.GAME.SET_GAME_STATE,
-            payload: { gameState: newGame },
-          })
+          if (result.success && result.data) {
+            const { gameState, gameId: newGameId } = result.data
 
-          // プレイヤーセッション設定とゲーム保存を順序立てて実行
-          if (gameId) {
-            // プレイヤーセッション設定を試行（失敗は警告のみ）
+            dispatch({
+              type: ACTION_TYPES.GAME.SET_GAME_STATE,
+              payload: { gameState },
+            })
+
+            // プレイヤーセッション設定
             try {
-              await setPlayerSession(playerId)
-              console.log('Player session set to:', playerId)
+              const actualPlayerId = gameState.players[0]?.id || playerId
+              await setPlayerSession(actualPlayerId)
+              console.log(
+                'Player session set from:',
+                playerId,
+                'to:',
+                actualPlayerId
+              )
             } catch (sessionError) {
               console.warn('Player session setup failed:', sessionError)
             }
 
-            // 開発環境では直接セキュアサーバーアクションを使用、本番環境では段階的試行
-            if (process.env.NODE_ENV === 'development') {
-              // 開発環境：セキュアサーバーアクション経由で直接保存
-              try {
-                const { secureGameStateSave } = await import(
-                  '@/lib/supabase/secureGameService'
-                )
-                await secureGameStateSave(newGame)
-                console.log(
-                  'Game state saved using secure server action (dev mode)'
-                )
-              } catch (secureError) {
-                console.error('Secure save failed in dev mode:', secureError)
-                throw new Error('Failed to save game state in development mode')
-              }
-            } else {
-              // 本番環境：クライアント経由試行、失敗時セキュアサーバーアクション
-              try {
-                await saveGameState(newGame)
-                console.log('Game state saved via client (prod mode)')
-              } catch (clientSaveError) {
-                console.warn(
-                  'Client save failed, using secure server action:',
-                  clientSaveError
-                )
-                try {
-                  const { secureGameStateSave } = await import(
-                    '@/lib/supabase/secureGameService'
-                  )
-                  await secureGameStateSave(newGame)
-                  console.log(
-                    'Game state saved using secure server action (prod fallback)'
-                  )
-                } catch (secureError) {
-                  console.error('Secure save also failed:', secureError)
-                  throw new Error(
-                    'Failed to save game state: Both client and server methods failed'
-                  )
-                }
-              }
-            }
+            console.log(
+              'Game initialized successfully via Server Action:',
+              newGameId
+            )
           } else {
-            // ローカルゲームの場合は、プレイヤーセッションのみ設定（エラーは無視）
-            try {
-              await setPlayerSession(playerId)
-              console.log('Player session set for local game:', playerId)
-            } catch (sessionError) {
-              console.warn(
-                'Local game player session setup failed:',
-                sessionError
-              )
-            }
+            throw new Error(result.error || 'Failed to initialize game')
           }
-
-          console.log('Game initialized successfully:', newGame.id)
         } catch (err) {
           console.error('Failed to initialize game:', err)
           dispatch({
@@ -151,7 +121,7 @@ export function useGameActions({
         }
       })
     },
-    [gameId, state.loading, state.gameState, state.initialized, isAI, dispatch]
+    [state.loading, state.gameState, state.initialized, isAI, dispatch]
   )
 
   const loadGame = useCallback(
@@ -178,6 +148,7 @@ export function useGameActions({
             })
             console.log('Game loaded successfully:', id)
           } else {
+            console.warn('Game not found with provided ID:', id)
             dispatch({
               type: ACTION_TYPES.GAME.SET_ERROR,
               payload: { error: 'Game not found' },
@@ -207,49 +178,25 @@ export function useGameActions({
 
   const handlePlayCard = useCallback(
     (playerId: string, cardId: string) => {
-      if (!state.gameState) return
+      if (!state.gameState || !gameId) return
 
       startTransition(async () => {
         try {
           dispatch({ type: ACTION_TYPES.GAME.RESET_ERROR })
 
-          if (!state.gameState) return
-          const updatedGame = playCard(state.gameState, playerId, cardId)
+          // Server Action経由でカードプレイ
+          const result = await playCardAction(gameId, playerId, cardId)
 
-          if (
-            isAI &&
-            updatedGame.phase === GAME_PHASES.PLAYING &&
-            !updatedGame.showingTrickResult
-          ) {
-            const currentPlayer = getCurrentPlayer(updatedGame)
-            if (currentPlayer?.isAI) {
-              setTimeout(async () => {
-                try {
-                  const aiUpdatedGame = await processAIPlayingPhase(updatedGame)
-                  dispatch({
-                    type: ACTION_TYPES.GAME.SET_GAME_STATE,
-                    payload: { gameState: aiUpdatedGame },
-                  })
-
-                  if (gameId) {
-                    await saveGameState(aiUpdatedGame)
-                  }
-                } catch (aiError) {
-                  console.error('AI playing error:', aiError)
-                }
-              }, 1000)
-            }
-          }
-
-          dispatch({
-            type: ACTION_TYPES.GAME.SET_GAME_STATE,
-            payload: { gameState: updatedGame },
-          })
-
-          if (gameId) {
-            await saveGameState(updatedGame)
+          if (result.success && result.data) {
+            dispatch({
+              type: ACTION_TYPES.GAME.SET_GAME_STATE,
+              payload: { gameState: result.data },
+            })
+          } else {
+            throw new Error(result.error || 'Failed to play card')
           }
         } catch (err) {
+          console.error('Failed to play card:', err)
           dispatch({
             type: ACTION_TYPES.GAME.SET_ERROR,
             payload: {
@@ -259,31 +206,34 @@ export function useGameActions({
         }
       })
     },
-    [state.gameState, gameId, isAI, dispatch]
+    [state.gameState, gameId, dispatch]
   )
 
   const handleSetNapoleon = useCallback(
     (playerId: string, napoleonCard?: Card) => {
-      if (!state.gameState) return
+      if (!state.gameState || !gameId) return
 
       startTransition(async () => {
         try {
           dispatch({ type: ACTION_TYPES.GAME.RESET_ERROR })
-          if (!state.gameState) return
-          const updatedGame = declareNapoleon(
-            state.gameState,
+
+          // Server Action経由でナポレオン宣言
+          const result = await declareNapoleonAction(
+            gameId,
             playerId,
             napoleonCard
           )
-          dispatch({
-            type: ACTION_TYPES.GAME.SET_GAME_STATE,
-            payload: { gameState: updatedGame },
-          })
 
-          if (gameId) {
-            await saveGameState(updatedGame)
+          if (result.success && result.data) {
+            dispatch({
+              type: ACTION_TYPES.GAME.SET_GAME_STATE,
+              payload: { gameState: result.data },
+            })
+          } else {
+            throw new Error(result.error || 'Failed to set Napoleon')
           }
         } catch (err) {
+          console.error('Failed to set Napoleon:', err)
           dispatch({
             type: ACTION_TYPES.GAME.SET_ERROR,
             payload: {
@@ -299,25 +249,33 @@ export function useGameActions({
 
   const handleDeclareNapoleonWithDeclaration = useCallback(
     (declaration: NapoleonDeclaration) => {
-      if (!state.gameState) return
+      if (!state.gameState || !gameId) return
+
+      const currentPlayerId =
+        state.gameState.players[state.gameState.currentPlayerIndex]?.id
+      if (!currentPlayerId) return
 
       startTransition(async () => {
         try {
           dispatch({ type: ACTION_TYPES.GAME.RESET_ERROR })
-          if (!state.gameState) return
-          const updatedGame = declareNapoleonWithDeclaration(
-            state.gameState,
+
+          // Server Action経由でナポレオン宣言（詳細版）
+          const result = await declareNapoleonWithDeclarationAction(
+            gameId,
+            currentPlayerId,
             declaration
           )
-          dispatch({
-            type: ACTION_TYPES.GAME.SET_GAME_STATE,
-            payload: { gameState: updatedGame },
-          })
 
-          if (gameId) {
-            await saveGameState(updatedGame)
+          if (result.success && result.data) {
+            dispatch({
+              type: ACTION_TYPES.GAME.SET_GAME_STATE,
+              payload: { gameState: result.data },
+            })
+          } else {
+            throw new Error(result.error || 'Failed to declare Napoleon')
           }
         } catch (err) {
+          console.error('Failed to declare Napoleon:', err)
           dispatch({
             type: ACTION_TYPES.GAME.SET_ERROR,
             payload: {
@@ -335,22 +293,25 @@ export function useGameActions({
 
   const handlePassNapoleon = useCallback(
     (playerId: string) => {
-      if (!state.gameState) return
+      if (!state.gameState || !gameId) return
 
       startTransition(async () => {
         try {
           dispatch({ type: ACTION_TYPES.GAME.RESET_ERROR })
-          if (!state.gameState) return
-          const updatedGame = passNapoleonDeclaration(state.gameState, playerId)
-          dispatch({
-            type: ACTION_TYPES.GAME.SET_GAME_STATE,
-            payload: { gameState: updatedGame },
-          })
 
-          if (gameId) {
-            await saveGameState(updatedGame)
+          // Server Action経由でナポレオンパス
+          const result = await passNapoleonAction(gameId, playerId)
+
+          if (result.success && result.data) {
+            dispatch({
+              type: ACTION_TYPES.GAME.SET_GAME_STATE,
+              payload: { gameState: result.data },
+            })
+          } else {
+            throw new Error(result.error || 'Failed to pass Napoleon')
           }
         } catch (err) {
+          console.error('Failed to pass Napoleon:', err)
           dispatch({
             type: ACTION_TYPES.GAME.SET_ERROR,
             payload: {
@@ -366,22 +327,32 @@ export function useGameActions({
 
   const handleSetAdjutant = useCallback(
     (adjutantCard: Card) => {
-      if (!state.gameState) return
+      if (!state.gameState || !gameId) return
+
+      const napoleonPlayerId = state.gameState.napoleonDeclaration?.playerId
+      if (!napoleonPlayerId) return
 
       startTransition(async () => {
         try {
           dispatch({ type: ACTION_TYPES.GAME.RESET_ERROR })
-          if (!state.gameState) return
-          const updatedGame = setAdjutant(state.gameState, adjutantCard)
-          dispatch({
-            type: ACTION_TYPES.GAME.SET_GAME_STATE,
-            payload: { gameState: updatedGame },
-          })
 
-          if (gameId && process.env.NODE_ENV === 'production') {
-            await saveGameState(updatedGame)
+          // Server Action経由で副官設定
+          const result = await setAdjutantAction(
+            gameId,
+            napoleonPlayerId,
+            adjutantCard
+          )
+
+          if (result.success && result.data) {
+            dispatch({
+              type: ACTION_TYPES.GAME.SET_GAME_STATE,
+              payload: { gameState: result.data },
+            })
+          } else {
+            throw new Error(result.error || 'Failed to set adjutant')
           }
         } catch (err) {
+          console.error('Failed to set adjutant:', err)
           dispatch({
             type: ACTION_TYPES.GAME.SET_ERROR,
             payload: {
@@ -397,26 +368,29 @@ export function useGameActions({
 
   const handleExchangeCards = useCallback(
     (playerId: string, cardsToDiscard: Card[]) => {
-      if (!state.gameState) return
+      if (!state.gameState || !gameId) return
 
       startTransition(async () => {
         try {
           dispatch({ type: ACTION_TYPES.GAME.RESET_ERROR })
-          if (!state.gameState) return
-          const updatedGame = exchangeCards(
-            state.gameState,
+
+          // Server Action経由でカード交換
+          const result = await exchangeCardsAction(
+            gameId,
             playerId,
             cardsToDiscard
           )
-          dispatch({
-            type: ACTION_TYPES.GAME.SET_GAME_STATE,
-            payload: { gameState: updatedGame },
-          })
 
-          if (gameId && process.env.NODE_ENV === 'production') {
-            await saveGameState(updatedGame)
+          if (result.success && result.data) {
+            dispatch({
+              type: ACTION_TYPES.GAME.SET_GAME_STATE,
+              payload: { gameState: result.data },
+            })
+          } else {
+            throw new Error(result.error || 'Failed to exchange cards')
           }
         } catch (err) {
+          console.error('Failed to exchange cards:', err)
           dispatch({
             type: ACTION_TYPES.GAME.SET_ERROR,
             payload: {
@@ -431,43 +405,28 @@ export function useGameActions({
   )
 
   const handleCloseTrickResult = useCallback(() => {
-    if (!state.gameState) return
+    if (!state.gameState || !gameId) return
+
+    const currentPlayerId = state.gameState.players[0]?.id // 任意のプレイヤーID（UIアクション）
+    if (!currentPlayerId) return
 
     startTransition(async () => {
       try {
         dispatch({ type: ACTION_TYPES.GAME.RESET_ERROR })
-        if (!state.gameState) return
-        const updatedGame = closeTrickResult(state.gameState)
-        dispatch({
-          type: ACTION_TYPES.GAME.SET_GAME_STATE,
-          payload: { gameState: updatedGame },
-        })
 
-        if (gameId && process.env.NODE_ENV === 'production') {
-          await saveGameState(updatedGame)
-        }
+        // Server Action経由でトリック結果を閉じる
+        const result = await closeTrickResultAction(gameId, currentPlayerId)
 
-        if (isAI && updatedGame.phase === GAME_PHASES.PLAYING) {
-          const currentPlayer = getCurrentPlayer(updatedGame)
-          if (currentPlayer?.isAI) {
-            setTimeout(async () => {
-              try {
-                const aiUpdatedGame = await processAIPlayingPhase(updatedGame)
-                dispatch({
-                  type: ACTION_TYPES.GAME.SET_GAME_STATE,
-                  payload: { gameState: aiUpdatedGame },
-                })
-
-                if (gameId && process.env.NODE_ENV === 'production') {
-                  await saveGameState(aiUpdatedGame)
-                }
-              } catch (aiError) {
-                console.error('AI playing error after trick result:', aiError)
-              }
-            }, 1000)
-          }
+        if (result.success && result.data) {
+          dispatch({
+            type: ACTION_TYPES.GAME.SET_GAME_STATE,
+            payload: { gameState: result.data },
+          })
+        } else {
+          throw new Error(result.error || 'Failed to close trick result')
         }
       } catch (err) {
+        console.error('Failed to close trick result:', err)
         dispatch({
           type: ACTION_TYPES.GAME.SET_ERROR,
           payload: {
@@ -479,7 +438,7 @@ export function useGameActions({
         })
       }
     })
-  }, [state.gameState, gameId, isAI, dispatch])
+  }, [state.gameState, gameId, dispatch])
 
   return {
     actions: {

@@ -101,22 +101,38 @@ export async function saveGameStateAction(
     } | null = null
 
     // 既存のゲームを確認
+    console.log('Checking if game exists:', gameData.id)
     const existingGame = await clientForOperation
       .from('games')
       .select('id')
       .eq('id', gameData.id)
       .single()
 
+    console.log(
+      'Existing game check result:',
+      existingGame.data ? 'exists' : 'not found'
+    )
+
     try {
       if (existingGame.data) {
         // ゲームが存在する場合は UPDATE
+        console.log('Updating existing game:', gameData.id)
         saveResult = await clientForOperation
           .from('games')
           .update(gameData)
           .eq('id', gameData.id)
       } else {
         // ゲームが存在しない場合は INSERT
+        console.log('Inserting new game:', gameData.id)
         saveResult = await clientForOperation.from('games').insert(gameData)
+      }
+
+      console.log(
+        'Save operation result:',
+        saveResult.error ? 'failed' : 'success'
+      )
+      if (saveResult.error) {
+        console.error('Save operation error:', saveResult.error)
       }
 
       // 401エラーまたはRLSエラーの場合はREST APIフォールバック
@@ -291,6 +307,12 @@ export async function loadGameStateAction(
     }
 
     // ゲーム状態をSupabaseから読み込み
+    console.log(
+      'Loading game state with gameId:',
+      gameId,
+      'playerId:',
+      playerId
+    )
     const { data, error } = await supabaseAdmin
       .from('games')
       .select('*')
@@ -298,7 +320,9 @@ export async function loadGameStateAction(
       .single()
 
     if (error) {
+      console.error('Database error loading game:', error)
       if (error.code === 'PGRST116') {
+        console.error('Game not found in database for gameId:', gameId)
         return { success: false, error: 'Game not found' }
       }
       console.error('Database error:', error)

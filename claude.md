@@ -57,6 +57,7 @@ npm run cleanup:smart  # 手動スマート版（GitHub CLI連携）
 - [プロジェクトセットアップ](./docs/setup/PROJECT_SETUP.md) - 技術スタック・初期設定
 - [開発コマンド一覧](./docs/development/COMMANDS.md) - npm scripts・使い方
 - [フォーマット設定](./docs/development/FORMATTING_SETUP.md) - Biome/Prettier統合・VSCode設定
+- [コーディングルール](./docs/development/CODING_RULES.md) - 定数参照・静的import・品質基準
 - [Post-merge自動化](./scripts/) - マージ後のブランチクリーンアップ自動化
 
 ### 🧪 テスト・品質管理
@@ -111,6 +112,10 @@ npm run cleanup:smart  # 手動スマート版（GitHub CLI連携）
 - **品質**: Biome linting・formatting 必須
 - **型安全**: TypeScript strict mode
 - **テスト**: 新機能にはJestテスト追加
+- **定数**: 文字列リテラル禁止・定数参照徹底
+- **Import**: 動的import禁止・静的import推奨
+
+**詳細**: [コーディングルール](./docs/development/CODING_RULES.md) を参照
 
 ### Claude Code設定
 
