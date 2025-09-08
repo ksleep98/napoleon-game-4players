@@ -8,7 +8,6 @@ import {
 import {
   closeTrickResultAction,
   declareNapoleonAction,
-  declareNapoleonWithDeclarationAction,
   exchangeCardsAction,
   passNapoleonAction,
   playCardAction,
@@ -209,45 +208,7 @@ export function useGameActions({
     [state.gameState, gameId, dispatch]
   )
 
-  const handleSetNapoleon = useCallback(
-    (playerId: string, napoleonCard?: Card) => {
-      if (!state.gameState || !gameId) return
-
-      startTransition(async () => {
-        try {
-          dispatch({ type: ACTION_TYPES.GAME.RESET_ERROR })
-
-          // Server Action経由でナポレオン宣言
-          const result = await declareNapoleonAction(
-            gameId,
-            playerId,
-            napoleonCard
-          )
-
-          if (result.success && result.data) {
-            dispatch({
-              type: ACTION_TYPES.GAME.SET_GAME_STATE,
-              payload: { gameState: result.data },
-            })
-          } else {
-            throw new Error(result.error || 'Failed to set Napoleon')
-          }
-        } catch (err) {
-          console.error('Failed to set Napoleon:', err)
-          dispatch({
-            type: ACTION_TYPES.GAME.SET_ERROR,
-            payload: {
-              error:
-                err instanceof Error ? err.message : 'Failed to set Napoleon',
-            },
-          })
-        }
-      })
-    },
-    [state.gameState, gameId, dispatch]
-  )
-
-  const handleDeclareNapoleonWithDeclaration = useCallback(
+  const handleDeclareNapoleon = useCallback(
     (declaration: NapoleonDeclaration) => {
       if (!state.gameState || !gameId) return
 
@@ -259,8 +220,8 @@ export function useGameActions({
         try {
           dispatch({ type: ACTION_TYPES.GAME.RESET_ERROR })
 
-          // Server Action経由でナポレオン宣言（詳細版）
-          const result = await declareNapoleonWithDeclarationAction(
+          // Server Action経由でナポレオン宣言
+          const result = await declareNapoleonAction(
             gameId,
             currentPlayerId,
             declaration
@@ -445,8 +406,7 @@ export function useGameActions({
       initGame,
       loadGame,
       playCard: handlePlayCard,
-      setNapoleon: handleSetNapoleon,
-      declareNapoleonWithDeclaration: handleDeclareNapoleonWithDeclaration,
+      declareNapoleon: handleDeclareNapoleon,
       passNapoleon: handlePassNapoleon,
       setAdjutant: handleSetAdjutant,
       exchangeCards: handleExchangeCards,

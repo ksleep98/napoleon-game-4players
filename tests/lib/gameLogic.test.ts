@@ -2,7 +2,6 @@ import { CARD_RANKS, GAME_PHASES, SUIT_ENUM } from '@/lib/constants'
 import {
   createNewTrick,
   declareNapoleon,
-  declareNapoleonWithDeclaration,
   determineWinner,
   exchangeCards,
   getCurrentPlayer,
@@ -139,45 +138,6 @@ describe('Game Logic', () => {
   })
 
   describe('Napoleon Declaration', () => {
-    describe('declareNapoleon', () => {
-      it('should set player as Napoleon and move to adjutant phase', () => {
-        const playerId = gameState.players[0].id
-        const selectedCard = gameState.players[0].hand[0]
-
-        const updatedState = declareNapoleon(gameState, playerId, selectedCard)
-
-        expect(updatedState.phase).toBe('adjutant')
-        expect(updatedState.players[0].isNapoleon).toBe(true)
-        expect(updatedState.players[1].isNapoleon).toBe(false)
-        expect(updatedState.players[2].isNapoleon).toBe(false)
-        expect(updatedState.players[3].isNapoleon).toBe(false)
-        expect(updatedState.napoleonCard).toBe(selectedCard)
-        expect(updatedState.currentPlayerIndex).toBe(0) // Napoleon becomes current player
-      })
-
-      it('should throw error if not in napoleon phase', () => {
-        const gameStateInWrongPhase = {
-          ...gameState,
-          phase: GAME_PHASES.PLAYING,
-        }
-        const playerId = gameState.players[0].id
-
-        expect(() => {
-          declareNapoleon(gameStateInWrongPhase, playerId)
-        }).toThrow('Napoleon can only be declared during napoleon phase')
-      })
-
-      it('should work without selecting a card', () => {
-        const playerId = gameState.players[0].id
-
-        const updatedState = declareNapoleon(gameState, playerId)
-
-        expect(updatedState.phase).toBe('adjutant')
-        expect(updatedState.players[0].isNapoleon).toBe(true)
-        expect(updatedState.napoleonCard).toBeUndefined()
-      })
-    })
-
     describe('passNapoleonDeclaration', () => {
       it('should add player to passed list', () => {
         const playerId = gameState.players[0].id
@@ -214,7 +174,7 @@ describe('Game Logic', () => {
       })
     })
 
-    describe('declareNapoleonWithDeclaration', () => {
+    describe('declareNapoleon', () => {
       it('should declare Napoleon with full declaration', () => {
         const declaration: NapoleonDeclaration = {
           playerId: gameState.players[0].id,
@@ -223,10 +183,7 @@ describe('Game Logic', () => {
           adjutantCard: gameState.players[0].hand[0],
         }
 
-        const updatedState = declareNapoleonWithDeclaration(
-          gameState,
-          declaration
-        )
+        const updatedState = declareNapoleon(gameState, declaration)
 
         expect(updatedState.players[0].isNapoleon).toBe(true)
         expect(updatedState.napoleonDeclaration).toEqual(declaration)
@@ -240,10 +197,7 @@ describe('Game Logic', () => {
           targetTricks: 15,
           suit: SUIT_ENUM.SPADES,
         }
-        let updatedState = declareNapoleonWithDeclaration(
-          gameState,
-          firstDeclaration
-        )
+        let updatedState = declareNapoleon(gameState, firstDeclaration)
 
         // Second declaration by different player
         const secondDeclaration: NapoleonDeclaration = {
@@ -251,10 +205,7 @@ describe('Game Logic', () => {
           targetTricks: 16,
           suit: SUIT_ENUM.SPADES,
         }
-        updatedState = declareNapoleonWithDeclaration(
-          updatedState,
-          secondDeclaration
-        )
+        updatedState = declareNapoleon(updatedState, secondDeclaration)
 
         expect(updatedState.players[0].isNapoleon).toBe(false)
         expect(updatedState.players[1].isNapoleon).toBe(true)
@@ -269,7 +220,7 @@ describe('Game Logic', () => {
         }
 
         expect(() => {
-          declareNapoleonWithDeclaration(gameState, invalidDeclaration)
+          declareNapoleon(gameState, invalidDeclaration)
         }).toThrow('Invalid Napoleon declaration')
       })
     })
@@ -293,10 +244,13 @@ describe('Game Logic', () => {
     describe('setAdjutant', () => {
       it('should set adjutant and add hidden cards to Napoleon', () => {
         // First declare Napoleon
-        const napoleonState = declareNapoleon(
-          gameState,
-          gameState.players[0].id
-        )
+        const declaration = {
+          playerId: gameState.players[0].id,
+          targetTricks: 13,
+          suit: SUIT_ENUM.SPADES,
+          adjutantCard: gameState.players[0].hand[0],
+        }
+        const napoleonState = declareNapoleon(gameState, declaration)
 
         // Mock hidden cards
         const hiddenCards: Card[] = [
@@ -350,10 +304,13 @@ describe('Game Logic', () => {
       })
 
       it('should find adjutant if card is in player hand', () => {
-        const napoleonState = declareNapoleon(
-          gameState,
-          gameState.players[0].id
-        )
+        const declaration = {
+          playerId: gameState.players[0].id,
+          targetTricks: 13,
+          suit: SUIT_ENUM.SPADES,
+          adjutantCard: gameState.players[0].hand[0],
+        }
+        const napoleonState = declareNapoleon(gameState, declaration)
         const stateWithAdjutant = {
           ...napoleonState,
           phase: GAME_PHASES.ADJUTANT,
@@ -386,10 +343,7 @@ describe('Game Logic', () => {
           suit: SUIT_ENUM.SPADES,
         }
 
-        const napoleonState = declareNapoleonWithDeclaration(
-          gameState,
-          declaration
-        )
+        const napoleonState = declareNapoleon(gameState, declaration)
         const hiddenCards: Card[] = [
           {
             id: 'hidden-1',
@@ -465,10 +419,7 @@ describe('Game Logic', () => {
           suit: SUIT_ENUM.SPADES,
         }
 
-        const napoleonState = declareNapoleonWithDeclaration(
-          gameState,
-          declaration
-        )
+        const napoleonState = declareNapoleon(gameState, declaration)
         const stateWithExchange = {
           ...napoleonState,
           phase: GAME_PHASES.EXCHANGE,

@@ -28,7 +28,7 @@
 ```bash
 # プロジェクト初期化
 mkdir -p src tests docs
-npm init -y
+pnpm init
 
 # Next.js + TypeScript セットアップ
 pnpm install next@15.4 react@latest react-dom@latest

@@ -95,9 +95,9 @@ export function createNewTrick(): Trick {
 }
 
 /**
- * ナポレオンを宣言（詳細版）
+ * ナポレオンを宣言
  */
-export function declareNapoleonWithDeclaration(
+export function declareNapoleon(
   gameState: GameState,
   declaration: NapoleonDeclaration
 ): GameState {
@@ -129,35 +129,6 @@ export function declareNapoleonWithDeclaration(
 
   // 次のフェーズに進行
   return advanceNapoleonPhase(newGameState)
-}
-
-/**
- * ナポレオンを宣言（簡単版 - 後方互換性のため）
- */
-export function declareNapoleon(
-  gameState: GameState,
-  playerId: string,
-  selectedCard?: Card
-): GameState {
-  if (gameState.phase !== GAME_PHASES.NAPOLEON) {
-    throw new Error('Napoleon can only be declared during napoleon phase')
-  }
-
-  const updatedPlayers = gameState.players.map((player) => {
-    if (player.id === playerId) {
-      return { ...player, isNapoleon: true }
-    }
-    return player
-  })
-
-  return {
-    ...gameState,
-    players: updatedPlayers,
-    phase: GAME_PHASES.ADJUTANT,
-    napoleonCard: selectedCard,
-    currentPlayerIndex: gameState.players.findIndex((p) => p.id === playerId),
-    updatedAt: new Date(),
-  }
 }
 
 /**

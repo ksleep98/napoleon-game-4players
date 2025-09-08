@@ -103,7 +103,7 @@ function GamePageContent() {
     _playerId: string,
     declaration: NapoleonDeclaration
   ) => {
-    actions.declareNapoleonWithDeclaration(declaration)
+    actions.declareNapoleon(declaration)
   }
 
   const handleNapoleonPass = (playerId: string) => {

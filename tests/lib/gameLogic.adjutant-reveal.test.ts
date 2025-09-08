@@ -30,7 +30,7 @@ describe('Adjutant Card Reveal Feature', () => {
 
     gameState.napoleonDeclaration = {
       playerId: napoleon.id,
-      targetTricks: 11,
+      targetTricks: 13,
       suit: 'spades',
       adjutantCard: adjutantCard as Card,
     }
@@ -149,7 +149,7 @@ describe('Adjutant Card Reveal Feature', () => {
       if (napoleonClean) {
         cleanGameState.napoleonDeclaration = {
           playerId: napoleonClean.id,
-          targetTricks: 11,
+          targetTricks: 13,
           suit: 'spades',
           adjutantCard: testAdjutantCard,
         }

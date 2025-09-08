@@ -70,8 +70,7 @@ interface GameContextValue {
     initGame: (names: string[]) => void
     loadGame: (id: string) => void
     playCard: (playerId: string, cardId: string) => void
-    setNapoleon: (playerId: string, napoleonCard?: Card) => void
-    declareNapoleonWithDeclaration: (declaration: NapoleonDeclaration) => void
+    declareNapoleon: (declaration: NapoleonDeclaration) => void
     passNapoleon: (playerId: string) => void
     setAdjutant: (adjutantCard: Card) => void
     exchangeCards: (playerId: string, cardsToDiscard: Card[]) => void
