@@ -9,7 +9,6 @@ import {
 import {
   closeTrickResult,
   declareNapoleon,
-  declareNapoleonWithDeclaration,
   exchangeCards,
   getCurrentPlayer,
   passNapoleonDeclaration,
@@ -30,9 +29,9 @@ export interface GameActionResult<T = GameState> {
 }
 
 /**
- * ナポレオン宣言（詳細版）Server Action
+ * ナポレオン宣言 Server Action
  */
-export async function declareNapoleonWithDeclarationAction(
+export async function declareNapoleonAction(
   gameId: string,
   playerId: string,
   declaration: NapoleonDeclaration
@@ -78,77 +77,7 @@ export async function declareNapoleonWithDeclarationAction(
     }
 
     // ゲームロジック実行（サーバーサイドで検証）
-    const updatedGameState = declareNapoleonWithDeclaration(
-      currentGameState,
-      declaration
-    )
-
-    // 状態保存
-    const saveResult = await saveGameStateAction(updatedGameState, playerId)
-    if (!saveResult.success) {
-      throw new GameActionError(
-        'Failed to save game state',
-        GAME_ACTION_ERROR_CODES.SAVE_FAILED
-      )
-    }
-
-    return {
-      success: true,
-      data: updatedGameState,
-    }
-  } catch (error) {
-    console.error('declareNapoleonWithDeclarationAction failed:', error)
-    return {
-      success: false,
-      error: error instanceof GameActionError ? error.message : 'Unknown error',
-    }
-  }
-}
-
-/**
- * ナポレオン宣言（簡単版）Server Action
- */
-export async function declareNapoleonAction(
-  gameId: string,
-  playerId: string,
-  napoleonCard?: Card
-): Promise<GameActionResult<GameState>> {
-  try {
-    // セッション検証
-    const sessionValid = await validateSessionAction(playerId)
-    if (!sessionValid.success) {
-      throw new GameActionError(
-        'Invalid session',
-        GAME_ACTION_ERROR_CODES.UNAUTHORIZED
-      )
-    }
-
-    // 現在のゲーム状態を取得
-    const gameResult = await loadGameStateAction(gameId, playerId)
-    if (!gameResult.success || !gameResult.gameState) {
-      throw new GameActionError(
-        'Game not found',
-        GAME_ACTION_ERROR_CODES.NOT_FOUND
-      )
-    }
-
-    const currentGameState = gameResult.gameState
-
-    // プレイヤーの存在確認
-    const player = currentGameState.players.find((p) => p.id === playerId)
-    if (!player) {
-      throw new GameActionError(
-        'Player not found in game',
-        GAME_ACTION_ERROR_CODES.NOT_FOUND
-      )
-    }
-
-    // ゲームロジック実行
-    const updatedGameState = declareNapoleon(
-      currentGameState,
-      playerId,
-      napoleonCard
-    )
+    const updatedGameState = declareNapoleon(currentGameState, declaration)
 
     // 状態保存
     const saveResult = await saveGameStateAction(updatedGameState, playerId)

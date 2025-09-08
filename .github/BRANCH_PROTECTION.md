@@ -105,17 +105,17 @@ git checkout -b feature/your-feature-name
 2. 開発前にlintとformatを実行
 
 ```bash
-npm run lint:fix
-npm run format
+pnpm lint:fix
+pnpm format
 ```
 
 3. コミット前にすべてのチェックを実行
 
 ```bash
-npm run lint
-npm run type-check
-npm run test
-npm run build
+pnpm lint
+pnpm type-check
+pnpm test
+pnpm build
 ```
 
 4. Pull Request作成

@@ -27,7 +27,7 @@ docs/
 ### 開発ツール
 
 - **[COMMANDS.md](./development/COMMANDS.md)**
-  - npm scripts 全一覧
+  - pnpm scripts 全一覧
   - 使い分けガイド
   - パフォーマンス情報
 

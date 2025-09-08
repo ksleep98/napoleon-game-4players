@@ -1,7 +1,7 @@
 import { GAME_PHASES } from '@/lib/constants'
 import type { Card, GameState } from '@/types/game'
 import {
-  declareNapoleonWithDeclaration,
+  declareNapoleon,
   exchangeCards,
   getCurrentPlayer,
   passNapoleonDeclaration,
@@ -55,10 +55,7 @@ export async function processNapoleonPhase(
 
   if (strategy.shouldDeclare && strategy.declaration) {
     // ナポレオンを宣言
-    updatedGameState = declareNapoleonWithDeclaration(
-      updatedGameState,
-      strategy.declaration
-    )
+    updatedGameState = declareNapoleon(updatedGameState, strategy.declaration)
     console.log(
       `AI Player ${currentPlayer.name} declares Napoleon: ${strategy.declaration.targetTricks} face cards with ${strategy.declaration.suit}!`
     )
