@@ -485,9 +485,10 @@ export function determineWinner(
 
   // ゲームステートから切り札情報を取得
   const trumpSuit = gameState?.trumpSuit || gameState?.napoleonDeclaration?.suit
+
+  // PLAYINGフェーズでは必ず切り札が設定されている
   if (!trumpSuit) {
-    // 切り札が設定されていない場合は基本ロジック
-    return determineWinnerBasic(trick)
+    throw new Error('Trump suit must be set during playing phase')
   }
 
   // 最初のトリックかどうかを判定
@@ -495,30 +496,6 @@ export function determineWinner(
 
   // 特殊ルール適用の勝者決定
   return determineWinnerWithSpecialRules(trick, trumpSuit, isFirstTrick)
-}
-
-/**
- * 基本的なトリック勝者決定（特殊ルールなし）
- */
-function determineWinnerBasic(trick: Trick): PlayedCard | null {
-  const leadingSuit = trick.cards[0].card.suit
-  let winner = trick.cards[0]
-
-  for (const playedCard of trick.cards) {
-    const currentCard = playedCard.card
-    const winnerCard = winner.card
-
-    if (currentCard.suit === leadingSuit && winnerCard.suit !== leadingSuit) {
-      winner = playedCard
-    } else if (
-      currentCard.suit === winnerCard.suit &&
-      currentCard.value > winnerCard.value
-    ) {
-      winner = playedCard
-    }
-  }
-
-  return winner
 }
 
 /**
