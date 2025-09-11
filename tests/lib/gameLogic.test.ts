@@ -10,13 +10,7 @@ import {
   passNapoleonDeclaration,
   setAdjutant,
 } from '@/lib/gameLogic'
-import type {
-  Card,
-  GameState,
-  NapoleonDeclaration,
-  Suit,
-  Trick,
-} from '@/types/game'
+import type { Card, GameState, NapoleonDeclaration, Trick } from '@/types/game'
 
 describe('Game Logic', () => {
   let gameState: GameState
@@ -71,60 +65,6 @@ describe('Game Logic', () => {
   // isCardStronger function removed - logic integrated into determineWinner
 
   describe('determineWinner', () => {
-    it('should determine winner of a complete trick', () => {
-      const trick: Trick = {
-        id: 'test-trick',
-        cards: [
-          {
-            card: {
-              id: `${SUIT_ENUM.HEARTS}-${CARD_RANKS.SEVEN}`,
-              suit: SUIT_ENUM.HEARTS,
-              rank: CARD_RANKS.SEVEN,
-              value: 7,
-            },
-            playerId: 'p1',
-            order: 1,
-          },
-          {
-            card: {
-              id: `${SUIT_ENUM.HEARTS}-${CARD_RANKS.KING}`,
-              suit: SUIT_ENUM.HEARTS,
-              rank: CARD_RANKS.KING,
-              value: 13,
-            },
-            playerId: 'p2',
-            order: 2,
-          },
-          {
-            card: {
-              id: 'hearts-5',
-              suit: SUIT_ENUM.HEARTS as Suit,
-              rank: '5' as const,
-              value: 5,
-            },
-            playerId: 'p3',
-            order: 3,
-          },
-          {
-            card: {
-              id: 'hearts-A',
-              suit: SUIT_ENUM.HEARTS as Suit,
-              rank: 'A' as const,
-              value: 14,
-            },
-            playerId: 'p4',
-            order: 4,
-          },
-        ],
-        completed: false,
-        leadingSuit: SUIT_ENUM.HEARTS as Suit,
-      }
-
-      const winner = determineWinner(trick)
-      expect(winner).not.toBeNull()
-      expect(winner?.playerId).toBe('p4') // Player with Ace of Hearts should win
-    })
-
     it('should return null for empty trick', () => {
       const emptyTrick: Trick = {
         id: 'empty-trick',

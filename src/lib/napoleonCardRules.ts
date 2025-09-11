@@ -253,13 +253,27 @@ export function determineWinnerWithSpecialRules(
 
   const leadingSuit = trick.cards[0].card.suit
 
-  // 1. 狩りJルール（最優先）
+  // よろめきと狩りJルールの特別な判定
+  const mightyCard = trick.cards.find((pc) => isMighty(pc.card))
+  const heartQueenCard = trick.cards.find((pc) => isHeartQueen(pc.card))
+
+  if (mightyCard && heartQueenCard) {
+    // よろめきの基本条件が満たされている場合
+    const huntingJackWinner = checkHuntingJackRule(trick, trumpSuit)
+
+    if (huntingJackWinner) {
+      // 狩りJルールも発動する場合、よろめきを優先
+      return heartQueenCard
+    }
+
+    // 狩りJルールが発動しない場合、通常のよろめき判定
+    const yoromekiWinner = checkYoromekiRule(trick, trumpSuit)
+    if (yoromekiWinner) return yoromekiWinner
+  }
+
+  // 2. 狩りJルール（よろめきがない、または無効な場合）
   const huntingJackWinner = checkHuntingJackRule(trick, trumpSuit)
   if (huntingJackWinner) return huntingJackWinner
-
-  // 2. よろめきルール
-  const yoromekiWinner = checkYoromekiRule(trick, trumpSuit)
-  if (yoromekiWinner) return yoromekiWinner
 
   // 3. セイム2ルール（最初のトリック以外）
   if (!isFirstTrick) {
