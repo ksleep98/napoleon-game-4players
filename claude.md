@@ -138,6 +138,23 @@ pnpm cleanup:smart  # 手動スマート版（GitHub CLI連携）
 - Jest テスト実行
 - 全チェック合格でコミット可能
 
+### E2E テスト制御
+
+E2Eテストは環境変数で制御可能:
+
+- **スキップ**: `SKIP_E2E_TESTS=true` - CI/CDでE2Eテストを無効化
+- **有効化**: `SKIP_E2E_TESTS=false` またはunset - E2Eテストを実行
+
+```bash
+# E2Eテストをスキップしてローカルで実行
+SKIP_E2E_TESTS=true pnpm test:e2e
+
+# 通常のE2Eテスト実行（環境変数未設定時はfalseがデフォルト）
+pnpm test:e2e
+```
+
+**注意**: 現在はCloudflare開発環境セットアップまでE2Eテストをスキップ中
+
 ### Post-merge 自動クリーンアップ
 
 **自動実行設定:**
