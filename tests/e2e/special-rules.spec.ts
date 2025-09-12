@@ -1,5 +1,15 @@
 import { expect, type Locator, type Page, test } from '@playwright/test'
 
+// Skip E2E tests in CI if SKIP_E2E_TESTS is set
+// This allows us to temporarily disable E2E tests while preserving files
+// TODO: Enable E2E tests once Cloudflare development environment is ready
+if (process.env.SKIP_E2E_TESTS === 'true') {
+  test.skip(
+    () => true,
+    'E2E tests are disabled via SKIP_E2E_TESTS environment variable'
+  )
+}
+
 // Helper type for game elements and indicators
 interface GameIndicators {
   gameElements: string[]

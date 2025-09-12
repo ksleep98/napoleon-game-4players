@@ -184,6 +184,8 @@ jobs:
           # Playwright will start dev server automatically
           PORT: "3000"
           NEXT_TELEMETRY_DISABLED: "1"
+          # Skip E2E tests temporarily until Cloudflare development environment is ready
+          SKIP_E2E_TESTS: "true"
         run: |
           echo "🚀 Starting E2E tests with automatic server startup..."
           echo "⏳ Playwright webServer will start dev server automatically"
