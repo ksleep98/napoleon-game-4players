@@ -7,6 +7,7 @@ const nextConfig = {
     ignoreDuringBuilds: false,
   },
   // Configure for Cloudflare Pages deployment - optimized
+  distDir: 'dist',
   trailingSlash: true,
   images: {
     unoptimized: true,
