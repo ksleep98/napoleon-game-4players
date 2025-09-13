@@ -1,22 +1,28 @@
 name = "napoleon-game-dev"
-compatibility_date = "2024-12-01"
+compatibility_date = "2024-12-16"
 
 # Cloudflare Workers with Next.js SSR
-# Entry point for the Next.js server
-main = ".next/standalone/server.js"
+# Entry point wrapper for ES Module format
+main = "worker.js"
 
 # Environment variables
 [vars]
-NODE_ENV = "production"
+NODE_ENV = "development"
 
 # Production environment configuration
 [env.production]
 name = "napoleon-game"
 vars = { NODE_ENV = "production" }
 
+# Compatibility flags for Next.js SSR and Node.js built-in modules
+compatibility_flags = [
+  "nodejs_compat",
+  "nodejs_als",
+  "streams_enable_constructors",
+  "transformstream_enable_standard_constructor"
+]
+
 # Build configuration - copy static files after build
+# Note: Next.js build uses production mode for optimization, but runtime uses development NODE_ENV
 [build]
 command = "npm run build && cp -r .next/static .next/standalone/.next/"
-
-# Compatibility flags for Next.js SSR
-compatibility_flags = ["nodejs_compat"]

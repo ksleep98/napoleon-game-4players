@@ -16,6 +16,21 @@ const nextConfig = {
   experimental: {
     dynamicIO: false,
   },
+  // Node.js polyfills for Cloudflare Workers
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals = config.externals || []
+      config.externals.push({
+        fs: 'fs',
+        path: 'path',
+        stream: 'stream',
+        util: 'util',
+        crypto: 'crypto',
+        os: 'os',
+      })
+    }
+    return config
+  },
 }
 
 module.exports = nextConfig
