@@ -46,7 +46,9 @@
     "cleanup:smart": "./scripts/smart-cleanup.sh",
     "setup:auto-cleanup": "./scripts/setup-auto-cleanup.sh",
     "setup:pre-commit": "node scripts/setup-pre-commit.js",
-    "prepare": "husky"
+    "prepare": "husky",
+    "pages:build": "next build",
+    "pages:dev": "next dev"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.56.0",
