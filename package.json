@@ -47,7 +47,7 @@
     "setup:auto-cleanup": "./scripts/setup-auto-cleanup.sh",
     "setup:pre-commit": "node scripts/setup-pre-commit.js",
     "prepare": "husky",
-    "pages:build": "rm -rf .next dist && next build",
+    "pages:build": "rm -rf .next && next build",
     "pages:dev": "next dev"
   },
   "dependencies": {
