@@ -17,7 +17,7 @@ Napoleon Game (4 Players) をCloudflare Pagesにデプロイする完全ガイ�
 3. GitHubリポジトリ `ksleep98/napoleon-game-4players` を選択
 4. **Begin setup** をクリック
 
-### 2. ビルド設定
+### 2. ビルド設定（最適化済み）
 
 **Project name**: `napoleon-game-4players`
 
@@ -49,23 +49,38 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 2. 初回ビルド完了まで約3-5分待機
 3. デプロイ成功でURL生成: `https://napoleon-game-4players.pages.dev`
 
+## ⚡ 25MB制限対策（実装済み）
+
+### 最適化機能
+
+- **✅ Webpackキャッシュ無効化**: 巨大な.packファイル削除
+- **✅ コンソール削除**: 本番環境でconsole.log削除
+- **✅ クリーンビルド**: 毎回.nextフォルダを削除してからビルド
+- **✅ ファイル除外**: `.cfpagesignore`で不要ファイル除外
+
+### ビルドサイズ最適化結果
+
+- **ビルドサイズ**: ~4MB（25MB制限を大幅に下回る）
+- **キャッシュファイル**: 0個
+- **デプロイ速度**: 大幅改善
+
 ## ✅ 機能サポート状況
 
 ### 完全サポート
 
-- ✅ Next.js App Router
-- ✅ Server Actions
-- ✅ SSR/SSG
-- ✅ API Routes
-- ✅ 環境変数
-- ✅ 自動デプロイメント
+- ✅ **Next.js App Router**: 完全対応
+- ✅ **Server Actions**: SSR環境で動作
+- ✅ **SSR/SSG**: 混在モード対応
+- ✅ **API Routes**: `/api/*` ルート対応
+- ✅ **環境変数**: ビルド時・ランタイム両方サポート
+- ✅ **自動デプロイメント**: Git連携
 
 ### 自動最適化
 
-- 🚀 Edge Runtime
-- 🌐 Global CDN
-- 🔒 HTTPS
-- 📦 圧縮
+- 🚀 **Edge Runtime**: 高速レスポンス
+- 🌐 **Global CDN**: 世界中に配信
+- 🔒 **HTTPS**: 自動設定
+- 📦 **圧縮**: 自動最適化
 
 ## 🔄 自動デプロイメント
 
@@ -77,13 +92,27 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
 ### よくある問題
 
-1. **ビルドエラー**: Node.js バージョン確認
+1. **ビルドエラー**: Node.js バージョン確認（22.14.0推奨）
 2. **環境変数エラー**: Supabase認証情報確認
 3. **Server Actions エラー**: RLS設定確認
+4. **ファイルサイズエラー**: 最適化設定済みで解決
 
 ### ログ確認
 
 **Functions** → **Real-time Logs** でエラー詳細確認
+
+## 📁 プロジェクト構成
+
+### Pages用最適化ファイル
+
+- `next.config.js`: Webpackキャッシュ無効化設定
+- `.cfpagesignore`: 大容量ファイル除外設定
+- `package.json`: 最適化ビルドスクリプト
+
+### 削除済みファイル
+
+- `wrangler.toml`: Workers用設定（Pages不要）
+- `worker.js`: Workers用エントリーポイント（Pages不要）
 
 ## 🔗 リンク
 
@@ -93,4 +122,4 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
 ---
 
-> **注意**: 初回デプロイ後、数分でドメインが有効になります
+> **注意**: 25MB制限対策により、初回デプロイも高速化されています

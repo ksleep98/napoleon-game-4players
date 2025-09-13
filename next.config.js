@@ -6,12 +6,21 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
-  // Configure for Cloudflare Pages deployment
+  // Configure for Cloudflare Pages deployment - optimized
   images: {
     unoptimized: true,
   },
   experimental: {
     dynamicIO: false,
+  },
+  // Optimize bundle size for Cloudflare Pages
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+  // Disable webpack cache to reduce file size
+  webpack: (config) => {
+    config.cache = false
+    return config
   },
 }
 
