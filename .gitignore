@@ -14,6 +14,9 @@ screenshots/
 .next/
 out/
 
+# Vercel & Cloudflare Pages build output
+.vercel/
+
 # Production build
 build/
 dist/
