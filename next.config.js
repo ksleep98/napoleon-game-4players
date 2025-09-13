@@ -6,7 +6,7 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
-  // Configure for Cloudflare Pages deployment with Server Actions
+  // Configure for Cloudflare Pages deployment - keeping Server Actions support
   images: {
     unoptimized: true,
   },
