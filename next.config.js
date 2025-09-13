@@ -6,9 +6,7 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
-  // Configure for Cloudflare Pages deployment - optimized
-  distDir: 'dist',
-  trailingSlash: true,
+  // Configure for Cloudflare Pages deployment with Server Actions
   images: {
     unoptimized: true,
   },
