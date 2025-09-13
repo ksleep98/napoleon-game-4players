@@ -6,6 +6,11 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
+  // Configure for Cloudflare Pages - use standard build
+  trailingSlash: true,
+  images: {
+    unoptimized: true,
+  },
   // Configure for runtime rendering
   experimental: {
     dynamicIO: false,
