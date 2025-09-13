@@ -6,12 +6,13 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
-  // Configure for Cloudflare Pages deployment - SPA mode
+  // Configure for Cloudflare Workers deployment with SSR
+  output: 'standalone',
   trailingSlash: true,
   images: {
     unoptimized: true,
   },
-  // Configure for runtime rendering
+  // Configure for Cloudflare Workers edge runtime
   experimental: {
     dynamicIO: false,
   },

@@ -1,0 +1,22 @@
+name = "napoleon-game-dev"
+compatibility_date = "2024-12-01"
+
+# Cloudflare Workers with Next.js SSR
+# Entry point for the Next.js server
+main = ".next/standalone/server.js"
+
+# Environment variables
+[vars]
+NODE_ENV = "production"
+
+# Production environment configuration
+[env.production]
+name = "napoleon-game"
+vars = { NODE_ENV = "production" }
+
+# Build configuration - copy static files after build
+[build]
+command = "npm run build && cp -r .next/static .next/standalone/.next/"
+
+# Compatibility flags for Next.js SSR
+compatibility_flags = ["nodejs_compat"]
