@@ -1,20 +1,20 @@
+# Cloudflare Pages configuration
+# This file is for Cloudflare Pages deployment only
+# For manual deployment, use: npx wrangler pages deploy .next
+
 name = "napoleon-game"
 compatibility_date = "2025-09-13"
 
-# Pages configuration for Next.js standard build
-pages_build_output_dir = ".next"
+# For Cloudflare Pages, configure build settings in dashboard:
+# - Build command: npm run build
+# - Build output directory: .next
+# - Root directory: (leave empty)
+# - Environment variables: Set in Pages dashboard
 
+# Development environment
 [env.development]
 name = "napoleon-dev"
 
+# Production environment
 [env.production]
 name = "napoleon-prod"
-
-# Build configuration
-[build]
-command = "npm run build"
-cwd = "."
-
-# Environment variables (set in Cloudflare dashboard)
-[vars]
-NODE_ENV = "production"

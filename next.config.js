@@ -6,7 +6,7 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
-  // Configure for Cloudflare Pages - use standard build
+  // Configure for Cloudflare Pages deployment - SPA mode
   trailingSlash: true,
   images: {
     unoptimized: true,

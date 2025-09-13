@@ -1,0 +1,17 @@
+# Cloudflare Pages redirects for Next.js
+
+# Redirect root to index.html
+/  /index.html  200
+
+# Handle static pages
+/rooms  /rooms/index.html  200
+
+# Handle dynamic routes - Next.js App Router
+/game/*  /game/[gameId]/index.html  200
+
+# Handle missing trailing slashes
+/game  /game/  301
+/rooms  /rooms/  301
+
+# SPA fallback for any unmatched routes
+/*  /index.html  200
