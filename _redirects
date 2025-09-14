@@ -1,8 +1,0 @@
-# Cloudflare Pages redirects for Next.js with Server Actions
-# Note: These redirects are handled automatically by Next.js on Cloudflare Pages
-
-# Optional: Force HTTPS redirect (already handled by Cloudflare)
-# http://napoleon-game-dev.pages.dev/* https://napoleon-game-dev.pages.dev/:splat 301
-
-# Optional: Custom error pages
-# /404 /404.html 404
