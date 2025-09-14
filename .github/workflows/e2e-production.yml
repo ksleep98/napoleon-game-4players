@@ -49,7 +49,7 @@ jobs:
           PLAYWRIGHT_BASE_URL: ${{ github.event.inputs.target_url || 'https://your-app.vercel.app' }}
           # webServerを無効化（本番URLを使用）
           PLAYWRIGHT_SKIP_WEBSERVER: "1"
-          # Skip E2E tests temporarily until Cloudflare development environment is ready
+          # Skip E2E tests temporarily until Vercel production environment is ready
           SKIP_E2E_TESTS: "true"
         run: |
           echo "🌐 Testing against: $PLAYWRIGHT_BASE_URL"

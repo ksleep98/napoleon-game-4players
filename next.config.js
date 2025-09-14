@@ -6,21 +6,13 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
-  // Configure for Cloudflare Pages deployment - keeping Server Actions support
-  images: {
-    unoptimized: true,
-  },
+  // Optimized for Vercel deployment with Server Actions support
   experimental: {
     dynamicIO: false,
   },
-  // Optimize bundle size for Cloudflare Pages
+  // Optimize for production
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
-  },
-  // Disable webpack cache to reduce file size
-  webpack: (config) => {
-    config.cache = false
-    return config
   },
 }
 

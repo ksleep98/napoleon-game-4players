@@ -141,7 +141,7 @@ jobs:
     runs-on: ubuntu-latest
     # Only run E2E tests on push to main/develop or specific PR labels
     if: |
-      github.event_name == 'push' || 
+      github.event_name == 'push' ||
       (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'e2e-test'))
 
     steps:
@@ -184,7 +184,7 @@ jobs:
           # Playwright will start dev server automatically
           PORT: "3000"
           NEXT_TELEMETRY_DISABLED: "1"
-          # Skip E2E tests temporarily until Cloudflare development environment is ready
+          # Skip E2E tests temporarily until Vercel development environment is ready
           SKIP_E2E_TESTS: "true"
         run: |
           echo "🚀 Starting E2E tests with automatic server startup..."
