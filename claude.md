@@ -187,15 +187,11 @@ pnpm test:e2e
 
 ### Post-merge 自動クリーンアップ
 
-**GitHub MCP Server連携 自動クリーンアップ:**
+**自動ブランチクリーンアップ:**
 
 ```bash
 # 定期ポーリング自動クリーンアップ（推奨）
 pnpm cleanup:polling        # 5分間隔でマージ済みPRをチェック・自動削除
-
-# 手動実行
-pnpm cleanup:auto           # マージ済みブランチの手動削除
-pnpm cleanup:auto:schedule  # 定期実行版（developブランチ更新付き）
 ```
 
 **従来の自動実行設定:**
