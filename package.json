@@ -46,6 +46,7 @@
     "cleanup:smart": "./scripts/smart-cleanup.sh",
     "cleanup:auto": "node scripts/auto-branch-cleanup.js",
     "cleanup:auto:schedule": "node scripts/auto-branch-cleanup.js schedule",
+    "cleanup:polling": "node scripts/auto-polling-cleanup.js",
     "setup:auto-cleanup": "./scripts/setup-auto-cleanup.sh",
     "setup:github-cleanup": "./scripts/setup-github-auto-cleanup.sh",
     "setup:pre-commit": "node scripts/setup-pre-commit.js",
