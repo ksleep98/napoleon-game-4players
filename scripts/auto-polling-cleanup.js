@@ -197,7 +197,7 @@ class AutoPollingCleanup {
 
 // CLI実行
 if (require.main === module) {
-  const pollInterval = parseInt(process.argv[2]) || 5 * 60 * 1000 // デフォルト5分
+  const pollInterval = parseInt(process.argv[2], 10) || 5 * 60 * 1000 // デフォルト5分
 
   const cleanup = new AutoPollingCleanup({ pollInterval })
   cleanup.start()
