@@ -3,6 +3,7 @@
 /**
  * Auto Polling Branch Cleanup
  * 定期的にGitHub APIをポーリングしてマージ済みブランチを自動削除
+ * Note: This script is designed to work in environments where GitHub MCP Server tools are available
  */
 
 const { exec } = require('node:child_process')
@@ -59,7 +60,7 @@ class AutoPollingCleanup {
       )
 
       // 最後のチェック以降にマージされたPRを取得
-      const since = this.lastCheck.toISOString()
+      const since = this.lastCheck.toISOString().split('T')[0]
       const mergedPRs = await this.getRecentlyMergedPRs(since)
 
       if (mergedPRs.length === 0) {
@@ -96,28 +97,45 @@ class AutoPollingCleanup {
   }
 
   /**
-   * 最近マージされたPRを取得（GitHub MCP Server使用）
+   * 最近マージされたPRを取得（gh CLI使用）
    */
   async getRecentlyMergedPRs(since) {
     try {
-      // Note: 実際の実装ではGitHub MCP Serverのsearch_pull_requestsを使用
-      const query = `is:merged base:develop merged:>=${since.split('T')[0]}`
+      // gh CLIを使用してマージされたPRを検索
+      const query = `is:merged base:develop merged:>=${since}`
 
       const { stdout } = await execAsync(`
-        npx claude-mcp-server github search_pull_requests \\
-          --owner ${this.owner} \\
-          --repo ${this.repo} \\
-          --query "${query}" \\
-          --sort updated \\
-          --order desc \\
-          --perPage 10
+        gh pr list \\
+          --repo ${this.owner}/${this.repo} \\
+          --search "${query}" \\
+          --state merged \\
+          --json number,title,headRefName,baseRefName,mergedAt \\
+          --limit 10
       `)
 
-      const result = JSON.parse(stdout)
-      return result.items || []
+      const prs = JSON.parse(stdout)
+
+      // GitHub API format に合わせて変換
+      return prs.map((pr) => ({
+        number: pr.number,
+        title: pr.title,
+        head: { ref: pr.headRefName },
+        base: { ref: pr.baseRefName },
+        merged_at: pr.mergedAt,
+      }))
     } catch (error) {
-      console.error('GitHub API error:', error.message)
-      return []
+      console.error('GitHub CLI error:', error.message)
+      console.log('💡 Trying fallback method with git remote prune...')
+
+      // フォールバック: git remote pruneで削除されたリモートブランチを検出
+      try {
+        await execAsync('git remote prune origin')
+        console.log('🔄 Pruned stale remote branches')
+        return []
+      } catch (pruneError) {
+        console.error('Git prune failed:', pruneError.message)
+        return []
+      }
     }
   }
 
