@@ -123,7 +123,37 @@ pnpm cleanup:smart  # 手動スマート版（GitHub CLI連携）
 - SHALL limit response token length to avoid usage limit.
 - SHALL break down large files for stepwise parsing.
 
-### 開発フロー
+### 開発フロー（ブランチ保護対応）
+
+**重要**: `develop` と `main` ブランチは直接プッシュ禁止
+
+```bash
+# 1. developブランチから作業ブランチを作成
+git checkout develop
+git pull origin develop
+git checkout -b feature/your-feature-name
+
+# 2. 開発・テスト
+# コード修正...
+pnpm ci-check  # 品質確認
+
+# 3. コミット（pre-commit hook自動実行）
+git add .
+git commit -m "feat: implement your feature"
+
+# 4. ブランチをプッシュ
+git push origin feature/your-feature-name
+
+# 5. GitHub UIでPull Request作成
+# develop ← feature/your-feature-name
+
+# 6. マージ後のクリーンアップ（自動実行）
+git checkout develop
+git pull origin develop
+# ローカルブランチは自動削除される
+```
+
+**Git フロー概要**:
 
 1. `feature/xxx` ブランチで開発
 2. `pnpm ci-check` で品質確認

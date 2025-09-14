@@ -77,3 +77,4 @@ temp/
 # TypeScript incremental compilation
 *.tsbuildinfo
 .serena/
+.vercel
