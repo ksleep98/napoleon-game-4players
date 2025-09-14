@@ -1,0 +1,13 @@
+{
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "develop": true
+    }
+  },
+  "github": {
+    "autoAlias": true,
+    "silent": true
+  },
+  "alias": ["napoleon-game.vercel.app"]
+}
