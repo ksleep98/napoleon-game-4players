@@ -81,8 +81,11 @@ export function PerformanceDashboard() {
     return () => clearInterval(interval)
   }, [updateStats])
 
-  // 開発環境でのみ表示
-  if (process.env.NODE_ENV !== 'development') {
+  // 開発環境またはパフォーマンス監視が有効な場合のみ表示
+  if (
+    process.env.NODE_ENV !== 'development' &&
+    process.env.NEXT_PUBLIC_ENABLE_PERF_MONITOR !== 'true'
+  ) {
     return null
   }
 

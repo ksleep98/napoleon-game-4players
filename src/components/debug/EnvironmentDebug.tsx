@@ -16,8 +16,11 @@ export function EnvironmentDebug() {
   const [isVisible, setIsVisible] = useState(false)
   const envInfo = getEnvironmentInfo()
 
-  // 開発環境でのみ表示
-  if (process.env.NODE_ENV !== 'development') {
+  // 開発環境またはパフォーマンス監視が有効な場合のみ表示
+  if (
+    process.env.NODE_ENV !== 'development' &&
+    process.env.NEXT_PUBLIC_ENABLE_PERF_MONITOR !== 'true'
+  ) {
     return null
   }
 
@@ -90,7 +93,21 @@ export function EnvironmentDebug() {
                   Feature Flags
                 </div>
                 <div className="space-y-1 text-xs">
-                  {Object.entries(FEATURE_FLAGS).map(([feature, enabled]) => (
+                  {(
+                    [
+                      ['MULTIPLAYER_ROOMS', FEATURE_FLAGS.MULTIPLAYER_ROOMS],
+                      [
+                        'PERFORMANCE_MONITORING',
+                        FEATURE_FLAGS.PERFORMANCE_MONITORING,
+                      ],
+                      ['DEBUG_TOOLS', FEATURE_FLAGS.DEBUG_TOOLS],
+                      ['VERBOSE_LOGGING', FEATURE_FLAGS.VERBOSE_LOGGING],
+                      [
+                        'EXPERIMENTAL_FEATURES',
+                        FEATURE_FLAGS.EXPERIMENTAL_FEATURES,
+                      ],
+                    ] as const
+                  ).map(([feature, enabled]) => (
                     <div
                       key={feature}
                       className="flex justify-between items-center"
