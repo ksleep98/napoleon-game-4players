@@ -60,31 +60,43 @@ export const FEATURE_FLAGS = {
    * 人間4人対戦機能（マルチプレイヤー）
    * 現在は開発中のためローカルのみ有効
    */
-  MULTIPLAYER_ROOMS: isLocal(),
+  get MULTIPLAYER_ROOMS() {
+    return isLocal()
+  },
 
   /**
    * パフォーマンス監視
-   * 開発環境でのみ有効
+   * 開発環境または環境変数で有効化
    */
-  PERFORMANCE_MONITORING: isDevelopment(),
+  get PERFORMANCE_MONITORING() {
+    return (
+      isDevelopment() || process.env.NEXT_PUBLIC_ENABLE_PERF_MONITOR === 'true'
+    )
+  },
 
   /**
    * デバッグツール表示
    * 開発環境でのみ有効
    */
-  DEBUG_TOOLS: isDevelopment(),
+  get DEBUG_TOOLS() {
+    return isDevelopment()
+  },
 
   /**
    * 詳細ログ出力
    * ローカル環境でのみ有効
    */
-  VERBOSE_LOGGING: isLocal(),
+  get VERBOSE_LOGGING() {
+    return isLocal()
+  },
 
   /**
    * 実験的機能
    * ローカル環境でのみ有効
    */
-  EXPERIMENTAL_FEATURES: isLocal(),
+  get EXPERIMENTAL_FEATURES() {
+    return isLocal()
+  },
 } as const
 
 /**
@@ -92,7 +104,17 @@ export const FEATURE_FLAGS = {
  */
 export function getEnvironmentInfo() {
   const env = getEnvironment()
-  const features = Object.entries(FEATURE_FLAGS)
+
+  // Feature flagsを手動で評価（getterプロパティのため）
+  const featureEntries = [
+    ['MULTIPLAYER_ROOMS', FEATURE_FLAGS.MULTIPLAYER_ROOMS],
+    ['PERFORMANCE_MONITORING', FEATURE_FLAGS.PERFORMANCE_MONITORING],
+    ['DEBUG_TOOLS', FEATURE_FLAGS.DEBUG_TOOLS],
+    ['VERBOSE_LOGGING', FEATURE_FLAGS.VERBOSE_LOGGING],
+    ['EXPERIMENTAL_FEATURES', FEATURE_FLAGS.EXPERIMENTAL_FEATURES],
+  ] as const
+
+  const features = featureEntries
     .filter(([_, enabled]) => enabled)
     .map(([feature, _]) => feature)
 
