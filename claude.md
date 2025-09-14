@@ -187,7 +187,18 @@ pnpm test:e2e
 
 ### Post-merge 自動クリーンアップ
 
-**自動実行設定:**
+**GitHub MCP Server連携 自動クリーンアップ（推奨）:**
+
+```bash
+# セットアップ（初回のみ）
+pnpm setup:github-cleanup
+
+# 手動実行
+pnpm cleanup:auto           # マージ済みブランチの自動削除
+pnpm cleanup:auto:schedule  # 定期実行版（developブランチ更新付き）
+```
+
+**従来の自動実行設定:**
 
 - `pnpm setup:auto-cleanup enable` - 自動クリーンアップ有効化
 - `pnpm setup:auto-cleanup disable` - 自動クリーンアップ無効化
@@ -201,7 +212,15 @@ pnpm test:e2e
   - `-- --keep` - ブランチ保持
   - `-- --help` - 使用方法表示
 
-**自動実行の仕組み:**
+**GitHub連携自動クリーンアップの仕組み:**
+
+- GitHub APIでマージ済みPRを確認
+- 対応するローカルブランチを安全に削除
+- リモート追跡ブランチも自動削除
+- Git post-merge hookで自動実行
+- 定期実行（cron）で見落とし防止
+
+**従来の自動実行の仕組み:**
 
 - Git post-merge hookでPRマージ後に自動実行
 - developブランチへのマージを検出して自動クリーンアップ
