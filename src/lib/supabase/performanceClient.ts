@@ -55,10 +55,31 @@ class PerformanceSupabaseClient {
    * ゲームルーム取得（測定付き）
    */
   async getGameRoom(roomId: string) {
+    const cacheKey = this.getCacheKey('getGameRoom', roomId)
+
+    // キャッシュチェック
+    const cached = this.getFromCache(cacheKey)
+    if (cached) {
+      console.log('📋 Cache hit for getGameRoom:', roomId)
+      return cached
+    }
+
     return performanceMonitor.measureDatabase(
       'select',
-      async () =>
-        await supabase.from('game_rooms').select('*').eq('id', roomId).single(),
+      async () => {
+        const result = await supabase
+          .from('game_rooms')
+          .select('*')
+          .eq('id', roomId)
+          .single()
+
+        // 成功時のみキャッシュに保存
+        if (!result.error) {
+          this.setCache(cacheKey, result)
+        }
+
+        return result
+      },
       {
         table: 'game_rooms',
         queryType: 'simple',
@@ -106,23 +127,25 @@ class PerformanceSupabaseClient {
   async getGameStatistics(playerId: string) {
     return performanceMonitor.measureDatabase(
       'select',
-      async () =>
-        await supabase
+      async () => {
+        // 最適化: 必要な列のみ選択、JOINを簡素化
+        const { data, error } = await supabase
           .from('game_results')
           .select(`
-          id,
-          napoleon_won,
-          napoleon_player_id,
-          adjutant_player_id,
-          scores,
-          created_at,
-          games!inner(
             id,
-            phase,
+            napoleon_won,
+            napoleon_player_id,
+            adjutant_player_id,
+            scores,
             created_at
-          )
-        `)
-          .contains('scores', [{ playerId }]),
+          `)
+          .contains('scores', [{ playerId }])
+          .order('created_at', { ascending: false })
+          .limit(50) // 結果を制限してパフォーマンス向上
+
+        if (error) throw error
+        return { data, error }
+      },
       {
         table: 'game_results',
         queryType: 'complex',
@@ -242,6 +265,30 @@ class PerformanceSupabaseClient {
 
     return results
   }
+
+  // シンプルなメモリキャッシュ（5分間有効）
+  cache = new Map<string, { data: unknown; expiry: number }>()
+  CACHE_TTL = 5 * 60 * 1000 // 5分
+
+  getCacheKey(method: string, ...args: unknown[]): string {
+    return `${method}:${JSON.stringify(args)}`
+  }
+
+  getFromCache<T>(key: string): T | null {
+    const cached = this.cache.get(key)
+    if (cached && cached.expiry > Date.now()) {
+      return cached.data as T
+    }
+    this.cache.delete(key)
+    return null
+  }
+
+  setCache<T>(key: string, data: T): void {
+    this.cache.set(key, {
+      data,
+      expiry: Date.now() + this.CACHE_TTL,
+    })
+  }
 }
 
 // シングルトンインスタンス
@@ -268,6 +315,11 @@ export class PerformanceComparator {
       complexQuery: number
       updateOperation: number
       realtimeLatency: number
+      cacheTest: {
+        firstCall: number
+        cachedCall: number
+        improvement: number
+      }
     }
   }> {
     console.log('🔍 Starting performance tests...')
@@ -286,6 +338,11 @@ export class PerformanceComparator {
         complexQuery: 0,
         updateOperation: 0,
         realtimeLatency: 0,
+        cacheTest: {
+          firstCall: 0,
+          cachedCall: 0,
+          improvement: 0,
+        },
       },
     }
 
@@ -294,25 +351,38 @@ export class PerformanceComparator {
       console.log('📡 Testing connection...')
       results.tests.connectionTest = await performanceSupabase.testConnection()
 
-      // 2. シンプルクエリテスト
-      console.log('📋 Testing simple query...')
+      // 2. シンプルクエリテスト（初回）
+      console.log('📋 Testing simple query (first call)...')
       const simpleStart = performance.now()
-      await performanceSupabase.getGameRoom('test')
+      await performanceSupabase.getGameRoom('perf-test-room')
       results.tests.simpleQuery = performance.now() - simpleStart
+      results.tests.cacheTest.firstCall = results.tests.simpleQuery
 
-      // 3. 複雑クエリテスト
+      // 3. シンプルクエリテスト（キャッシュ確認）
+      console.log('⚡ Testing simple query (cached call)...')
+      const cachedStart = performance.now()
+      await performanceSupabase.getGameRoom('perf-test-room')
+      results.tests.cacheTest.cachedCall = performance.now() - cachedStart
+      results.tests.cacheTest.improvement = Math.round(
+        ((results.tests.cacheTest.firstCall -
+          results.tests.cacheTest.cachedCall) /
+          results.tests.cacheTest.firstCall) *
+          100
+      )
+
+      // 4. 複雑クエリテスト
       console.log('🔍 Testing complex query...')
       const complexStart = performance.now()
       await performanceSupabase.getGameStatistics('test-player')
       results.tests.complexQuery = performance.now() - complexStart
 
-      // 4. 更新操作テスト
+      // 5. 更新操作テスト
       console.log('✏️ Testing update operation...')
       const updateStart = performance.now()
       await performanceSupabase.updatePlayerConnection('test-player', true)
       results.tests.updateOperation = performance.now() - updateStart
 
-      // 5. リアルタイム遅延テスト（接続時間のみ測定）
+      // 6. リアルタイム遅延テスト（接続時間のみ測定）
       console.log('⚡ Testing realtime latency...')
       const realtimeStart = performance.now()
       const unsubscribe = performanceSupabase.subscribeToGameState(
@@ -324,6 +394,9 @@ export class PerformanceComparator {
       unsubscribe()
 
       console.log('✅ Performance tests completed')
+      console.log(
+        `💾 Cache improvement: ${results.tests.cacheTest.improvement}%`
+      )
     } catch (error) {
       console.error('❌ Performance test failed:', error)
     }
