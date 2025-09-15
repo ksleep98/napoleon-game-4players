@@ -448,35 +448,14 @@ export function PerformanceDashboard() {
  */
 export function usePerformanceMonitoring() {
   useEffect(() => {
-    if (process.env.NODE_ENV !== 'development') return
-
+    // パフォーマンス監視の初期化のみ実行（テストなし）
     console.log('📊 Performance monitoring initialized')
     console.log('💡 Use window.__perfMonitor to access performance data')
+    console.log('🚫 All automatic performance tests disabled')
+    console.log('💡 Use the 📊 Perf button to run performance tests manually')
 
-    // ローカル環境チェック（ローカルでは自動テストをスキップ）
-    const isLocalDev =
-      process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('mock') ||
-      !process.env.NEXT_PUBLIC_SUPABASE_URL
-
-    if (isLocalDev) {
-      console.log(
-        '🔧 Local development detected - skipping automatic performance test'
-      )
-      console.log('💡 Use the 📊 Perf button to run performance tests manually')
-      return
-    }
-
-    // 本番環境でのみ初期接続テストを実行
-    const runInitialTest = async () => {
-      try {
-        await performanceComparator.runPerformanceTests()
-      } catch (error) {
-        console.warn('Initial performance test failed:', error)
-      }
-    }
-
-    // 1秒後に実行（初期化完了後）
-    setTimeout(runInitialTest, 1000)
+    // 自動テストを完全に無効化
+    return
   }, [])
 }
 

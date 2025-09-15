@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AdjutantSelector } from '@/components/game/AdjutantSelector'
 import { CardExchangeSelector } from '@/components/game/CardExchangeSelector'
 import { GameBoard } from '@/components/game/GameBoard'
@@ -24,6 +24,7 @@ function GamePageContent() {
   const { gameState, loading, error, actions, utils } = useGame()
 
   // プレイヤーIDを設定（AIモードでは人間プレイヤー、通常モードでは最初のプレイヤー）
+  // プレイヤーIDの設定を最適化（プレイヤー構成が変わった時のみ実行）
   useEffect(() => {
     if (gameState && gameState.players.length > 0) {
       const hasAI = gameState.players.some((p) => p.isAI)
@@ -38,6 +39,13 @@ function GamePageContent() {
       }
     }
   }, [gameState, currentPlayerId])
+
+  // playableCardsの計算をメモ化 (early returnより前に配置)
+  const playableCards = useMemo(() => {
+    return currentPlayerId && gameState
+      ? utils.getPlayableCards(currentPlayerId)
+      : []
+  }, [currentPlayerId, utils, gameState])
 
   if (loading) {
     return (
@@ -82,9 +90,6 @@ function GamePageContent() {
   const isCurrentTurn = currentPlayerId
     ? utils.getCurrentPlayer()?.id === currentPlayerId
     : false
-  const playableCards = currentPlayerId
-    ? utils.getPlayableCards(currentPlayerId)
-    : []
 
   const handleCardClick = (cardId: string) => {
     if (!isCurrentTurn || !playableCards.includes(cardId)) return

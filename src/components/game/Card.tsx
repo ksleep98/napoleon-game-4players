@@ -1,5 +1,6 @@
 'use client'
 
+import { memo, useCallback, useMemo } from 'react'
 import { SUIT_DISPLAY_COLORS, SUIT_SYMBOLS } from '@/lib/constants'
 import type { Card as CardType } from '@/types/game'
 
@@ -12,7 +13,7 @@ interface CardProps {
   className?: string
 }
 
-export function Card({
+const CardComponent = function Card({
   card,
   isPlayable = false,
   isSelected = false,
@@ -20,12 +21,16 @@ export function Card({
   onClick,
   className = '',
 }: CardProps) {
-  const sizeClasses = {
-    tiny: 'w-8 h-12 text-xs',
-    small: 'w-12 h-16 text-xs',
-    medium: 'w-16 h-24 text-sm',
-    large: 'w-20 h-32 text-base',
-  }
+  // サイズクラスをメモ化
+  const sizeClasses = useMemo(
+    () => ({
+      tiny: 'w-8 h-12 text-xs',
+      small: 'w-12 h-16 text-xs',
+      medium: 'w-16 h-24 text-sm',
+      large: 'w-20 h-32 text-base',
+    }),
+    []
+  )
 
   const handleClick = () => {
     if (isPlayable && onClick) {
@@ -34,18 +39,16 @@ export function Card({
   }
 
   // 定数参照を使用してTailwindのPurge問題を回避
-  const getSuitColor = (suit: string) => {
+  const getSuitColor = useCallback((suit: string) => {
     return (
       SUIT_DISPLAY_COLORS[suit as keyof typeof SUIT_DISPLAY_COLORS] ||
       'text-black font-bold'
     )
-  }
+  }, [])
 
-  return (
-    <button
-      type="button"
-      disabled={!isPlayable}
-      className={`
+  // スタイルクラスをメモ化
+  const cardClassName = useMemo(() => {
+    return `
         bg-white border-2 rounded-lg shadow-md flex flex-col items-center justify-center
         transition-all duration-200 select-none
         ${className}
@@ -61,7 +64,22 @@ export function Card({
             : 'border-gray-300'
         }
         ${getSuitColor(card.suit)}
-      `}
+      `
+  }, [
+    card.suit,
+    className,
+    isPlayable,
+    isSelected,
+    size,
+    sizeClasses,
+    getSuitColor,
+  ])
+
+  return (
+    <button
+      type="button"
+      disabled={!isPlayable}
+      className={cardClassName}
       onClick={handleClick}
     >
       <div className="font-bold">{card.rank}</div>
@@ -69,3 +87,16 @@ export function Card({
     </button>
   )
 }
+
+// メモ化されたCardコンポーネントをエクスポート
+export const Card = memo(CardComponent, (prevProps, nextProps) => {
+  // カスタム比較関数で最適化
+  return (
+    prevProps.card.id === nextProps.card.id &&
+    prevProps.isPlayable === nextProps.isPlayable &&
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.size === nextProps.size &&
+    prevProps.className === nextProps.className &&
+    prevProps.onClick === nextProps.onClick
+  )
+})
