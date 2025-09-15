@@ -121,7 +121,8 @@ pnpm cleanup:smart  # 手動スマート版（GitHub CLI連携）
 - **型安全**: TypeScript strict mode
 - **テスト**: 新機能にはJestテスト追加
 - **定数**: 文字列リテラル禁止・定数参照徹底
-- **Import**: 動的import禁止・静的import推奨
+- **Import**: 動的import禁止・静的import推奨・React.lazy()禁止
+- **パフォーマンス**: lazy()やdynamic()の使用禁止・静的importのみ許可
 
 **詳細**: [コーディングルール](./docs/development/CODING_RULES.md) を参照
 
