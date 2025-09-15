@@ -83,6 +83,19 @@ export function PerformanceDashboard() {
       const results = await performanceComparator.runPerformanceTests()
       setTestResults(results)
       console.log(performanceComparator.formatTestResults(results))
+
+      // ローカル開発環境での追加情報表示
+      const isLocalDev =
+        process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('mock') ||
+        !process.env.NEXT_PUBLIC_SUPABASE_URL
+      if (isLocalDev) {
+        console.log(
+          '💡 Running in local development mode - using simulated performance data'
+        )
+        console.log(
+          '🚀 Deploy to Vercel with real Supabase for actual performance metrics'
+        )
+      }
     } catch (error) {
       console.error('Performance test failed:', error)
     } finally {
@@ -234,6 +247,12 @@ export function PerformanceDashboard() {
                 <div className="bg-green-50 p-2 rounded text-sm">
                   <div className="font-semibold text-green-800 mb-1">
                     Latest Test Results:
+                    {(process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('mock') ||
+                      !process.env.NEXT_PUBLIC_SUPABASE_URL) && (
+                      <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                        LOCAL DEV
+                      </span>
+                    )}
                   </div>
                   <div className="space-y-1 text-xs">
                     <div className="flex justify-between">
