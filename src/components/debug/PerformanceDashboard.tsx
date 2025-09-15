@@ -466,17 +466,9 @@ export function usePerformanceMonitoring() {
       return
     }
 
-    // 本番環境でのみ初期接続テストを実行
-    const runInitialTest = async () => {
-      try {
-        await performanceComparator.runPerformanceTests()
-      } catch (error) {
-        console.warn('Initial performance test failed:', error)
-      }
-    }
-
-    // 1秒後に実行（初期化完了後）
-    setTimeout(runInitialTest, 1000)
+    // 自動テストを無効化（手動実行のみ）
+    console.log('🚫 Automatic performance tests disabled')
+    console.log('💡 Use the 📊 Perf button to run performance tests manually')
   }, [])
 }
 

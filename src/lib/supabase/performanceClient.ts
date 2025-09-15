@@ -340,7 +340,7 @@ class PerformanceSupabaseClient {
             'id, napoleon_won, napoleon_player_id, face_cards_won, created_at'
           )
           .or(
-            `napoleon_player_id.eq.${playerId},adjutant_player_id.eq.${playerId},scores.cs.{"playerId":"${playerId}"}`
+            `napoleon_player_id.eq.${playerId},adjutant_player_id.eq.${playerId}`
           )
           .order('created_at', { ascending: false })
           .limit(limit)
@@ -991,7 +991,9 @@ export class PerformanceComparator {
       // ゲーム統計テスト（最適化版）
       try {
         const statsStart = performance.now()
-        await performanceSupabase.getGameStatistics('test-player', {
+        // テスト用プレイヤーIDを使用（安全性向上）
+        const testPlayerId = `perf-test-${Date.now()}`
+        await performanceSupabase.getGameStatistics(testPlayerId, {
           limit: 5,
           dateFrom: new Date(
             Date.now() - 7 * 24 * 60 * 60 * 1000
@@ -1004,7 +1006,14 @@ export class PerformanceComparator {
           `✅ Optimized game stats: ${results.tests.optimizedQueries.gameStats.toFixed(1)}ms`
         )
       } catch (statsError) {
-        console.error('Game stats test failed:', statsError)
+        console.error('Game stats test failed:', {
+          error: statsError,
+          message:
+            statsError instanceof Error
+              ? statsError.message
+              : String(statsError),
+          stack: statsError instanceof Error ? statsError.stack : undefined,
+        })
         results.tests.optimizedQueries.gameStats = 500
       }
 
