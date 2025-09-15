@@ -23,6 +23,11 @@ interface TestResults {
     complexQuery: number
     updateOperation: number
     realtimeLatency: number
+    cacheTest?: {
+      firstCall: number
+      cachedCall: number
+      improvement: number
+    }
   }
 }
 
@@ -262,6 +267,33 @@ export function PerformanceDashboard() {
                         {testResults.tests.updateOperation.toFixed(1)}ms
                       </span>
                     </div>
+                    {testResults.tests.cacheTest && (
+                      <div className="border-t pt-1 mt-1">
+                        <div className="font-medium text-green-700 mb-1">
+                          Cache Performance:
+                        </div>
+                        <div className="flex justify-between">
+                          <span>1st Call:</span>
+                          <span className="text-yellow-600">
+                            {testResults.tests.cacheTest.firstCall.toFixed(1)}
+                            ms
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Cached:</span>
+                          <span className="text-green-600">
+                            {testResults.tests.cacheTest.cachedCall.toFixed(1)}
+                            ms
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Improvement:</span>
+                          <span className="text-blue-600 font-medium">
+                            {testResults.tests.cacheTest.improvement}%
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

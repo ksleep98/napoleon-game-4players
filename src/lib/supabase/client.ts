@@ -27,6 +27,19 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
   },
+  // パフォーマンス最適化設定
+  global: {
+    headers: {
+      // Keep-alive接続を有効化
+      Connection: 'keep-alive',
+      // 圧縮を有効化
+      'Accept-Encoding': 'gzip, deflate, br',
+    },
+  },
+  // PostgREST設定最適化
+  db: {
+    schema: 'public',
+  },
 })
 
 // プレイヤーIDをセッションに設定するヘルパー関数（セキュア版）
