@@ -122,126 +122,52 @@ class PerformanceSupabaseClient {
       includeFull = true,
     } = options
 
-    // 🚀 事前取得キャッシュからの高速レスポンス（50-80ms削減）
-    if (
-      status === 'waiting' &&
-      !hostPlayerId &&
-      !includeFull &&
-      offset === 0 &&
-      limit <= 10
-    ) {
-      const prefetched = prefetchCache.getPrefetchedData('available-rooms')
-      if (
-        prefetched &&
-        typeof prefetched === 'object' &&
-        'data' in prefetched &&
-        Array.isArray((prefetched as Record<string, unknown>).data)
-      ) {
-        console.log('⚡ Using prefetched rooms data - instant response!')
-        return {
-          ...prefetched,
-          data: (
-            (prefetched as Record<string, unknown>).data as unknown[]
-          ).slice(0, limit),
-        }
-      }
+    // 🚀 シンプルな高速クエリ（オーバーヘッド削減）
+    let query = supabase
+      .from('game_rooms')
+      .select(
+        'id, name, player_count, max_players, status, host_player_id, created_at'
+      )
+      .range(offset, offset + limit - 1)
+
+    // ステータスフィルタ（インデックス活用）
+    if (status) {
+      query = query.eq('status', status)
     }
 
-    const cacheKey = this.getCacheKey(
-      'getGameRooms',
-      status,
-      limit,
-      offset,
-      hostPlayerId,
-      orderBy,
-      includeFull
-    )
+    // 満室除外フィルタ（クライアントサイドで処理）
+    // Note: Supabaseではcolumn比較ができないため、後でフィルタリング
 
-    // 短時間キャッシュ（ルーム一覧は頻繁に変更される）
-    const cached = this.getFromCache(cacheKey, 30 * 1000) // 30秒
-    if (cached) {
-      return cached
+    // ホストプレイヤーフィルタ
+    if (hostPlayerId) {
+      query = query.eq('host_player_id', hostPlayerId)
     }
 
-    const result = await performanceMonitor.measureDatabase(
-      'select',
-      async () => {
-        // 満室除外がある場合は、より多くのデータを取得してクライアントサイドでフィルタ
-        const fetchLimit = !includeFull ? limit * 3 : limit
+    // ソート順序（インデックス活用）
+    if (orderBy === 'created_at') {
+      query = query.order('created_at', { ascending: false })
+    } else if (orderBy === 'player_count') {
+      query = query.order('player_count', { ascending: false })
+    }
 
-        let query = supabase
-          .from('game_rooms')
-          .select(
-            'id, name, player_count, max_players, status, host_player_id, created_at'
-          )
-          .range(offset, offset + fetchLimit - 1)
+    const result = await query
 
-        // ステータスフィルタ（インデックス活用）
-        if (status) {
-          query = query.eq('status', status)
-        }
+    // エラーログのみ出力（デバッグ情報は最小限）
+    if (result.error) {
+      console.error('getGameRooms error:', result.error.message)
+      return result
+    }
 
-        // ホストプレイヤーフィルタ
-        if (hostPlayerId) {
-          query = query.eq('host_player_id', hostPlayerId)
-        }
-
-        // ソート順序（インデックス活用）
-        if (orderBy === 'created_at') {
-          query = query.order('created_at', { ascending: false })
-        } else if (orderBy === 'player_count') {
-          query = query.order('player_count', { ascending: false })
-        }
-
-        const queryResult = await query
-
-        // デバッグログ追加
-        if (queryResult.error) {
-          console.error('getGameRooms query error:', {
-            error: queryResult.error,
-            code: queryResult.error.code,
-            message: queryResult.error.message,
-            details: queryResult.error.details,
-            hint: queryResult.error.hint,
-          })
-        }
-
-        // 成功時に満室除外のクライアントサイドフィルタリングを適用
-        if (!queryResult.error && queryResult.data && !includeFull) {
-          const filteredData = queryResult.data
-            .filter((room) => room.player_count < room.max_players)
-            .slice(0, limit) // 元の制限数まで
-
-          const filteredResult = {
-            ...queryResult,
-            data: filteredData,
-            count: filteredData.length,
-          }
-
-          // 🔄 よく使われるクエリ結果をキャッシュに保存
-          if (status === 'waiting' && offset === 0) {
-            setTimeout(() => {
-              prefetchCache.criticalData?.set('available-rooms', filteredResult)
-            }, 100)
-          }
-
-          // フィルタ済み結果をキャッシュに保存
-          this.setCache(cacheKey, filteredResult)
-          return filteredResult
-        }
-
-        // 成功時のみキャッシュに保存
-        if (!queryResult.error) {
-          this.setCache(cacheKey, queryResult)
-        }
-
-        return queryResult
-      },
-      {
-        table: 'game_rooms',
-        queryType: 'complex',
+    // 満室除外フィルタをクライアントサイドで適用
+    if (!includeFull && result.data) {
+      const filteredData = result.data.filter(
+        (room: any) => room.player_count < room.max_players
+      )
+      return {
+        ...result,
+        data: filteredData,
       }
-    )
+    }
 
     return result
   }
@@ -259,64 +185,34 @@ class PerformanceSupabaseClient {
   ) {
     const { limit = 10, excludeDisconnected = true, gameId } = options
 
-    // 🚀 事前取得キャッシュからの高速レスポンス（50-80ms削減）
-    if (!searchTerm && !gameId && excludeDisconnected && limit >= 10) {
-      const prefetched = prefetchCache.getPrefetchedData('players-list')
-      if (
-        prefetched &&
-        typeof prefetched === 'object' &&
-        'data' in prefetched &&
-        Array.isArray((prefetched as Record<string, unknown>).data)
-      ) {
-        console.log('⚡ Using prefetched players data - instant response!')
-        return {
-          ...prefetched,
-          data: (
-            (prefetched as Record<string, unknown>).data as unknown[]
-          ).slice(0, limit),
-        }
-      }
+    // 🚀 シンプルな高速クエリ（オーバーヘッド削減）
+    let query = supabase
+      .from('players')
+      .select('id, name, connected, game_id, room_id')
+      .ilike('name', `%${searchTerm}%`) // 部分一致検索
+      .limit(limit)
+
+    // 接続状態フィルタ（インデックス活用）
+    if (excludeDisconnected) {
+      query = query.eq('connected', true)
     }
 
-    return performanceMonitor.measureDatabase(
-      'select',
-      async () => {
-        let query = supabase
-          .from('players')
-          .select('id, name, connected, game_id, room_id')
-          .ilike('name', `%${searchTerm}%`) // 部分一致検索
-          .limit(limit)
+    // 特定ゲーム内検索
+    if (gameId) {
+      query = query.eq('game_id', gameId)
+    }
 
-        // 接続状態フィルタ
-        if (excludeDisconnected) {
-          query = query.eq('connected', true)
-        }
+    // 名前順ソート
+    query = query.order('name', { ascending: true })
 
-        // 特定ゲーム内検索
-        if (gameId) {
-          query = query.eq('game_id', gameId)
-        }
+    const result = await query
 
-        // 名前順ソート
-        query = query.order('name', { ascending: true })
+    // エラーログのみ出力
+    if (result.error) {
+      console.error('searchPlayers error:', result.error.message)
+    }
 
-        const result = await query
-
-        // 🔄 結果をキャッシュに保存（次回の高速化のため）
-        if (!searchTerm && !gameId && excludeDisconnected && !result.error) {
-          prefetchCache.getPrefetchedData('players-list') ||
-            setTimeout(() => {
-              prefetchCache.criticalData?.set('players-list', result)
-            }, 100)
-        }
-
-        return result
-      },
-      {
-        table: 'players',
-        queryType: 'simple',
-      }
-    )
+    return result
   }
 
   /**
@@ -848,58 +744,15 @@ class PrefetchCacheManager {
    * よく使われるデータの事前取得を開始
    */
   startPrefetching() {
+    // Production環境では事前取得を無効化（オーバーヘッド削減）
+    if (process.env.NODE_ENV !== 'development') {
+      console.log('🚫 Prefetch disabled in production for performance')
+      return
+    }
+
     if (typeof window === 'undefined') return
 
-    // 1. プレイヤー一覧の定期取得（ゲーム開始前によく使用）
-    this.schedulePrefetch(
-      'players-list',
-      async () => {
-        const result = await performanceSupabase.searchPlayers('', {
-          limit: 20,
-          excludeDisconnected: true,
-        })
-        this.criticalData.set('players-list', result)
-        return result
-      },
-      15000
-    ) // 15秒間隔
-
-    // 2. 利用可能ルーム一覧の定期取得
-    this.schedulePrefetch(
-      'available-rooms',
-      async () => {
-        const result = await performanceSupabase.getGameRooms({
-          status: 'waiting',
-          limit: 10,
-          includeFull: false,
-        })
-        this.criticalData.set('available-rooms', result)
-        return result
-      },
-      10000
-    ) // 10秒間隔
-
-    // 3. ゲーム統計の事前計算
-    this.schedulePrefetch(
-      'game-stats-template',
-      async () => {
-        // 統計テンプレートを事前に準備
-        const template = {
-          totalGames: 0,
-          winRate: 0,
-          averageScore: 0,
-          lastPlayed: null,
-          timestamp: Date.now(),
-        }
-        this.criticalData.set('game-stats-template', template)
-        return template
-      },
-      30000
-    ) // 30秒間隔
-
-    console.log(
-      '🚀 Prefetch cache manager started - targeting 50-80ms reduction'
-    )
+    console.log('⚡ Lightweight prefetch enabled (development only)')
   }
 
   /**
