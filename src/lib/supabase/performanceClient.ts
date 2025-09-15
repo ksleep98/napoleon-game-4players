@@ -816,8 +816,18 @@ export class PerformanceComparator {
       const isLocalDev =
         process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('mock') ||
         !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-        typeof window === 'undefined' ||
-        process.env.NODE_ENV === 'development'
+        typeof window === 'undefined'
+
+      // 本番環境でも安全なテストモード（NODE_ENV=developmentは除外）
+      const isProductionTest = !isLocalDev && typeof window !== 'undefined'
+
+      console.log('🔍 Environment check:', {
+        isLocalDev,
+        isProductionTest,
+        supabaseUrl:
+          process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 30) + '...',
+        nodeEnv: process.env.NODE_ENV,
+      })
 
       if (isLocalDev) {
         console.log(
@@ -851,9 +861,24 @@ export class PerformanceComparator {
         return results
       }
 
-      // 1. 接続テスト (本番環境のみ)
+      // 1. 接続テスト (本番環境)
       console.log('📡 Testing connection...')
-      results.tests.connectionTest = await performanceSupabase.testConnection()
+      try {
+        results.tests.connectionTest =
+          await performanceSupabase.testConnection()
+        console.log(
+          '✅ Connection test successful:',
+          results.tests.connectionTest
+        )
+      } catch (connError) {
+        console.error('❌ Connection test failed:', connError)
+        results.tests.connectionTest = {
+          latency: 999,
+          dbLatency: 999,
+          authLatency: 999,
+          success: false,
+        }
+      }
 
       // 2. キャッシュクリア（テスト前に確実にクリア）
       performanceSupabase.clearCache()
@@ -861,88 +886,176 @@ export class PerformanceComparator {
       // 3. 基本クエリテスト（キャッシュ効果を正確に測定）
       console.log('📋 Testing basic query performance...')
 
-      // プレイヤー検索クエリ（実際に存在するデータを使用）
-      const queryStart = performance.now()
-      await supabase.from('players').select('id, name, connected').limit(5)
-      results.tests.simpleQuery = performance.now() - queryStart
-      results.tests.cacheTest.firstCall = results.tests.simpleQuery
+      try {
+        // プレイヤー検索クエリ（データの存在確認も含む）
+        const queryStart = performance.now()
+        const { data: players, error: playersError } = await supabase
+          .from('players')
+          .select('id, name, connected')
+          .limit(5)
 
-      // 同じクエリを再実行（Supabaseレベルのキャッシュ効果測定）
-      const cachedStart = performance.now()
-      await supabase.from('players').select('id, name, connected').limit(5)
-      results.tests.cacheTest.cachedCall = performance.now() - cachedStart
+        if (playersError) {
+          console.warn('Players query error:', playersError)
+          results.tests.simpleQuery = 500 // デフォルト値
+        } else {
+          results.tests.simpleQuery = performance.now() - queryStart
+          console.log(
+            `✅ Players query: ${results.tests.simpleQuery.toFixed(1)}ms, found ${players?.length || 0} players`
+          )
+        }
+        results.tests.cacheTest.firstCall = results.tests.simpleQuery
 
-      // キャッシュ改善率計算
-      results.tests.cacheTest.improvement = Math.round(
-        ((results.tests.cacheTest.firstCall -
-          results.tests.cacheTest.cachedCall) /
-          results.tests.cacheTest.firstCall) *
-          100
-      )
+        // 同じクエリを再実行（Supabaseレベルのキャッシュ効果測定）
+        const cachedStart = performance.now()
+        await supabase.from('players').select('id, name, connected').limit(5)
+        results.tests.cacheTest.cachedCall = performance.now() - cachedStart
+
+        // キャッシュ改善率計算
+        results.tests.cacheTest.improvement = Math.round(
+          ((results.tests.cacheTest.firstCall -
+            results.tests.cacheTest.cachedCall) /
+            results.tests.cacheTest.firstCall) *
+            100
+        )
+      } catch (queryError) {
+        console.error('Basic query test failed:', queryError)
+        results.tests.simpleQuery = 500
+        results.tests.cacheTest = {
+          firstCall: 500,
+          cachedCall: 500,
+          improvement: 0,
+        }
+      }
 
       // 4. 複雑クエリテスト（最適化されたクエリ）
       console.log('🔍 Testing optimized complex queries...')
-      const complexStart = performance.now()
-      await supabase
-        .from('game_results')
-        .select('id, napoleon_won, napoleon_player_id, created_at')
-        .order('created_at', { ascending: false })
-        .limit(10)
-      results.tests.complexQuery = performance.now() - complexStart
+      try {
+        const complexStart = performance.now()
+        const { data: gameResults, error: resultsError } = await supabase
+          .from('game_results')
+          .select('id, napoleon_won, napoleon_player_id, created_at')
+          .order('created_at', { ascending: false })
+          .limit(10)
+
+        if (resultsError) {
+          console.warn('Game results query error:', resultsError)
+          results.tests.complexQuery = 500
+        } else {
+          results.tests.complexQuery = performance.now() - complexStart
+          console.log(
+            `✅ Game results query: ${results.tests.complexQuery.toFixed(1)}ms, found ${gameResults?.length || 0} results`
+          )
+        }
+      } catch (complexError) {
+        console.error('Complex query test failed:', complexError)
+        results.tests.complexQuery = 500
+      }
 
       // 5. 最適化されたクエリテスト
       console.log('⚡ Testing optimized query methods...')
 
       // ルーム検索テスト
-      const roomStart = performance.now()
-      await performanceSupabase.getGameRooms({
-        status: 'waiting',
-        limit: 10,
-        includeFull: false,
-      })
-      results.tests.optimizedQueries.roomSearch = performance.now() - roomStart
+      try {
+        const roomStart = performance.now()
+        await performanceSupabase.getGameRooms({
+          status: 'waiting',
+          limit: 10,
+          includeFull: false,
+        })
+        results.tests.optimizedQueries.roomSearch =
+          performance.now() - roomStart
+        console.log(
+          `✅ Optimized room search: ${results.tests.optimizedQueries.roomSearch.toFixed(1)}ms`
+        )
+      } catch (roomError) {
+        console.error('Room search test failed:', roomError)
+        results.tests.optimizedQueries.roomSearch = 500
+      }
 
       // プレイヤー検索テスト
-      const playerStart = performance.now()
-      await performanceSupabase.searchPlayers('test', {
-        limit: 5,
-        excludeDisconnected: true,
-      })
-      results.tests.optimizedQueries.playerSearch =
-        performance.now() - playerStart
+      try {
+        const playerStart = performance.now()
+        await performanceSupabase.searchPlayers('test', {
+          limit: 5,
+          excludeDisconnected: true,
+        })
+        results.tests.optimizedQueries.playerSearch =
+          performance.now() - playerStart
+        console.log(
+          `✅ Optimized player search: ${results.tests.optimizedQueries.playerSearch.toFixed(1)}ms`
+        )
+      } catch (playerError) {
+        console.error('Player search test failed:', playerError)
+        results.tests.optimizedQueries.playerSearch = 500
+      }
 
       // ゲーム統計テスト（最適化版）
-      const statsStart = performance.now()
-      await performanceSupabase.getGameStatistics('test-player', {
-        limit: 5,
-        dateFrom: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-        includeCached: false, // キャッシュなしでテスト
-      })
-      results.tests.optimizedQueries.gameStats = performance.now() - statsStart
+      try {
+        const statsStart = performance.now()
+        await performanceSupabase.getGameStatistics('test-player', {
+          limit: 5,
+          dateFrom: new Date(
+            Date.now() - 7 * 24 * 60 * 60 * 1000
+          ).toISOString(),
+          includeCached: false, // キャッシュなしでテスト
+        })
+        results.tests.optimizedQueries.gameStats =
+          performance.now() - statsStart
+        console.log(
+          `✅ Optimized game stats: ${results.tests.optimizedQueries.gameStats.toFixed(1)}ms`
+        )
+      } catch (statsError) {
+        console.error('Game stats test failed:', statsError)
+        results.tests.optimizedQueries.gameStats = 500
+      }
 
       // 6. 軽量更新操作テスト
       console.log('✏️ Testing optimized update operation...')
-      const updateStart = performance.now()
+      try {
+        const updateStart = performance.now()
+        const testPlayerId = `perf-test-${Date.now()}`
 
-      const testPlayerId = `perf-test-${Date.now()}`
-      await supabase
-        .from('players')
-        .upsert({
-          id: testPlayerId,
-          name: 'Performance Test Player',
-          connected: true,
-        })
-        .select('id')
+        const { error: upsertError } = await supabase
+          .from('players')
+          .upsert({
+            id: testPlayerId,
+            name: 'Performance Test Player',
+            connected: true,
+          })
+          .select('id')
 
-      results.tests.updateOperation = performance.now() - updateStart
+        if (upsertError) {
+          console.warn('Update operation error:', upsertError)
+          results.tests.updateOperation = 500
+        } else {
+          results.tests.updateOperation = performance.now() - updateStart
+          console.log(
+            `✅ Update operation: ${results.tests.updateOperation.toFixed(1)}ms`
+          )
 
-      // 7. リアルタイム接続テスト
+          // テスト用データクリーンアップ
+          await supabase.from('players').delete().eq('id', testPlayerId)
+        }
+      } catch (updateError) {
+        console.error('Update test failed:', updateError)
+        results.tests.updateOperation = 500
+      }
+
+      // 7. リアルタイム接続テスト（簡素化）
       console.log('⚡ Testing realtime latency...')
-      const realtimeStart = performance.now()
-      const channel = supabase.channel('perf-test-channel')
-      await channel.subscribe()
-      results.tests.realtimeLatency = performance.now() - realtimeStart
-      await channel.unsubscribe()
+      try {
+        const realtimeStart = performance.now()
+        const channel = supabase.channel('perf-test-channel')
+        await channel.subscribe()
+        results.tests.realtimeLatency = performance.now() - realtimeStart
+        console.log(
+          `✅ Realtime latency: ${results.tests.realtimeLatency.toFixed(1)}ms`
+        )
+        await channel.unsubscribe()
+      } catch (realtimeError) {
+        console.error('Realtime test failed:', realtimeError)
+        results.tests.realtimeLatency = 500
+      }
 
       // 8. キャッシュ統計取得
       console.log('📊 Collecting cache statistics...')
@@ -961,8 +1074,7 @@ export class PerformanceComparator {
         console.log('💡 Recommendations:', optimization.recommendations)
       }
 
-      // 10. テスト用データクリーンアップ
-      await supabase.from('players').delete().eq('id', testPlayerId)
+      // 10. テスト完了ログ
 
       console.log('✅ Comprehensive performance tests completed')
       console.log(`💾 Cache hit rate: ${results.tests.cacheStats.hitRate}%`)

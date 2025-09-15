@@ -151,7 +151,12 @@ export function PerformanceDashboard() {
                 {/* 環境情報 */}
                 <div className="bg-blue-50 p-2 rounded">
                   <div className="font-semibold text-blue-800">
-                    Environment: {stats.environment.toUpperCase()}
+                    Environment:{' '}
+                    {stats.environment === 'vercel'
+                      ? 'Production (Vercel)'
+                      : stats.environment === 'local'
+                        ? 'Local Development'
+                        : stats.environment.toUpperCase()}
                   </div>
                   <div className="text-blue-600">
                     Measurements: {stats.count}
