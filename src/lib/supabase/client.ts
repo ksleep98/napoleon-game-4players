@@ -27,13 +27,31 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
   },
-  // パフォーマンス最適化設定
+  // パフォーマンス最適化設定（強化版）
   global: {
     headers: {
       // Keep-alive接続を有効化
       Connection: 'keep-alive',
       // 圧縮を有効化
       'Accept-Encoding': 'gzip, deflate, br',
+      // キャッシュ制御
+      'Cache-Control': 'no-cache',
+      // ユーザーエージェント最適化
+      'User-Agent': 'Napoleon-Game/1.0',
+    },
+    fetch: (url, options = {}) => {
+      // タイムアウト設定
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 8000) // 8秒タイムアウト
+
+      return fetch(url, {
+        ...options,
+        signal: controller.signal,
+        // HTTP/2を強制（利用可能な場合）
+        cache: 'no-cache',
+        // 接続再利用
+        keepalive: true,
+      }).finally(() => clearTimeout(timeoutId))
     },
   },
   // PostgREST設定最適化
