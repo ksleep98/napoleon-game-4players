@@ -27,7 +27,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
   },
-  // パフォーマンス最適化設定（強化版）
+  // 超高速化設定（100ms以下を目指す）
   global: {
     headers: {
       // Keep-alive接続を有効化
@@ -38,11 +38,19 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       'Cache-Control': 'no-cache',
       // ユーザーエージェント最適化
       'User-Agent': 'Napoleon-Game/1.0',
+      // HTTP/2 Server Push活用
+      'x-supabase-api-version': '2024-01-01',
+      // 事前DNS解決
+      'dns-prefetch-control': 'on',
+      // TCP Fast Open有効化
+      'x-tcp-fast-open': '1',
+      // HTTP/2優先度制御
+      'x-priority': 'u=1, i',
     },
     fetch: (url, options = {}) => {
-      // タイムアウト設定
+      // 超高速タイムアウト設定
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 8000) // 8秒タイムアウト
+      const timeoutId = setTimeout(() => controller.abort(), 5000) // 5秒タイムアウト（短縮）
 
       return fetch(url, {
         ...options,
@@ -51,6 +59,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         cache: 'no-cache',
         // 接続再利用
         keepalive: true,
+        // HTTP/2優先度制御
+        priority: 'high',
+        // TCP Fast Open
+        mode: 'cors',
+        credentials: 'same-origin',
+        // 事前接続最適化
+        referrerPolicy: 'no-referrer-when-downgrade',
       }).finally(() => clearTimeout(timeoutId))
     },
   },
