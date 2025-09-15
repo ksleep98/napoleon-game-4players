@@ -28,6 +28,16 @@ interface TestResults {
       cachedCall: number
       improvement: number
     }
+    optimizedQueries?: {
+      roomSearch: number
+      playerSearch: number
+      gameStats: number
+    }
+    cacheStats?: {
+      hitRate: number
+      totalEntries: number
+      memoryUsage: string
+    }
   }
 }
 
@@ -290,6 +300,90 @@ export function PerformanceDashboard() {
                           <span>Improvement:</span>
                           <span className="text-blue-600 font-medium">
                             {testResults.tests.cacheTest.improvement}%
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 最適化されたクエリ結果 */}
+                    {testResults.tests.optimizedQueries && (
+                      <div className="border-t pt-1 mt-1">
+                        <div className="font-medium text-blue-700 mb-1">
+                          Optimized Queries:
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Room Search:</span>
+                          <span
+                            className={getPerformanceColor(
+                              testResults.tests.optimizedQueries.roomSearch
+                            )}
+                          >
+                            {testResults.tests.optimizedQueries.roomSearch.toFixed(
+                              1
+                            )}
+                            ms
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Player Search:</span>
+                          <span
+                            className={getPerformanceColor(
+                              testResults.tests.optimizedQueries.playerSearch
+                            )}
+                          >
+                            {testResults.tests.optimizedQueries.playerSearch.toFixed(
+                              1
+                            )}
+                            ms
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Game Stats:</span>
+                          <span
+                            className={getPerformanceColor(
+                              testResults.tests.optimizedQueries.gameStats,
+                              { good: 150, ok: 300 }
+                            )}
+                          >
+                            {testResults.tests.optimizedQueries.gameStats.toFixed(
+                              1
+                            )}
+                            ms
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* キャッシュ統計 */}
+                    {testResults.tests.cacheStats && (
+                      <div className="border-t pt-1 mt-1">
+                        <div className="font-medium text-purple-700 mb-1">
+                          Cache Statistics:
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Hit Rate:</span>
+                          <span
+                            className={
+                              testResults.tests.cacheStats.hitRate >= 80
+                                ? 'text-green-600'
+                                : testResults.tests.cacheStats.hitRate >= 50
+                                  ? 'text-yellow-600'
+                                  : 'text-red-600'
+                            }
+                          >
+                            {testResults.tests.cacheStats.hitRate}%
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Entries:</span>
+                          <span className="text-gray-600">
+                            {testResults.tests.cacheStats.totalEntries}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Memory:</span>
+                          <span className="text-gray-600">
+                            {testResults.tests.cacheStats.memoryUsage}
                           </span>
                         </div>
                       </div>

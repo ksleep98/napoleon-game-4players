@@ -16,7 +16,7 @@ class AutoPollingCleanup {
     this.owner = 'ksleep98'
     this.repo = 'napoleon-game-4players'
     this.baseBranches = ['develop', 'main']
-    this.pollInterval = options.pollInterval || 5 * 60 * 1000 // 5分
+    this.pollInterval = options.pollInterval || 3 * 60 * 1000 // 3分
     this.lastCheck = new Date()
   }
 
@@ -197,7 +197,7 @@ class AutoPollingCleanup {
 
 // CLI実行
 if (require.main === module) {
-  const pollInterval = parseInt(process.argv[2], 10) || 5 * 60 * 1000 // デフォルト5分
+  const pollInterval = parseInt(process.argv[2], 10) || 3 * 60 * 1000 // デフォルト3分
 
   const cleanup = new AutoPollingCleanup({ pollInterval })
   cleanup.start()
