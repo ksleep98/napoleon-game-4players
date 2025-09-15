@@ -28,6 +28,16 @@ interface TestResults {
       cachedCall: number
       improvement: number
     }
+    optimizedQueries?: {
+      roomSearch: number
+      playerSearch: number
+      gameStats: number
+    }
+    cacheStats?: {
+      hitRate: number
+      totalEntries: number
+      memoryUsage: string
+    }
   }
 }
 
@@ -73,6 +83,19 @@ export function PerformanceDashboard() {
       const results = await performanceComparator.runPerformanceTests()
       setTestResults(results)
       console.log(performanceComparator.formatTestResults(results))
+
+      // ローカル開発環境での追加情報表示
+      const isLocalDev =
+        process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('mock') ||
+        !process.env.NEXT_PUBLIC_SUPABASE_URL
+      if (isLocalDev) {
+        console.log(
+          '💡 Running in local development mode - using simulated performance data'
+        )
+        console.log(
+          '🚀 Deploy to Vercel with real Supabase for actual performance metrics'
+        )
+      }
     } catch (error) {
       console.error('Performance test failed:', error)
     } finally {
@@ -224,6 +247,12 @@ export function PerformanceDashboard() {
                 <div className="bg-green-50 p-2 rounded text-sm">
                   <div className="font-semibold text-green-800 mb-1">
                     Latest Test Results:
+                    {(process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('mock') ||
+                      !process.env.NEXT_PUBLIC_SUPABASE_URL) && (
+                      <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                        LOCAL DEV
+                      </span>
+                    )}
                   </div>
                   <div className="space-y-1 text-xs">
                     <div className="flex justify-between">
@@ -294,6 +323,90 @@ export function PerformanceDashboard() {
                         </div>
                       </div>
                     )}
+
+                    {/* 最適化されたクエリ結果 */}
+                    {testResults.tests.optimizedQueries && (
+                      <div className="border-t pt-1 mt-1">
+                        <div className="font-medium text-blue-700 mb-1">
+                          Optimized Queries:
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Room Search:</span>
+                          <span
+                            className={getPerformanceColor(
+                              testResults.tests.optimizedQueries.roomSearch
+                            )}
+                          >
+                            {testResults.tests.optimizedQueries.roomSearch.toFixed(
+                              1
+                            )}
+                            ms
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Player Search:</span>
+                          <span
+                            className={getPerformanceColor(
+                              testResults.tests.optimizedQueries.playerSearch
+                            )}
+                          >
+                            {testResults.tests.optimizedQueries.playerSearch.toFixed(
+                              1
+                            )}
+                            ms
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Game Stats:</span>
+                          <span
+                            className={getPerformanceColor(
+                              testResults.tests.optimizedQueries.gameStats,
+                              { good: 150, ok: 300 }
+                            )}
+                          >
+                            {testResults.tests.optimizedQueries.gameStats.toFixed(
+                              1
+                            )}
+                            ms
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* キャッシュ統計 */}
+                    {testResults.tests.cacheStats && (
+                      <div className="border-t pt-1 mt-1">
+                        <div className="font-medium text-purple-700 mb-1">
+                          Cache Statistics:
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Hit Rate:</span>
+                          <span
+                            className={
+                              testResults.tests.cacheStats.hitRate >= 80
+                                ? 'text-green-600'
+                                : testResults.tests.cacheStats.hitRate >= 50
+                                  ? 'text-yellow-600'
+                                  : 'text-red-600'
+                            }
+                          >
+                            {testResults.tests.cacheStats.hitRate}%
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Entries:</span>
+                          <span className="text-gray-600">
+                            {testResults.tests.cacheStats.totalEntries}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Memory:</span>
+                          <span className="text-gray-600">
+                            {testResults.tests.cacheStats.memoryUsage}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -335,7 +448,20 @@ export function usePerformanceMonitoring() {
     console.log('📊 Performance monitoring initialized')
     console.log('💡 Use window.__perfMonitor to access performance data')
 
-    // 初期接続テストを実行
+    // ローカル環境チェック（ローカルでは自動テストをスキップ）
+    const isLocalDev =
+      process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('mock') ||
+      !process.env.NEXT_PUBLIC_SUPABASE_URL
+
+    if (isLocalDev) {
+      console.log(
+        '🔧 Local development detected - skipping automatic performance test'
+      )
+      console.log('💡 Use the 📊 Perf button to run performance tests manually')
+      return
+    }
+
+    // 本番環境でのみ初期接続テストを実行
     const runInitialTest = async () => {
       try {
         await performanceComparator.runPerformanceTests()
