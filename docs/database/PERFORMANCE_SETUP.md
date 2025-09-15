@@ -16,7 +16,7 @@ Napoleon Gameのデータベースパフォーマンスを最大化するため�
 
 - `docs/database/QUICK_INDEXES.sql`をコピー&ペーストして実行
 
-**オプション2: 完全版（全インデックス）**
+**推奨: 本番用インデックス**
 
 - `docs/database/SUPABASE_INDEXES.sql`をコピー&ペーストして実行
 
@@ -240,7 +240,7 @@ WHERE table_name = 'your_table';
 
 ## 次のステップ
 
-1. **インデックス最適化の適用**: `INDEX_OPTIMIZATION.sql`実行
+1. **インデックス最適化の適用**: `SUPABASE_INDEXES.sql`実行
 2. **パフォーマンステスト**: ダッシュボードで効果確認
 3. **継続監視**: 週次でパフォーマンス指標チェック
 4. **追加最適化**: 必要に応じて更なる改善実施

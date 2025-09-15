@@ -9,6 +9,29 @@
 3. **英語中心** - 変数・関数名は英語、重要ロジックは日本語コメント
 4. **テスト必須** - 新機能にはJestテスト追加
 
+### ⚠️ Git ワークフロー
+
+**`develop`ブランチへの直接コミット禁止**
+
+- 必ず `feature/xxx` ブランチを作成して作業
+- Pull Requestを通してのみマージ
+- 直接 `git push origin develop` は禁止
+
+```bash
+# ✅ 正しい流れ
+git checkout develop
+git pull origin develop
+git checkout -b feature/your-feature
+# 開発作業...
+git push origin feature/your-feature
+# → GitHub でPR作成
+
+# ❌ 禁止行為
+git checkout develop
+# 開発作業...
+git push origin develop  # これは禁止！
+```
+
 ## 🔧 定数・文字列管理
 
 ### ✅ 定数参照の徹底
