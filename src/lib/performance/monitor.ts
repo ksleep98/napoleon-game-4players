@@ -38,9 +38,10 @@ class PerformanceMonitor {
   private environment: 'local' | 'vercel' | 'unknown'
 
   constructor() {
+    // Production環境では測定オーバーヘッドを避けるため無効化
     this.isEnabled =
-      process.env.NODE_ENV === 'development' ||
-      process.env.NEXT_PUBLIC_ENABLE_PERF_MONITOR === 'true'
+      process.env.NODE_ENV === 'development' &&
+      process.env.NEXT_PUBLIC_ENABLE_PERF_MONITOR !== 'false'
 
     // 環境判定
     if (typeof window !== 'undefined') {
