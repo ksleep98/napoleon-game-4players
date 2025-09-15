@@ -333,33 +333,51 @@ class PerformanceSupabaseClient {
     const result = await performanceMonitor.measureDatabase(
       'select',
       async () => {
-        // 最適化されたクエリ（インデックス活用）
-        let query = supabase
-          .from('game_results')
-          .select(
-            'id, napoleon_won, napoleon_player_id, face_cards_won, created_at'
-          )
-          .or(
-            `napoleon_player_id.eq.${playerId},adjutant_player_id.eq.${playerId}`
-          )
-          .order('created_at', { ascending: false })
-          .limit(limit)
+        try {
+          console.log('🔍 Building game statistics query for player:', playerId)
 
-        // 日付フィルタリング（インデックス活用）
-        if (dateFrom) {
-          query = query.gte('created_at', dateFrom)
+          // 最適化されたクエリ（インデックス活用）
+          let query = supabase
+            .from('game_results')
+            .select(
+              'id, napoleon_won, napoleon_player_id, face_cards_won, created_at'
+            )
+            .or(
+              `napoleon_player_id.eq.${playerId},adjutant_player_id.eq.${playerId}`
+            )
+            .order('created_at', { ascending: false })
+            .limit(limit)
+
+          // 日付フィルタリング（インデックス活用）
+          if (dateFrom) {
+            console.log('🗓️ Adding date filter:', dateFrom)
+            query = query.gte('created_at', dateFrom)
+          }
+
+          console.log('📤 Executing game statistics query...')
+          const { data, error } = await query
+
+          console.log('📥 Query result:', {
+            data,
+            error,
+            dataLength: data?.length,
+          })
+
+          if (error) {
+            console.error('❌ Game statistics query error:', error)
+            throw error
+          }
+
+          // 成功時にキャッシュ
+          if (data && includeCached) {
+            this.setCache(cacheKey, { data, error }, 10 * 60 * 1000)
+          }
+
+          return { data, error }
+        } catch (queryError) {
+          console.error('❌ Game statistics query failed:', queryError)
+          throw queryError
         }
-
-        const { data, error } = await query
-
-        if (error) throw error
-
-        // 成功時にキャッシュ
-        if (data && includeCached) {
-          this.setCache(cacheKey, { data, error }, 10 * 60 * 1000)
-        }
-
-        return { data, error }
       },
       {
         table: 'game_results',
@@ -993,13 +1011,20 @@ export class PerformanceComparator {
         const statsStart = performance.now()
         // テスト用プレイヤーIDを使用（安全性向上）
         const testPlayerId = `perf-test-${Date.now()}`
-        await performanceSupabase.getGameStatistics(testPlayerId, {
-          limit: 5,
-          dateFrom: new Date(
-            Date.now() - 7 * 24 * 60 * 60 * 1000
-          ).toISOString(),
-          includeCached: false, // キャッシュなしでテスト
-        })
+        console.log('🧪 Testing game statistics with player ID:', testPlayerId)
+
+        const result = await performanceSupabase.getGameStatistics(
+          testPlayerId,
+          {
+            limit: 5,
+            dateFrom: new Date(
+              Date.now() - 7 * 24 * 60 * 60 * 1000
+            ).toISOString(),
+            includeCached: false, // キャッシュなしでテスト
+          }
+        )
+
+        console.log('🧪 Game statistics result:', result)
         results.tests.optimizedQueries.gameStats =
           performance.now() - statsStart
         console.log(

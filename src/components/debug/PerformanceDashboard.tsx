@@ -448,27 +448,14 @@ export function PerformanceDashboard() {
  */
 export function usePerformanceMonitoring() {
   useEffect(() => {
-    if (process.env.NODE_ENV !== 'development') return
-
+    // パフォーマンス監視の初期化のみ実行（テストなし）
     console.log('📊 Performance monitoring initialized')
     console.log('💡 Use window.__perfMonitor to access performance data')
-
-    // ローカル環境チェック（ローカルでは自動テストをスキップ）
-    const isLocalDev =
-      process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('mock') ||
-      !process.env.NEXT_PUBLIC_SUPABASE_URL
-
-    if (isLocalDev) {
-      console.log(
-        '🔧 Local development detected - skipping automatic performance test'
-      )
-      console.log('💡 Use the 📊 Perf button to run performance tests manually')
-      return
-    }
-
-    // 自動テストを無効化（手動実行のみ）
-    console.log('🚫 Automatic performance tests disabled')
+    console.log('🚫 All automatic performance tests disabled')
     console.log('💡 Use the 📊 Perf button to run performance tests manually')
+
+    // 自動テストを完全に無効化
+    return
   }, [])
 }
 
