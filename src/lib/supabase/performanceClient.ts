@@ -158,25 +158,34 @@ class PerformanceSupabaseClient {
           query = query.eq('host_player_id', hostPlayerId)
         }
 
-        // 満室ルーム除外
+        // 満室ルーム除外 - 正しいSupabase構文に修正
         if (!includeFull) {
           query = query.filter('player_count', 'lt', 'max_players')
         }
 
-        // ソート順指定（インデックス活用）
+        // ソート順序（インデックス活用）
         if (orderBy === 'created_at') {
           query = query.order('created_at', { ascending: false })
-        } else {
-          query = query
-            .order('player_count', { ascending: false })
-            .order('created_at', { ascending: false })
+        } else if (orderBy === 'player_count') {
+          query = query.order('player_count', { ascending: false })
         }
 
         const queryResult = await query
 
-        // 成功時にキャッシュ
+        // デバッグログ追加
+        if (queryResult.error) {
+          console.error('getGameRooms query error:', {
+            error: queryResult.error,
+            code: queryResult.error.code,
+            message: queryResult.error.message,
+            details: queryResult.error.details,
+            hint: queryResult.error.hint,
+          })
+        }
+
+        // 成功時のみキャッシュに保存
         if (!queryResult.error) {
-          this.setCache(cacheKey, queryResult, 30 * 1000)
+          this.setCache(cacheKey, queryResult)
         }
 
         return queryResult
@@ -339,9 +348,7 @@ class PerformanceSupabaseClient {
           // 最適化されたクエリ（インデックス活用）
           let query = supabase
             .from('game_results')
-            .select(
-              'id, napoleon_won, napoleon_player_id, face_cards_won, created_at'
-            )
+            .select('id, napoleon_won, napoleon_player_id, created_at')
             .or(
               `napoleon_player_id.eq.${playerId},adjutant_player_id.eq.${playerId}`
             )
