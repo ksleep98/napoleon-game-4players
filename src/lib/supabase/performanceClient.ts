@@ -824,8 +824,7 @@ export class PerformanceComparator {
       console.log('🔍 Environment check:', {
         isLocalDev,
         isProductionTest,
-        supabaseUrl:
-          process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 30) + '...',
+        supabaseUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 30)}...`,
         nodeEnv: process.env.NODE_ENV,
       })
 

@@ -25,6 +25,7 @@ export function subscribeToGameState(
     .channel(`game_${gameId}`, {
       config: {
         broadcast: { self: false }, // 自分の変更は除外
+        presence: { key: gameId },
       },
     })
     .on(
@@ -73,7 +74,11 @@ export function subscribeToGameRoom(
 ) {
   // ルーム更新を監視
   const roomChannel = supabase
-    .channel(`room_${roomId}`)
+    .channel(`room_${roomId}`, {
+      config: {
+        broadcast: { self: false },
+      },
+    })
     .on(
       'postgres_changes',
       {
@@ -108,7 +113,11 @@ export function subscribeToGameRoom(
 
   // プレイヤー変更を監視
   const playerChannel = supabase
-    .channel(`room_players_${roomId}`)
+    .channel(`room_players_${roomId}`, {
+      config: {
+        broadcast: { self: false },
+      },
+    })
     .on(
       'postgres_changes',
       {

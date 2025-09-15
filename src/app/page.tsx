@@ -4,6 +4,9 @@ import { useRouter } from 'next/navigation'
 import { PerformanceProvider } from '@/components/debug/PerformanceDashboard'
 import { FEATURE_FLAGS } from '@/lib/utils/environment'
 
+// ISR設定用のメタデータ（静的最適化）
+export const revalidate = 3600 // 1時間キャッシュ
+
 export default function Home() {
   const router = useRouter()
 
