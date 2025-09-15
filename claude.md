@@ -20,9 +20,17 @@
 ## ブランチ戦略
 
 - `main` - 本番リリース
-- `develop` - 開発統合
+- `develop` - 開発統合 ⚠️ **直接コミット禁止**
 - `feature/xxx` - 機能別ブランチ
 - **Conventional Commits** 規約準拠
+
+### ⚠️ 重要なルール
+
+**`develop`ブランチへの直接コミット禁止**
+
+- 必ず`feature/xxx`ブランチで作業
+- Pull Requestを通してのみマージ可能
+- 直接pushは避けること
 
 ## 開発環境
 

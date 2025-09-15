@@ -66,8 +66,9 @@ docs/
 ### 初めて開発に参加する場合
 
 1. [PROJECT_SETUP.md](./setup/PROJECT_SETUP.md) - 環境構築
-2. [COMMANDS.md](./development/COMMANDS.md) - 開発コマンド習得
-3. [PRE_COMMIT_HOOKS.md](./ci-cd/PRE_COMMIT_HOOKS.md) - 品質チェック理解
+2. [CODING_RULES.md](./development/CODING_RULES.md) - **⚠️ ブランチ保護ルール必読**
+3. [COMMANDS.md](./development/COMMANDS.md) - 開発コマンド習得
+4. [PRE_COMMIT_HOOKS.md](./ci-cd/PRE_COMMIT_HOOKS.md) - 品質チェック理解
 
 ### テスト・CI/CDを理解したい場合
 
