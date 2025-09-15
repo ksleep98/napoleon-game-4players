@@ -10,28 +10,36 @@ Napoleon Gameのデータベースパフォーマンスを最大化するため�
 
 1. **Supabaseダッシュボード**にアクセス
 2. **SQL Editor**を開く
-3. **推奨**: `docs/database/CORE_INDEXES.sql`の内容を実行（エラー回避版）
-   または `docs/database/INDEX_OPTIMIZATION.sql`の内容を実行（完全版）
+3. **推奨**: 以下のファイルから選択して実行
+
+**オプション1: クイック版（最重要のみ）**
+
+- `docs/database/QUICK_INDEXES.sql`をコピー&ペーストして実行
+
+**オプション2: 完全版（全インデックス）**
+
+- `docs/database/SUPABASE_INDEXES.sql`をコピー&ペーストして実行
 
 ```sql
--- 重要なインデックスを順次実行（エラー回避版）
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_players_room_connected
+-- クイック版（最重要の3つのみ）
+CREATE INDEX IF NOT EXISTS idx_players_room_connected
 ON players (room_id, connected)
 WHERE room_id IS NOT NULL AND connected = true;
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_game_results_napoleon_created
+CREATE INDEX IF NOT EXISTS idx_game_results_napoleon_created
 ON game_results (napoleon_player_id, created_at DESC);
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_games_phase_updated
+CREATE INDEX IF NOT EXISTS idx_games_phase_updated
 ON games (phase, updated_at DESC)
 WHERE phase IS NOT NULL;
 
 -- 統計更新
 ANALYZE games;
-ANALYZE game_rooms;
 ANALYZE players;
 ANALYZE game_results;
 ```
+
+**注意:** Supabase SQL Editorでは`CONCURRENTLY`オプションは使用できません。
 
 ### 実行優先度
 
