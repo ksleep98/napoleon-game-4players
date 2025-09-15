@@ -141,12 +141,15 @@ class PerformanceSupabaseClient {
     const result = await performanceMonitor.measureDatabase(
       'select',
       async () => {
+        // 満室除外がある場合は、より多くのデータを取得してクライアントサイドでフィルタ
+        const fetchLimit = !includeFull ? limit * 3 : limit
+
         let query = supabase
           .from('game_rooms')
           .select(
             'id, name, player_count, max_players, status, host_player_id, created_at'
           )
-          .range(offset, offset + limit - 1)
+          .range(offset, offset + fetchLimit - 1)
 
         // ステータスフィルタ（インデックス活用）
         if (status) {
@@ -156,11 +159,6 @@ class PerformanceSupabaseClient {
         // ホストプレイヤーフィルタ
         if (hostPlayerId) {
           query = query.eq('host_player_id', hostPlayerId)
-        }
-
-        // 満室ルーム除外 - 正しいSupabase構文に修正
-        if (!includeFull) {
-          query = query.filter('player_count', 'lt', 'max_players')
         }
 
         // ソート順序（インデックス活用）
@@ -181,6 +179,23 @@ class PerformanceSupabaseClient {
             details: queryResult.error.details,
             hint: queryResult.error.hint,
           })
+        }
+
+        // 成功時に満室除外のクライアントサイドフィルタリングを適用
+        if (!queryResult.error && queryResult.data && !includeFull) {
+          const filteredData = queryResult.data
+            .filter((room) => room.player_count < room.max_players)
+            .slice(0, limit) // 元の制限数まで
+
+          const filteredResult = {
+            ...queryResult,
+            data: filteredData,
+            count: filteredData.length,
+          }
+
+          // フィルタ済み結果をキャッシュに保存
+          this.setCache(cacheKey, filteredResult)
+          return filteredResult
         }
 
         // 成功時のみキャッシュに保存
