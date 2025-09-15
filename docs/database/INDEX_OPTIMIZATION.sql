@@ -73,9 +73,11 @@ CREATE INDEX IF NOT EXISTS idx_players_game_connected
 ON players (game_id, connected)
 WHERE game_id IS NOT NULL;
 
--- 名前検索の最適化（部分一致対応）
-CREATE INDEX IF NOT EXISTS idx_players_name_trgm
-ON players USING gin (name gin_trgm_ops);
+-- 名前検索の最適化（通常のB-treeインデックス）
+-- 注意: trigramが必要な場合は先に pg_trgm エクステンションを有効化してください
+-- CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX IF NOT EXISTS idx_players_name
+ON players (name);
 
 -- ============================================
 -- 4. ゲーム結果テーブル最適化
@@ -206,7 +208,7 @@ $$;
 
 -- インデックス再構築（月次実行推奨）
 -- REINDEX INDEX CONCURRENTLY idx_game_results_scores_gin;
--- REINDEX INDEX CONCURRENTLY idx_players_name_trgm;
+-- REINDEX INDEX CONCURRENTLY idx_players_name;
 
 -- 統計情報更新（週次実行推奨）
 -- ANALYZE games;
