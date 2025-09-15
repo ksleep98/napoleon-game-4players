@@ -20,43 +20,28 @@ const nextConfig = {
   },
   // Webpack最適化設定
   webpack: (config, { isServer }) => {
-    // バンドル分割最適化
+    // バンドル分割最適化（簡素化）
     if (!isServer) {
       config.optimization.splitChunks = {
-        ...config.optimization.splitChunks,
+        chunks: 'all',
         cacheGroups: {
-          ...config.optimization.splitChunks.cacheGroups,
+          default: {
+            minChunks: 2,
+            priority: -20,
+            reuseExistingChunk: true,
+          },
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendors',
+            priority: -10,
+            reuseExistingChunk: true,
+          },
           // Supabaseライブラリを分割
           supabase: {
             name: 'supabase',
             test: /[\\/]node_modules[\\/]@supabase[\\/]/,
             priority: 30,
             reuseExistingChunk: true,
-            chunks: 'all',
-          },
-          // crypto-jsライブラリを分割
-          crypto: {
-            name: 'crypto',
-            test: /[\\/]node_modules[\\/]crypto-js[\\/]/,
-            priority: 25,
-            reuseExistingChunk: true,
-            chunks: 'all',
-          },
-          // ゲームロジック関連を分割
-          gameLogic: {
-            name: 'game-logic',
-            test: /[\\/]src[\\/]lib[\\/](gameLogic|napoleonRules|scoring)[\\/]/,
-            priority: 20,
-            reuseExistingChunk: true,
-            chunks: 'all',
-          },
-          // AI関連を分割
-          aiLogic: {
-            name: 'ai-logic',
-            test: /[\\/]src[\\/]lib[\\/]ai[\\/]/,
-            priority: 15,
-            reuseExistingChunk: true,
-            chunks: 'all',
           },
         },
       }

@@ -52,6 +52,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.56.0",
+    "critters": "^0.0.25",
     "crypto-js": "^4.2.0",
     "next": "15.4",
     "react": "^19.1.1",
