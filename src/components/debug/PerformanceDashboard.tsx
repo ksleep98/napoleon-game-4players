@@ -448,7 +448,20 @@ export function usePerformanceMonitoring() {
     console.log('📊 Performance monitoring initialized')
     console.log('💡 Use window.__perfMonitor to access performance data')
 
-    // 初期接続テストを実行
+    // ローカル環境チェック（ローカルでは自動テストをスキップ）
+    const isLocalDev =
+      process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('mock') ||
+      !process.env.NEXT_PUBLIC_SUPABASE_URL
+
+    if (isLocalDev) {
+      console.log(
+        '🔧 Local development detected - skipping automatic performance test'
+      )
+      console.log('💡 Use the 📊 Perf button to run performance tests manually')
+      return
+    }
+
+    // 本番環境でのみ初期接続テストを実行
     const runInitialTest = async () => {
       try {
         await performanceComparator.runPerformanceTests()

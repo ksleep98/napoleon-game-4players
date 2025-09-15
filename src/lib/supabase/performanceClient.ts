@@ -816,7 +816,8 @@ export class PerformanceComparator {
       const isLocalDev =
         process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('mock') ||
         !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-        typeof window === 'undefined'
+        typeof window === 'undefined' ||
+        process.env.NODE_ENV === 'development'
 
       if (isLocalDev) {
         console.log(
