@@ -20,7 +20,7 @@
 ## ブランチ戦略
 
 - `main` - 本番リリース
-- `develop` - 開発統合 ⚠️ **直接コミット禁止**
+- `develop` - 開発統合
 - `feature/xxx` - 機能別ブランチ
 - **Conventional Commits** 規約準拠
 
@@ -86,6 +86,10 @@ pnpm cleanup:smart  # 手動スマート版（GitHub CLI連携）
 - [実装状況](./docs/game-logic/IMPLEMENTATION_STATUS.md) - Napoleon Game機能・UI・データ管理・セキュリティ強化
 - [最新改善ログ](./docs/game-logic/RECENT_IMPROVEMENTS.md) - UI改善・ゲームルール修正・COMタイミング制御
 
+### 💨 パフォーマンス最適化
+
+- [データベース最適化セットアップ](./docs/database/DATABASE_PERFORMANCE_SETUP.md) - 50-120ms性能向上・PostgreSQL関数・インデックス
+
 ## 現在のステータス
 
 ### ✅ 完了
@@ -100,6 +104,7 @@ pnpm cleanup:smart  # 手動スマート版（GitHub CLI連携）
 - **Quick Start**: 4人対戦ゲームの即座開始機能
 - **エラー修正**: 404/PGRST202エラー解消・RLS設定最適化・プレイヤーID不一致修正
 - **Post-merge自動化**: ブランチクリーンアップ自動化・developブランチ自動移行・GitHub CLI連携・Git hooks統合
+- **パフォーマンス最適化**: PostgreSQL関数統合・50-120ms改善・Vercel日本リージョン対応
 
 ### 🚧 進行中
 
@@ -121,8 +126,7 @@ pnpm cleanup:smart  # 手動スマート版（GitHub CLI連携）
 - **型安全**: TypeScript strict mode
 - **テスト**: 新機能にはJestテスト追加
 - **定数**: 文字列リテラル禁止・定数参照徹底
-- **Import**: 動的import禁止・静的import推奨・React.lazy()禁止
-- **パフォーマンス**: lazy()やdynamic()の使用禁止・静的importのみ許可
+- **Import**: 動的import禁止・静的import推奨
 
 **詳細**: [コーディングルール](./docs/development/CODING_RULES.md) を参照
 
@@ -132,37 +136,7 @@ pnpm cleanup:smart  # 手動スマート版（GitHub CLI連携）
 - SHALL limit response token length to avoid usage limit.
 - SHALL break down large files for stepwise parsing.
 
-### 開発フロー（ブランチ保護対応）
-
-**重要**: `develop` と `main` ブランチは直接プッシュ禁止
-
-```bash
-# 1. developブランチから作業ブランチを作成
-git checkout develop
-git pull origin develop
-git checkout -b feature/your-feature-name
-
-# 2. 開発・テスト
-# コード修正...
-pnpm ci-check  # 品質確認
-
-# 3. コミット（pre-commit hook自動実行）
-git add .
-git commit -m "feat: implement your feature"
-
-# 4. ブランチをプッシュ
-git push origin feature/your-feature-name
-
-# 5. GitHub UIでPull Request作成
-# develop ← feature/your-feature-name
-
-# 6. マージ後のクリーンアップ（自動実行）
-git checkout develop
-git pull origin develop
-# ローカルブランチは自動削除される
-```
-
-**Git フロー概要**:
+### 開発フロー
 
 1. `feature/xxx` ブランチで開発
 2. `pnpm ci-check` で品質確認
@@ -196,14 +170,7 @@ pnpm test:e2e
 
 ### Post-merge 自動クリーンアップ
 
-**自動ブランチクリーンアップ:**
-
-```bash
-# 定期ポーリング自動クリーンアップ（推奨）
-pnpm cleanup:polling        # 5分間隔でマージ済みPRをチェック・自動削除
-```
-
-**従来の自動実行設定:**
+**自動実行設定:**
 
 - `pnpm setup:auto-cleanup enable` - 自動クリーンアップ有効化
 - `pnpm setup:auto-cleanup disable` - 自動クリーンアップ無効化
@@ -225,12 +192,15 @@ pnpm cleanup:polling        # 5分間隔でマージ済みPRをチェック・�
 - リモート追跡ブランチも自動削除
 - 外部サービス不要の完全自動化
 
-**従来の自動実行の仕組み:**
+## パフォーマンス最適化
 
-- Git post-merge hookでPRマージ後に自動実行
-- developブランチへのマージを検出して自動クリーンアップ
-- マージされたブランチのローカル・リモート削除
-- GitHub CLI連携でPRステータス確認
+### データベース最適化済み
+
+- **PostgreSQL関数統合**: 50-120ms性能改善
+- **Vercel日本リージョン**: レイテンシ大幅削減
+- **最適化されたクエリ**: インデックス活用・高頻度処理対応
+
+**詳細**: [データベースパフォーマンス設定](./docs/database/DATABASE_PERFORMANCE_SETUP.md)
 
 ## 次のステップ
 

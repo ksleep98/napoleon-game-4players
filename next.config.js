@@ -9,10 +9,10 @@ const nextConfig = {
   // Optimized for Vercel deployment with Server Actions support
   experimental: {
     dynamicIO: false,
-    // CSS最適化
-    optimizeCss: true,
+    // CSS最適化 - 一時的に無効化 (critters依存関係の問題のため)
+    // optimizeCss: true,
     // パッケージインポート最適化
-    optimizePackageImports: ['crypto-js', '@supabase/supabase-js'],
+    optimizePackageImports: ['@supabase/supabase-js'],
   },
   // Optimize for production
   compiler: {

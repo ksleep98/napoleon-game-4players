@@ -131,14 +131,6 @@ export const CARD_STRENGTH = {
   OTHER_BASE: 0,
 } as const
 
-// Napoleon strength values
-export const NAPOLEON_BID_STRENGTH = {
-  [SUIT_ENUM.SPADES]: 4,
-  [SUIT_ENUM.HEARTS]: 3,
-  [SUIT_ENUM.DIAMONDS]: 2,
-  [SUIT_ENUM.CLUBS]: 1,
-} as const
-
 // Counter suit mapping
 export const COUNTER_SUITS = {
   [SUIT_ENUM.SPADES]: SUIT_ENUM.CLUBS,

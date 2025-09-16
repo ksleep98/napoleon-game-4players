@@ -1,6 +1,0 @@
-# GitHub Actions VSCode settings
-# This file suppresses warnings for GitHub Actions workflows
-
-# Disable context validation warnings for secrets
-yaml.validate: false
-problems.decorations.enabled: false
