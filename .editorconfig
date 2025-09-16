@@ -52,11 +52,6 @@ indent_size = 2
 indent_style = space
 indent_size = 2
 
-# Prisma schema files
-[*.prisma]
-indent_style = space
-indent_size = 2
-
 # Environment files
 [.env*]
 insert_final_newline = true

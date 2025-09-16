@@ -12,7 +12,6 @@
     "lint:fix": "npx @biomejs/biome check --write .",
     "format": "npx @biomejs/biome format --write .",
     "format:check": "npx @biomejs/biome format .",
-    "check": "npx @biomejs/biome check .",
     "test": "jest",
     "test:ci": "NEXT_PUBLIC_SUPABASE_URL=https://mock.supabase.co NEXT_PUBLIC_SUPABASE_ANON_KEY=mock_anon_key SUPABASE_SERVICE_ROLE_KEY=mock_service_role_key NODE_ENV=test jest --passWithNoTests --clearCache",
     "test:watch": "jest --watch",
@@ -24,8 +23,6 @@
     "test:e2e:verbose": "node tests/setup-test-directories.js && playwright test --reporter=list",
     "test:e2e:progress": "node tests/setup-test-directories.js && playwright test --reporter=line",
     "test:e2e:detailed": "node tests/setup-test-directories.js && playwright test --reporter=html --headed --screenshot=on --video=on",
-    "test:e2e:manual": "echo '🚀 Please start dev server manually: pnpm dev' && echo '⏳ Then run: pnpm exec playwright test --reporter=list' && echo '📖 Or visit http://localhost:3000 to verify server is running'",
-    "test:e2e:no-server": "node tests/setup-test-directories.js && PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --reporter=list",
     "test:e2e:ci": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} playwright test --config=playwright-ci.config.ts --max-failures=1",
     "test:e2e:ci:full": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} playwright test --config=playwright-ci.config.ts --reporter=html",
     "test:e2e:ci:local": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --config=playwright-ci.config.ts --reporter=line",
@@ -52,7 +49,6 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.56.0",
-    "critters": "^0.0.25",
     "crypto-js": "^4.2.0",
     "next": "15.4",
     "react": "^19.1.1",
@@ -77,8 +73,7 @@
     "postcss": "^8.5.6",
     "prettier": "^3.6.2",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5.9.2",
-    "vercel": "^48.0.0"
+    "typescript": "^5.9.2"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,json}": [

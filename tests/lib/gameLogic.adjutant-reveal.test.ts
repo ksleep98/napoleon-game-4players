@@ -60,11 +60,13 @@ describe('Adjutant Card Reveal Feature', () => {
     const napoleon = gameState.players.find((p) => p.isNapoleon)
     expect(napoleon).toBeDefined()
 
+    // Find the adjutant card in Napoleon's hand - should have wasHidden flag
     const adjutantCard = napoleon?.hand.find(
       (card) =>
         card.wasHidden &&
         gameState.napoleonDeclaration?.adjutantCard &&
-        card.id === gameState.napoleonDeclaration.adjutantCard.id
+        card.suit === gameState.napoleonDeclaration.adjutantCard.suit &&
+        card.rank === gameState.napoleonDeclaration.adjutantCard.rank
     )
     expect(adjutantCard).toBeDefined()
 

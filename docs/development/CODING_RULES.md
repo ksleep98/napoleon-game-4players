@@ -86,6 +86,39 @@ export const ERROR_MESSAGES = {
 } as const;
 ```
 
+## 📦 依存関係・パッケージ管理
+
+### 🗑️ 不要パッケージの排除
+
+**定期的なクリーンアップが重要** - 使用されていないライブラリは即座に削除
+
+**削除済み例：**
+
+- `critters` - 未使用のCSS最適化ツール
+- `vercel` - CLI ツールでdevDependenciesに不要
+
+**チェック方法：**
+
+```bash
+# パッケージ使用状況の確認
+npx depcheck
+pnpm audit
+```
+
+### 📊 最適化済み状況
+
+- **Before**: 41パッケージ
+- **After**: 37パッケージ（-4パッケージ）
+- **効果**: ビルド時間短縮・メンテナンス性向上
+
+### 📝 package.json Scripts最適化
+
+**削除済みの重複スクリプト：**
+
+- `check` (lintと重複)
+- `test:e2e:manual` (不要な冗長コマンド)
+- `test:e2e:no-server` (他のCI用コマンドで代用可能)
+
 ## 📦 Import/Export規則
 
 ### ✅ 静的Import優先

@@ -33,19 +33,3 @@ export function createPlayersWithAI(humanPlayerName: string): Player[] {
 
   return [humanPlayer, ...aiPlayers]
 }
-
-// プレイヤーが AI かどうかを判定
-export function isAIPlayer(player: Player): boolean {
-  return player.isAI
-}
-
-// AI プレイヤーの名前をランダムに生成
-export function generateAIName(): string {
-  const prefixes = ['Smart', 'Clever', 'Strategic', 'Tactical', 'Master']
-  const suffixes = ['AI', 'Bot', 'Player', 'CPU']
-
-  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)]
-  const suffix = suffixes[Math.floor(Math.random() * suffixes.length)]
-
-  return `${prefix} ${suffix}`
-}

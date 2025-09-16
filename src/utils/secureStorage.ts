@@ -158,28 +158,3 @@ export function clearSecurePlayer(): void {
   removeSecureItem(PLAYER_SESSION_KEYS.SESSION_TOKEN)
   removeSecureItem(PLAYER_SESSION_KEYS.SESSION_TIMESTAMP)
 }
-
-/**
- * セッション更新（自動延長）
- */
-export function refreshSecureSession(): void {
-  const playerId = getSecureItem(PLAYER_SESSION_KEYS.PLAYER_ID)
-  const playerName = getSecureItem(PLAYER_SESSION_KEYS.PLAYER_NAME)
-
-  if (playerId && playerName) {
-    setSecurePlayer(playerId, playerName)
-  }
-}
-
-/**
- * 後方互換性のためのSecurePlayerSessionオブジェクト
- * @deprecated 新しいコードでは直接関数を使用してください
- */
-export const SecurePlayerSession = {
-  setPlayer: setSecurePlayer,
-  getPlayerId: getSecurePlayerId,
-  getPlayerName: getSecurePlayerName,
-  isValid: isSecureSessionValid,
-  clearPlayer: clearSecurePlayer,
-  refreshSession: refreshSecureSession,
-}

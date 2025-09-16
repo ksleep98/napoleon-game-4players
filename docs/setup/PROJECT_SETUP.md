@@ -14,14 +14,35 @@
 ## 環境要件
 
 - Node.js 22.14.0（現在使用中）
-- npm（パッケージマネージャー）
+- pnpm（パッケージマネージャー - 高速・効率的）
 - VSCode エディタ推奨
 
 ## 推奨 VSCode 拡張
 
 - Biome (biomejs.biome)
 - Tailwind CSS IntelliSense (bradlc.vscode-tailwindcss)
-- Prisma (Prisma.prisma)
+
+## プロジェクト最適化済み
+
+### 🗑️ 削除された不要ファイル
+
+- `docs/database/PERFORMANCE_SETUP.md` (重複)
+- `docs/CODING_STANDARDS.md` (重複)
+- `src/lib/supabase/schema.sql` (古いスキーマファイル)
+- `scripts/kill-port-3000.js` (未使用スクリプト)
+- `.github/workflows/.vscode-settings` (誤配置ファイル)
+
+### 📦 パッケージ最適化
+
+- **削除**: `critters`, `vercel` (未使用依存関係)
+- **現在**: 37パッケージに最適化済み
+- **効果**: 依存関係軽量化・メンテナンス性向上
+
+### ⚡ パフォーマンス最適化
+
+- PostgreSQL関数統合による50-120ms改善
+- Vercel日本リージョン対応
+- 詳細: [データベースパフォーマンス設定](../database/DATABASE_PERFORMANCE_SETUP.md)
 
 ## 初期セットアップコマンド
 
