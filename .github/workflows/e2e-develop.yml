@@ -70,16 +70,20 @@ jobs:
           while [ $attempt -le $max_attempts ]; do
             echo "Attempt $attempt/$max_attempts..."
 
-            if curl -s -f -o /dev/null --max-time 10 "$TARGET_URL"; then
-              echo "✅ Deployment is ready!"
+            # Check deployment status (HTTP 401 is acceptable for protected environments)
+            status_code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$TARGET_URL" || echo "000")
+
+            if [ "$status_code" = "200" ] || [ "$status_code" = "401" ]; then
+              echo "✅ Deployment is ready! (HTTP $status_code)"
               break
             fi
 
             if [ $attempt -eq $max_attempts ]; then
-              echo "❌ Deployment not ready after $max_attempts attempts"
+              echo "❌ Deployment not ready after $max_attempts attempts (HTTP $status_code)"
               exit 1
             fi
 
+            echo "⏳ Deployment not ready yet (HTTP $status_code), waiting..."
             sleep 10
             attempt=$((attempt + 1))
           done
