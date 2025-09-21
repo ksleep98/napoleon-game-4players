@@ -26,6 +26,8 @@
     "test:e2e:ci": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} playwright test --config=playwright-ci.config.ts --max-failures=1",
     "test:e2e:ci:full": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} playwright test --config=playwright-ci.config.ts --reporter=html",
     "test:e2e:ci:local": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --config=playwright-ci.config.ts --reporter=line",
+    "test:e2e:develop": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} playwright test --config=playwright-develop.config.ts --reporter=line",
+    "test:e2e:develop:full": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} playwright test --config=playwright-develop.config.ts --reporter=html",
     "test:e2e:auto": "node scripts/run-e2e-with-server.js",
     "test:e2e:auto:basic": "node scripts/run-e2e-with-server.js basic.spec.ts",
     "test:e2e:auto:full": "node scripts/run-e2e-with-server.js --reporter=html",
