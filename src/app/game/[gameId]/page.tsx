@@ -295,7 +295,6 @@ function GamePageContent() {
                   onCardClick={handleCardClick}
                   selectedCardId={selectedCardId || undefined}
                   playableCardIds={playableCards}
-                  showCards={true}
                 />
 
                 {/* プレイボタン */}

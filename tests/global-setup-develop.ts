@@ -4,7 +4,7 @@ import { chromium, type FullConfig } from '@playwright/test'
  * Develop環境用グローバルセットアップ
  * Vercel認証とURLの可用性チェック
  */
-async function globalSetup(config: FullConfig) {
+async function globalSetup(_config: FullConfig) {
   const baseURL = process.env.PLAYWRIGHT_BASE_URL
 
   if (!baseURL) {
@@ -82,7 +82,7 @@ async function globalSetup(config: FullConfig) {
               clicked = true
               break
             }
-          } catch (error) {
+          } catch (_error) {
             console.log(`⚠️ Selector ${selector} not found, trying next...`)
           }
         }
@@ -127,7 +127,7 @@ async function globalSetup(config: FullConfig) {
                 )
                 break
               }
-            } catch (error) {
+            } catch (_error) {
               console.log(`⚠️ Username selector ${selector} not found`)
             }
           }
@@ -157,7 +157,7 @@ async function globalSetup(config: FullConfig) {
                 )
                 break
               }
-            } catch (error) {
+            } catch (_error) {
               console.log(`⚠️ Password selector ${selector} not found`)
             }
           }
@@ -187,7 +187,7 @@ async function globalSetup(config: FullConfig) {
                 console.log(`🔘 Found submit button with selector: ${selector}`)
                 break
               }
-            } catch (error) {
+            } catch (_error) {
               console.log(`⚠️ Submit selector ${selector} not found`)
             }
           }
@@ -205,7 +205,7 @@ async function globalSetup(config: FullConfig) {
 
         // Vercel環境に戻るまで待機
         await page
-          .waitForURL(baseURL + '**', { timeout: 30000 })
+          .waitForURL(`${baseURL}**`, { timeout: 30000 })
           .catch(async () => {
             console.log(
               '⚠️ Not redirected back to Vercel, checking current state...'
@@ -225,7 +225,7 @@ async function globalSetup(config: FullConfig) {
 
       // 認証状態を保存
       const storageState = await page.context().storageState()
-      const fs = await import('fs')
+      const fs = await import('node:fs')
       await fs.promises.writeFile(
         'vercel-auth-state.json',
         JSON.stringify(storageState, null, 2)
@@ -240,7 +240,7 @@ async function globalSetup(config: FullConfig) {
 
       // エラーでも空の認証状態を保存
       try {
-        const fs = await import('fs')
+        const fs = await import('node:fs')
         await fs.promises.writeFile(
           'vercel-auth-state.json',
           JSON.stringify({ cookies: [], origins: [] }, null, 2)

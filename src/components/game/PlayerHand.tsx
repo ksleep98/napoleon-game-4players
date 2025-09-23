@@ -10,7 +10,6 @@ interface PlayerHandProps {
   onCardClick?: (cardId: string) => void
   selectedCardId?: string
   playableCardIds?: string[]
-  showCards?: boolean
 }
 
 export function PlayerHand({
@@ -19,7 +18,6 @@ export function PlayerHand({
   onCardClick,
   selectedCardId,
   playableCardIds = [],
-  showCards = false,
 }: PlayerHandProps) {
   const sortedHand = sortHand(player.hand)
 
