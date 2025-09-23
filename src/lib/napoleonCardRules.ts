@@ -189,14 +189,19 @@ export function checkYoromekiRule(
 
   if (!mightyCard || !heartQueenCard) return null
 
-  // 切り札Jや裏Jがある場合は無効
-  const hasTrumpJack = trick.cards.some((pc) => isTrumpJack(pc.card, trumpSuit))
-  const hasCounterJack = trick.cards.some((pc) =>
+  // よろめき状況（マイティとハートのクイーンがある）の場合
+  // 表J（切り札J）が最優先、次に裏J（counter jack）、それがなければハートのクイーン
+  const trumpJackCard = trick.cards.find((pc) =>
+    isTrumpJack(pc.card, trumpSuit)
+  )
+  if (trumpJackCard) return trumpJackCard
+
+  const counterJackCard = trick.cards.find((pc) =>
     isCounterJack(pc.card, trumpSuit)
   )
+  if (counterJackCard) return counterJackCard
 
-  if (hasTrumpJack || hasCounterJack) return null
-
+  // 表J・裏Jがない場合は、ハートのクイーンが勝つ（よろめき成功）
   return heartQueenCard
 }
 
