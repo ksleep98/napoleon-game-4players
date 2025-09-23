@@ -31,22 +31,6 @@ export function PlayerHand({
     )
   }
 
-  if (!showCards) {
-    // 他のプレイヤーの手札は裏面で表示
-    return (
-      <div className="flex flex-wrap gap-1">
-        {player.hand.map((card) => (
-          <div
-            key={card.id}
-            className="w-12 h-16 bg-blue-900 border border-blue-800 rounded-lg shadow-md flex items-center justify-center"
-          >
-            <div className="text-blue-400 text-xs">🂠</div>
-          </div>
-        ))}
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
@@ -86,8 +70,6 @@ export function PlayerHand({
           />
         ))}
       </div>
-
-      <div className="text-sm text-gray-600">Cards: {player.hand.length}</div>
     </div>
   )
 }

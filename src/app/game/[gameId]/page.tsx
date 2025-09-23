@@ -312,20 +312,6 @@ function GamePageContent() {
                 )}
               </div>
             )}
-
-            {/* 他のプレイヤーの手札（簡略表示） */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {gameState.players
-                .filter((p) => p.id !== currentPlayerId)
-                .map((player) => (
-                  <div
-                    key={player.id}
-                    className="bg-white p-4 rounded-lg shadow"
-                  >
-                    <PlayerHand player={player} showCards={false} />
-                  </div>
-                ))}
-            </div>
           </div>
 
           {/* サイドバー */}
