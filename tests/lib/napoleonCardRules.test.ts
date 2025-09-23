@@ -442,7 +442,7 @@ describe('Napoleon Card Rules', () => {
         expect(winner?.playerId).toBe('p2')
       })
 
-      it('should not apply yoromeki when trump jack is present', () => {
+      it('should return trump jack when yoromeki conditions are met but trump jack is present', () => {
         const trick: Trick = {
           id: 'test-trick',
           cards: [
@@ -487,7 +487,58 @@ describe('Napoleon Card Rules', () => {
         }
 
         const winner = checkYoromekiRule(trick, SUIT_ENUM.CLUBS)
-        expect(winner).toBeNull()
+        expect(winner).not.toBeNull()
+        expect(winner?.playerId).toBe('p3') // 表J（クラブのJ）が勝つ
+      })
+
+      it('should return counter jack when yoromeki conditions are met but counter jack is present', () => {
+        const trick: Trick = {
+          id: 'test-trick',
+          cards: [
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.SPADES}-${CARD_RANKS.ACE}`,
+                SUIT_ENUM.SPADES,
+                CARD_RANKS.ACE
+              ),
+              'p1',
+              0
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.HEARTS}-${CARD_RANKS.QUEEN}`,
+                SUIT_ENUM.HEARTS,
+                CARD_RANKS.QUEEN
+              ),
+              'p2',
+              1
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.CLUBS}-${CARD_RANKS.JACK}`,
+                SUIT_ENUM.CLUBS,
+                CARD_RANKS.JACK
+              ),
+              'p3',
+              2
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.HEARTS}-${CARD_RANKS.KING}`,
+                SUIT_ENUM.HEARTS,
+                CARD_RANKS.KING
+              ),
+              'p4',
+              3
+            ),
+          ],
+          completed: true,
+        }
+
+        // スペードが切り札の場合、クラブのJが裏J
+        const winner = checkYoromekiRule(trick, SUIT_ENUM.SPADES)
+        expect(winner).not.toBeNull()
+        expect(winner?.playerId).toBe('p3') // 裏J（クラブのJ）が勝つ
       })
     })
 
