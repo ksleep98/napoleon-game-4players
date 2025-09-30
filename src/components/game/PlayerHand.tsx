@@ -10,7 +10,6 @@ interface PlayerHandProps {
   onCardClick?: (cardId: string) => void
   selectedCardId?: string
   playableCardIds?: string[]
-  showCards?: boolean
 }
 
 export function PlayerHand({
@@ -19,7 +18,6 @@ export function PlayerHand({
   onCardClick,
   selectedCardId,
   playableCardIds = [],
-  showCards = false,
 }: PlayerHandProps) {
   const sortedHand = sortHand(player.hand)
 
@@ -28,22 +26,6 @@ export function PlayerHand({
     console.log(
       `Player ${player.name} has ${player.hand.length} cards:`,
       player.hand.map((c) => `${c.rank}${c.suit}`).join(', ')
-    )
-  }
-
-  if (!showCards) {
-    // 他のプレイヤーの手札は裏面で表示
-    return (
-      <div className="flex flex-wrap gap-1">
-        {player.hand.map((card) => (
-          <div
-            key={card.id}
-            className="w-12 h-16 bg-blue-900 border border-blue-800 rounded-lg shadow-md flex items-center justify-center"
-          >
-            <div className="text-blue-400 text-xs">🂠</div>
-          </div>
-        ))}
-      </div>
     )
   }
 
@@ -86,8 +68,6 @@ export function PlayerHand({
           />
         ))}
       </div>
-
-      <div className="text-sm text-gray-600">Cards: {player.hand.length}</div>
     </div>
   )
 }

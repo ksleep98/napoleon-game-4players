@@ -3,6 +3,7 @@
 import { useParams, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { AdjutantSelector } from '@/components/game/AdjutantSelector'
+import { Card } from '@/components/game/Card'
 import { CardExchangeSelector } from '@/components/game/CardExchangeSelector'
 import { GameBoard } from '@/components/game/GameBoard'
 import { GameStatus } from '@/components/game/GameStatus'
@@ -16,8 +17,6 @@ import { calculateGameResult, getPlayerFaceCardCount } from '@/lib/scoring'
 import type { Card as CardType, NapoleonDeclaration } from '@/types/game'
 
 function GamePageContent() {
-  const params = useParams()
-  const _gameId = params.gameId as string
   const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null) // 実際の実装では認証から取得
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
 
@@ -295,7 +294,6 @@ function GamePageContent() {
                   onCardClick={handleCardClick}
                   selectedCardId={selectedCardId || undefined}
                   playableCardIds={playableCards}
-                  showCards={true}
                 />
 
                 {/* プレイボタン */}
@@ -313,19 +311,67 @@ function GamePageContent() {
               </div>
             )}
 
-            {/* 他のプレイヤーの手札（簡略表示） */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {gameState.players
-                .filter((p) => p.id !== currentPlayerId)
-                .map((player) => (
-                  <div
-                    key={player.id}
-                    className="bg-white p-4 rounded-lg shadow"
-                  >
-                    <PlayerHand player={player} showCards={false} />
-                  </div>
-                ))}
-            </div>
+            {/* 各プレイヤーの取得した絵札表示 */}
+            {gameState.phase === GAME_PHASES.PLAYING && (
+              <div className="bg-white rounded-lg shadow-lg p-4">
+                <h3 className="text-lg font-semibold mb-4">
+                  Face Cards Won by Players
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {gameState.players.map((player) => {
+                    // プレイヤーが獲得した絵札を計算
+                    const wonTricks = gameState.tricks.filter(
+                      (trick) => trick.winnerPlayerId === player.id
+                    )
+                    const faceCards = wonTricks.flatMap((trick) =>
+                      trick.cards
+                        .filter((pc) =>
+                          ['10', 'J', 'Q', 'K', 'A'].includes(pc.card.rank)
+                        )
+                        .map((pc) => pc.card)
+                    )
+
+                    return (
+                      <div key={player.id} className="border rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-semibold">{player.name}</h4>
+                          {player.isNapoleon && (
+                            <span className="px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs font-bold">
+                              Napoleon
+                            </span>
+                          )}
+                          {player.isAdjutant && (
+                            <span className="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs font-bold">
+                              Adjutant
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="text-sm text-gray-600 mb-2">
+                          Face Cards Won: {faceCards.length}
+                        </div>
+
+                        {faceCards.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {faceCards.map((card, index) => (
+                              <Card
+                                key={`${card.id}-${index}`}
+                                card={card}
+                                size="tiny"
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-gray-400 text-sm">
+                            No face cards won yet
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* サイドバー */}

@@ -1,9 +1,5 @@
 'use client'
-import {
-  getAllPlayersWonFaceCards,
-  getGameProgress,
-  getPlayerFaceCardCount,
-} from '@/lib/scoring'
+import { getGameProgress, getPlayerFaceCardCount } from '@/lib/scoring'
 import type { GameState, PlayedCard } from '@/types/game'
 import { Card } from './Card'
 
@@ -51,9 +47,6 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
     faceCards: getPlayerFaceCardCount(gameState, player.id),
     isCurrentUser: player.id === currentPlayerId, // 現在のプレイヤー（自分）かどうか
   }))
-
-  // プレイヤー別の取得絵札詳細
-  const allPlayersFaceCardDetails = getAllPlayersWonFaceCards(gameState)
 
   // プレイヤーのアイコン表示ロジックを統一化
   const getPlayerIcons = (
@@ -195,34 +188,34 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
           })}
         </div>
 
+        {/* 下（自分） - 親コンテナに対して直接配置 */}
+        {cardsByPosition.bottom && (
+          <div className="absolute bottom-14 left-1/2 transform -translate-x-1/2 flex flex-col items-center z-10">
+            <Card card={cardsByPosition.bottom.card} size="medium" />
+            <div className="text-center text-xs text-white mt-4 bg-black bg-opacity-60 rounded px-2 py-1">
+              {(() => {
+                const player = gameState.players.find(
+                  (p) => p.id === cardsByPosition.bottom?.playerId
+                )
+                if (!player) return ''
+
+                return (
+                  <div className="flex items-center justify-center gap-1">
+                    <span>{player.name}</span>
+                    {getPlayerIcons(player, cardsByPosition.bottom)}
+                  </div>
+                )
+              })()}
+            </div>
+          </div>
+        )}
+
         {/* トリック表示エリア（中央） */}
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="relative w-96 h-96">
-            {/* 下（自分） */}
-            {cardsByPosition.bottom && (
-              <div className="absolute bottom-12 left-1/2 transform -translate-x-1/2 flex flex-col items-center">
-                <Card card={cardsByPosition.bottom.card} size="medium" />
-                <div className="text-center text-xs text-white mt-4 bg-black bg-opacity-60 rounded px-2 py-1">
-                  {(() => {
-                    const player = gameState.players.find(
-                      (p) => p.id === cardsByPosition.bottom?.playerId
-                    )
-                    if (!player) return ''
-
-                    return (
-                      <div className="flex items-center justify-center gap-1">
-                        <span>{player.name}</span>
-                        {getPlayerIcons(player, cardsByPosition.bottom)}
-                      </div>
-                    )
-                  })()}
-                </div>
-              </div>
-            )}
-
             {/* 左 */}
             {cardsByPosition.left && (
-              <div className="absolute left-12 top-1/2 transform -translate-y-1/2 flex flex-col items-center">
+              <div className="absolute left-12 top-1/2 transform translate-y-4 flex flex-col items-center">
                 <Card card={cardsByPosition.left.card} size="medium" />
                 <div className="text-center text-xs text-white mt-4 bg-black bg-opacity-60 rounded px-2 py-1">
                   {(() => {
@@ -244,7 +237,7 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
 
             {/* 上 */}
             {cardsByPosition.top && (
-              <div className="absolute top-12 left-1/2 transform -translate-x-1/2 flex flex-col items-center">
+              <div className="absolute top-16 left-1/2 transform -translate-x-1/2 flex flex-col items-center">
                 <div className="text-center text-xs text-white mb-4 bg-black bg-opacity-60 rounded px-2 py-1">
                   {(() => {
                     const player = gameState.players.find(
@@ -266,7 +259,7 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
 
             {/* 右 */}
             {cardsByPosition.right && (
-              <div className="absolute right-12 top-1/2 transform -translate-y-1/2 flex flex-col items-center">
+              <div className="absolute right-12 top-1/2 transform translate-y-4 flex flex-col items-center">
                 <Card card={cardsByPosition.right.card} size="medium" />
                 <div className="text-center text-xs text-white mt-4 bg-black bg-opacity-60 rounded px-2 py-1">
                   {(() => {
@@ -307,60 +300,6 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
             )}
           </div>
         </div>
-      </div>
-
-      {/* プレイヤー獲得絵札詳細 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {allPlayersFaceCardDetails.map((playerData) => (
-          <div
-            key={playerData.player.id}
-            className="bg-white p-4 rounded-lg shadow border"
-          >
-            <div className="flex items-center gap-2 mb-3">
-              <h3 className="font-semibold text-gray-800">
-                {playerData.player.name}
-              </h3>
-              {playerData.player.isNapoleon && (
-                <span className="px-2 py-1 bg-yellow-600 text-yellow-100 rounded text-xs">
-                  Napoleon
-                </span>
-              )}
-              {(() => {
-                const isAdjutantRevealed =
-                  playerData.player.isAdjutant &&
-                  gameState.tricks.some((trick) =>
-                    trick.cards.some(
-                      (playedCard) =>
-                        gameState.napoleonCard &&
-                        playedCard.card.id === gameState.napoleonCard.id
-                    )
-                  )
-
-                return (
-                  isAdjutantRevealed && (
-                    <span className="px-2 py-1 bg-green-600 text-green-100 rounded text-xs">
-                      Adjutant
-                    </span>
-                  )
-                )
-              })()}
-            </div>
-
-            <div className="text-sm text-gray-600 mb-2">
-              Face Cards Won: {playerData.faceCards.length}
-            </div>
-
-            {playerData.faceCards.length > 0 ? (
-              <div className="flex flex-wrap gap-1">
-                {playerData.faceCards.map((card, index) => (
-                  <Card key={`${card.id}-${index}`} card={card} size="tiny" />
-                ))}
-              </div>
-            ) : (
-              <div className="text-gray-400 text-sm">No face cards won yet</div>
-            )}
-          </div>
-        ))}
       </div>
     </div>
   )
