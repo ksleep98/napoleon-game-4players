@@ -188,34 +188,34 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
           })}
         </div>
 
+        {/* 下（自分） - 親コンテナに対して直接配置 */}
+        {cardsByPosition.bottom && (
+          <div className="absolute bottom-14 left-1/2 transform -translate-x-1/2 flex flex-col items-center z-10">
+            <Card card={cardsByPosition.bottom.card} size="medium" />
+            <div className="text-center text-xs text-white mt-4 bg-black bg-opacity-60 rounded px-2 py-1">
+              {(() => {
+                const player = gameState.players.find(
+                  (p) => p.id === cardsByPosition.bottom?.playerId
+                )
+                if (!player) return ''
+
+                return (
+                  <div className="flex items-center justify-center gap-1">
+                    <span>{player.name}</span>
+                    {getPlayerIcons(player, cardsByPosition.bottom)}
+                  </div>
+                )
+              })()}
+            </div>
+          </div>
+        )}
+
         {/* トリック表示エリア（中央） */}
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="relative w-96 h-96">
-            {/* 下（自分） */}
-            {cardsByPosition.bottom && (
-              <div className="absolute bottom-12 left-1/2 transform -translate-x-1/2 flex flex-col items-center">
-                <Card card={cardsByPosition.bottom.card} size="medium" />
-                <div className="text-center text-xs text-white mt-4 bg-black bg-opacity-60 rounded px-2 py-1">
-                  {(() => {
-                    const player = gameState.players.find(
-                      (p) => p.id === cardsByPosition.bottom?.playerId
-                    )
-                    if (!player) return ''
-
-                    return (
-                      <div className="flex items-center justify-center gap-1">
-                        <span>{player.name}</span>
-                        {getPlayerIcons(player, cardsByPosition.bottom)}
-                      </div>
-                    )
-                  })()}
-                </div>
-              </div>
-            )}
-
             {/* 左 */}
             {cardsByPosition.left && (
-              <div className="absolute left-12 top-1/2 transform -translate-y-1/2 flex flex-col items-center">
+              <div className="absolute left-12 top-1/2 transform translate-y-4 flex flex-col items-center">
                 <Card card={cardsByPosition.left.card} size="medium" />
                 <div className="text-center text-xs text-white mt-4 bg-black bg-opacity-60 rounded px-2 py-1">
                   {(() => {
@@ -237,7 +237,7 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
 
             {/* 上 */}
             {cardsByPosition.top && (
-              <div className="absolute top-12 left-1/2 transform -translate-x-1/2 flex flex-col items-center">
+              <div className="absolute top-16 left-1/2 transform -translate-x-1/2 flex flex-col items-center">
                 <div className="text-center text-xs text-white mb-4 bg-black bg-opacity-60 rounded px-2 py-1">
                   {(() => {
                     const player = gameState.players.find(
@@ -259,7 +259,7 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
 
             {/* 右 */}
             {cardsByPosition.right && (
-              <div className="absolute right-12 top-1/2 transform -translate-y-1/2 flex flex-col items-center">
+              <div className="absolute right-12 top-1/2 transform translate-y-4 flex flex-col items-center">
                 <Card card={cardsByPosition.right.card} size="medium" />
                 <div className="text-center text-xs text-white mt-4 bg-black bg-opacity-60 rounded px-2 py-1">
                   {(() => {
