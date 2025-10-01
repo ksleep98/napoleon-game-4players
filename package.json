@@ -44,9 +44,10 @@
     "cleanup": "./scripts/post-merge-cleanup.sh",
     "cleanup:smart": "./scripts/smart-cleanup.sh",
     "cleanup:polling": "node scripts/auto-polling-cleanup.js",
-    "setup:auto-cleanup": "./scripts/setup-auto-cleanup.sh",
-    "setup:github-cleanup": "./scripts/setup-github-auto-cleanup.sh",
     "setup:pre-commit": "node scripts/setup-pre-commit.js",
+    "develop:protect": "node scripts/setup-develop-protection.js enable",
+    "develop:unprotect": "node scripts/setup-develop-protection.js disable",
+    "develop:status": "node scripts/setup-develop-protection.js status",
     "prepare": "husky"
   },
   "dependencies": {

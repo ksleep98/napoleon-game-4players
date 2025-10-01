@@ -146,10 +146,32 @@ pnpm cleanup:smart  # 手動スマート版（GitHub CLI連携）
 
 ### Pre-commit 自動チェック
 
+- **develop ブランチ保護**: developブランチへの直接コミット禁止
 - Biome linting・formatting 自動修正
 - TypeScript型チェック
 - Jest テスト実行
 - 全チェック合格でコミット可能
+
+### Develop ブランチ保護
+
+developブランチへの直接コミット・プッシュを防ぐ保護機能が有効：
+
+```bash
+# 保護設定確認
+pnpm run develop:status
+
+# 保護有効化（既に設定済み）
+pnpm run develop:protect
+
+# 保護無効化（緊急時のみ）
+pnpm run develop:unprotect
+```
+
+**保護内容:**
+
+- developブランチでの直接コミット防止（pre-commit hook）
+- developブランチへの直接プッシュ防止（pre-push hook）
+- 自動的にfeatureブランチ作成を促すメッセージ表示
 
 ### E2E テスト制御
 
