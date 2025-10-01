@@ -1,0 +1,20 @@
+echo "🚀 Pre-push checks starting..."
+
+# Prevent direct push to develop branch
+while read local_ref local_sha remote_ref remote_sha
+do
+    branch_name=$(echo "$remote_ref" | sed 's|refs/heads/||')
+    if [ "$branch_name" = "develop" ]; then
+        echo ""
+        echo "❌ Error: Direct push to develop branch is not allowed"
+        echo ""
+        echo "🔧 To fix this:"
+        echo "  1. Use Pull Request workflow"
+        echo "  2. Push to feature branch: git push origin feature/your-feature-name"
+        echo "  3. Create PR from GitHub: develop ← feature/your-feature-name"
+        echo ""
+        exit 1
+    fi
+done
+
+echo "✅ Pre-push checks passed!"

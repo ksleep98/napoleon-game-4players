@@ -27,11 +27,9 @@ After PR merge:
 
 - `scripts/auto-branch-cleanup.js` - GitHub API integration
 - `scripts/github-webhook-cleanup.js` - Webhook handler
-- `scripts/setup-github-auto-cleanup.sh` - Setup script
 
 ### Commands Available
 
-- `pnpm setup:github-cleanup` - Setup auto-cleanup system
 - `pnpm cleanup:auto` - Manual cleanup execution
 - `pnpm cleanup:auto:schedule` - Scheduled cleanup with develop update
 
