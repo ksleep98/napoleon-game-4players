@@ -14,11 +14,11 @@
 
 - Ubuntu latest
 - Node.js 22.14.0
-- npm cache有効
+- pnpm cache有効
 
 ### 2. 依存関係インストール
 
-- `npm ci` 高速インストール
+- `pnpm install --frozen-lockfile` 高速インストール
 - Biome バイナリ修正（Linux対応）
 - インストール検証とフォールバック
 
@@ -49,7 +49,7 @@
 ```yaml
 # Biome再インストールとバイナリ修正
 rm -rf node_modules/@biomejs/biome node_modules/.bin/biome
-npm install @biomejs/biome@latest
+pnpm install @biomejs/biome@latest
 
 # 検証とフォールバック
 if npx @biomejs/biome --version; then

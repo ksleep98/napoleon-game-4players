@@ -1,0 +1,306 @@
+# Develop環境E2Eテスト自動実行
+name: E2E Develop Tests
+
+on:
+  # developブランチへのデプロイ後にE2Eテストを実行
+  deployment_status:
+
+  # 手動実行も可能
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: "Develop environment URL to test"
+        required: true
+        default: "https://napoleon-game-dev.vercel.app"
+      create_pr:
+        description: "Create develop->main PR after successful tests"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+env:
+  # Develop environment URL (actual Vercel develop environment)
+  DEVELOP_URL: "https://napoleon-game-dev.vercel.app"
+
+jobs:
+  e2e-develop:
+    runs-on: ubuntu-latest
+    # デプロイが成功し、かつdevelopブランチの場合のみ実行
+    if: >
+      (github.event.deployment_status.state == 'success' &&
+       github.event.deployment.environment == 'Preview – napoleon-game-4players' &&
+       github.event.deployment.ref == 'develop') ||
+      github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Setup Node.js with cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.14.0"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Wait for deployment to be ready
+        run: |
+          TARGET_URL="${{ github.event.inputs.target_url || env.DEVELOP_URL }}"
+          echo "🕐 Waiting for deployment to be ready at: $TARGET_URL"
+
+          max_attempts=30
+          attempt=1
+
+          while [ $attempt -le $max_attempts ]; do
+            echo "Attempt $attempt/$max_attempts..."
+
+            # Check deployment status (HTTP 401 is acceptable for protected environments)
+            status_code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$TARGET_URL" || echo "000")
+
+            if [ "$status_code" = "200" ] || [ "$status_code" = "401" ]; then
+              echo "✅ Deployment is ready! (HTTP $status_code)"
+              break
+            fi
+
+            if [ $attempt -eq $max_attempts ]; then
+              echo "❌ Deployment not ready after $max_attempts attempts (HTTP $status_code)"
+              exit 1
+            fi
+
+            echo "⏳ Deployment not ready yet (HTTP $status_code), waiting..."
+            sleep 10
+            attempt=$((attempt + 1))
+          done
+
+      - name: Run E2E tests against develop environment
+        env:
+          # Develop環境のURL
+          PLAYWRIGHT_BASE_URL: ${{ github.event.inputs.target_url || env.DEVELOP_URL }}
+          # webServerを無効化（develop環境URLを使用）
+          PLAYWRIGHT_SKIP_WEBSERVER: "1"
+          # E2Eテストを有効化
+          SKIP_E2E_TESTS: "false"
+          # Test environment variables
+          NODE_ENV: "test"
+          NEXT_PUBLIC_SUPABASE_URL: "https://mock.supabase.co"
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: "mock_anon_key"
+          SUPABASE_SERVICE_ROLE_KEY: "mock_service_role_key"
+          # GitHub OAuth認証用（GitHub Secretsから設定）
+          GITHUB_USERNAME: ${{ secrets.E2E_GITHUB_USERNAME }}
+          GITHUB_PASSWORD: ${{ secrets.E2E_GITHUB_PASSWORD }}
+          # 後方互換性のためVERCEL_AUTH_*も保持
+          VERCEL_AUTH_USERNAME: ${{ secrets.E2E_GITHUB_USERNAME }}
+          VERCEL_AUTH_PASSWORD: ${{ secrets.E2E_GITHUB_PASSWORD }}
+        run: |
+          echo "🌐 Testing against develop environment: $PLAYWRIGHT_BASE_URL"
+          echo "🧪 Running E2E tests..."
+
+          # E2Eテスト実行（develop環境用設定）
+          pnpm test:e2e:develop || {
+            echo "❌ E2E tests failed"
+            exit 1
+          }
+
+          echo "✅ All E2E tests passed!"
+
+      - name: Generate test report summary
+        if: always()
+        run: |
+          echo "# 🧪 E2E Test Results" > e2e_summary.md
+          echo "" >> e2e_summary.md
+
+          if [ -f "test-results/results.json" ] || [ -d "test-results" ]; then
+            echo "## ✅ Test Summary" >> e2e_summary.md
+            echo "" >> e2e_summary.md
+            echo "- **Environment**: Develop" >> e2e_summary.md
+            echo "- **URL**: ${{ github.event.inputs.target_url || env.DEVELOP_URL }}" >> e2e_summary.md
+            echo "- **Browser**: Chromium" >> e2e_summary.md
+            echo "- **Date**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> e2e_summary.md
+            echo "" >> e2e_summary.md
+
+            # テスト結果の詳細を追加
+            if [ -d "test-results" ]; then
+              failed_tests=$(find test-results -name "*.xml" -exec grep -l "failure" {} \; 2>/dev/null | wc -l || echo "0")
+              total_tests=$(find test-results -name "*.xml" 2>/dev/null | wc -l || echo "0")
+
+              if [ "$failed_tests" -eq 0 ] && [ "$total_tests" -gt 0 ]; then
+                echo "### ✅ All tests passed! ($total_tests tests)" >> e2e_summary.md
+              elif [ "$failed_tests" -gt 0 ]; then
+                echo "### ❌ Some tests failed ($failed_tests/$total_tests)" >> e2e_summary.md
+              else
+                echo "### ⚠️ No test results found" >> e2e_summary.md
+              fi
+            fi
+          else
+            echo "### ❌ Tests failed or no results generated" >> e2e_summary.md
+          fi
+
+          echo "" >> e2e_summary.md
+          echo "---" >> e2e_summary.md
+          echo "" >> e2e_summary.md
+          echo "🔗 **Playwright Report**: [View HTML Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> e2e_summary.md
+          echo "" >> e2e_summary.md
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: develop-e2e-results
+          path: |
+            test-results/
+            playwright-report/
+            e2e_summary.md
+          retention-days: 14
+
+  create-release-pr:
+    needs: e2e-develop
+    runs-on: ubuntu-latest
+    if: >
+      needs.e2e-develop.result == 'success' &&
+      (github.event.inputs.create_pr != 'false' || github.event.inputs.create_pr == null) &&
+      github.ref == 'refs/heads/develop'
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Download E2E test results
+        uses: actions/download-artifact@v4
+        with:
+          name: develop-e2e-results
+          path: ./e2e-results
+
+      - name: Check if release PR already exists
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        id: check_pr
+        run: |
+          existing_pr=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existing_pr" ]; then
+            echo "existing_pr=$existing_pr" >> $GITHUB_OUTPUT
+            echo "📋 Found existing release PR #$existing_pr"
+          else
+            echo "📋 No existing release PR found"
+          fi
+
+      - name: Create or update release PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # E2Eテスト結果を読み込み
+          if [ -f "./e2e-results/e2e_summary.md" ]; then
+            E2E_RESULTS=$(cat ./e2e-results/e2e_summary.md)
+          else
+            E2E_RESULTS="# 🧪 E2E Test Results
+
+          ## ✅ Test Summary
+          - **Status**: Passed
+          - **Environment**: Develop
+          - **Date**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          "
+          fi
+
+          # Get recent changes since last main
+          echo "## 🎉 Ready for Production Release" > pr_body.md
+          echo "" >> pr_body.md
+          echo "This PR contains tested changes from the develop branch, ready to be merged to main." >> pr_body.md
+          echo "" >> pr_body.md
+
+          # Add recent commits
+          echo "### 📋 Recent Changes" >> pr_body.md
+          echo "" >> pr_body.md
+          git log --oneline --no-merges main..develop | head -n 10 | while read line; do
+            commit_hash=$(echo "$line" | cut -d' ' -f1)
+            commit_msg=$(echo "$line" | cut -d' ' -f2-)
+
+            if [[ $commit_msg == feat:* ]]; then
+              echo "- ✨ **New**: ${commit_msg#feat: } (\`$commit_hash\`)" >> pr_body.md
+            elif [[ $commit_msg == fix:* ]]; then
+              echo "- 🐛 **Fix**: ${commit_msg#fix: } (\`$commit_hash\`)" >> pr_body.md
+            elif [[ $commit_msg == docs:* ]]; then
+              echo "- 📚 **Docs**: ${commit_msg#docs: } (\`$commit_hash\`)" >> pr_body.md
+            else
+              echo "- 🔧 $commit_msg (\`$commit_hash\`)" >> pr_body.md
+            fi
+          done
+          echo "" >> pr_body.md
+
+          # Add E2E test results
+          echo "### 🧪 Quality Assurance" >> pr_body.md
+          echo "" >> pr_body.md
+          echo "$E2E_RESULTS" >> pr_body.md
+          echo "" >> pr_body.md
+
+          echo "### 🚀 Deployment Information" >> pr_body.md
+          echo "" >> pr_body.md
+          echo "- **Source Branch**: \`develop\`" >> pr_body.md
+          echo "- **Target Branch**: \`main\`" >> pr_body.md
+          echo "- **E2E Tests**: ✅ Passed on develop environment" >> pr_body.md
+          echo "- **Auto-merge**: Ready for production deployment" >> pr_body.md
+          echo "" >> pr_body.md
+          echo "---" >> pr_body.md
+          echo "" >> pr_body.md
+          echo "🤖 *This PR was automatically created after successful E2E testing on the develop environment.*" >> pr_body.md
+
+          # Create or update PR
+          if [ -n "${{ steps.check_pr.outputs.existing_pr }}" ]; then
+            # Update existing PR
+            PR_NUMBER="${{ steps.check_pr.outputs.existing_pr }}"
+            gh pr edit $PR_NUMBER --body "$(cat pr_body.md)"
+
+            # Add comment with new E2E results
+            gh pr comment $PR_NUMBER --body "## 🔄 Updated E2E Test Results
+
+          $E2E_RESULTS
+
+          **Test Run**: [View Details](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          "
+
+            echo "✅ Updated existing release PR #$PR_NUMBER"
+          else
+            # Create new PR
+            PR_URL=$(gh pr create \
+              --base main \
+              --head develop \
+              --title "🚀 Release: Deploy to Production ($(date +%Y-%m-%d))" \
+              --body "$(cat pr_body.md)" \
+              --label "release,auto-generated")
+
+            echo "✅ Created new release PR: $PR_URL"
+          fi
+
+      - name: Notify on success
+        if: success()
+        run: |
+          echo "🎉 E2E tests passed on develop environment!"
+          echo "📋 Release PR has been created/updated for main branch"
+          echo "🚀 Ready for production deployment"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ E2E tests failed on develop environment"
+          echo "🚫 Release PR will not be created until tests pass"

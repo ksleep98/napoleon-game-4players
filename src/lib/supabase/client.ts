@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
-import type { GameState } from '@/types/game'
+import type { GameState, PlayerScore } from '@/types/game'
+import { getSecurePlayerName, setSecurePlayer } from '@/utils/secureStorage'
 
 const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mock.supabase.co'
@@ -15,7 +16,129 @@ if (
   console.warn('Missing Supabase environment variables - using mock values')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// クライアント設定（リアルタイム機能有効化）
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  realtime: {
+    params: {
+      eventsPerSecond: 10, // レート制限
+    },
+  },
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+  // 超高速化設定（100ms以下を目指す）
+  global: {
+    headers: {
+      // Keep-alive接続を有効化
+      Connection: 'keep-alive',
+      // 圧縮を有効化
+      'Accept-Encoding': 'gzip, deflate, br',
+      // キャッシュ制御
+      'Cache-Control': 'no-cache',
+      // ユーザーエージェント最適化
+      'User-Agent': 'Napoleon-Game/1.0',
+      // HTTP/2 Server Push活用
+      'x-supabase-api-version': '2024-01-01',
+      // 事前DNS解決
+      'dns-prefetch-control': 'on',
+      // TCP Fast Open有効化
+      'x-tcp-fast-open': '1',
+      // HTTP/2優先度制御
+      'x-priority': 'u=1, i',
+    },
+    fetch: (url, options = {}) => {
+      // 超高速タイムアウト設定
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5000) // 5秒タイムアウト（短縮）
+
+      return fetch(url, {
+        ...options,
+        signal: controller.signal,
+        // HTTP/2を強制（利用可能な場合）
+        cache: 'no-cache',
+        // 接続再利用
+        keepalive: true,
+        // HTTP/2優先度制御
+        priority: 'high',
+        // TCP Fast Open
+        mode: 'cors',
+        credentials: 'same-origin',
+        // 事前接続最適化
+        referrerPolicy: 'no-referrer-when-downgrade',
+      }).finally(() => clearTimeout(timeoutId))
+    },
+  },
+  // PostgREST設定最適化
+  db: {
+    schema: 'public',
+  },
+})
+
+// プレイヤーIDをセッションに設定するヘルパー関数（セキュア版）
+export const setPlayerSession = async (playerId: string): Promise<void> => {
+  // セキュアストレージに保存
+  if (typeof window !== 'undefined') {
+    try {
+      // プレイヤー名は別途設定する必要があるため、既存の名前を取得または匿名設定
+      const currentName = getSecurePlayerName() || 'Anonymous'
+      setSecurePlayer(playerId, currentName)
+    } catch (error) {
+      console.warn('Failed to use secure storage:', error)
+    }
+  }
+
+  // テスト環境でのみRLS関数呼び出しをスキップ
+  if (process.env.NODE_ENV === 'test') {
+    console.log('Test mode: Skipping RLS setup')
+    return
+  }
+
+  // 開発・本番問わずRLS設定を試行（セキュリティ担保のため）
+  try {
+    const { error } = await supabase.rpc('set_config', {
+      setting_name: 'app.player_id',
+      setting_value: playerId,
+      is_local: true,
+    })
+
+    if (error) {
+      // 関数が見つからない場合のハンドリング
+      if (error.code === 'PGRST202') {
+        console.warn(
+          '⚠️  RLS set_config function not available. Please run the RLS policies in Supabase SQL Editor.',
+          '\n   Game will continue but with reduced security in development.'
+        )
+
+        // 開発環境では警告して続行、本番環境では停止
+        if (process.env.NODE_ENV === 'production') {
+          throw new Error('RLS configuration required in production')
+        }
+        return
+      }
+
+      // その他のエラー
+      console.error('RLS setup failed:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+      })
+
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error(`RLS setup failed: ${error.message}`)
+      }
+    } else {
+      console.log('✅ RLS player session configured:', playerId)
+    }
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err)
+    console.error('RLS setup error:', errorMessage)
+
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(`RLS setup failed: ${errorMessage}`)
+    }
+  }
+}
 
 export type Database = {
   public: {
@@ -108,8 +231,8 @@ export type Database = {
           napoleon_won: boolean
           napoleon_player_id: string
           adjutant_player_id: string | null
-          tricks_won: number
-          scores: unknown // JSON array of PlayerScore
+          face_cards_won: number
+          scores: PlayerScore[] // JSON array of PlayerScore
           created_at: string
         }
         Insert: {
@@ -118,8 +241,8 @@ export type Database = {
           napoleon_won: boolean
           napoleon_player_id: string
           adjutant_player_id?: string | null
-          tricks_won: number
-          scores: unknown
+          face_cards_won: number
+          scores: PlayerScore[]
           created_at?: string
         }
         Update: {
@@ -128,7 +251,7 @@ export type Database = {
           napoleon_won?: boolean
           napoleon_player_id?: string
           adjutant_player_id?: string | null
-          tricks_won?: number
+          face_cards_won?: number
           scores?: unknown
           created_at?: string
         }

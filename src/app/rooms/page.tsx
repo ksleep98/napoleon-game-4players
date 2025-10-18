@@ -7,7 +7,8 @@ import {
   createPlayer,
   getGameRooms,
   joinGameRoom,
-} from '@/lib/supabase/gameService'
+} from '@/lib/supabase/secureGameService'
+import { FEATURE_FLAGS, getEnvironment } from '@/lib/utils/environment'
 import type { GameRoom } from '@/types/game'
 import { generateGameId, generatePlayerId } from '@/utils/cardUtils'
 
@@ -110,6 +111,41 @@ export default function RoomsPage() {
     const interval = setInterval(loadRooms, 30000)
     return () => clearInterval(interval)
   }, [loadRooms])
+
+  // マルチプレイヤー機能が無効な場合の表示
+  if (!FEATURE_FLAGS.MULTIPLAYER_ROOMS) {
+    return (
+      <div className="min-h-screen bg-gray-100 py-8">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="bg-white rounded-lg shadow-md p-8 text-center">
+            <h1 className="text-3xl font-bold mb-4">Multiplayer Rooms</h1>
+            <div className="mb-6">
+              <span className="inline-block px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
+                🚧 Coming Soon
+              </span>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Multiplayer rooms are currently in development and only available
+              in local environment.
+            </p>
+            <p className="text-sm text-gray-500 mb-8">
+              Environment:{' '}
+              <code className="bg-gray-100 px-2 py-1 rounded">
+                {getEnvironment()}
+              </code>
+            </p>
+            <button
+              type="button"
+              onClick={() => router.push('/')}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+            >
+              ← Back to Home
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 py-8">

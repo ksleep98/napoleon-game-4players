@@ -1,22 +1,50 @@
 'use client'
 
-import { useParams } from 'next/navigation'
-import { useState } from 'react'
+import { useParams, useSearchParams } from 'next/navigation'
+import { useEffect, useMemo, useState } from 'react'
+import { AdjutantSelector } from '@/components/game/AdjutantSelector'
+import { Card } from '@/components/game/Card'
+import { CardExchangeSelector } from '@/components/game/CardExchangeSelector'
 import { GameBoard } from '@/components/game/GameBoard'
 import { GameStatus } from '@/components/game/GameStatus'
 import { NapoleonSelector } from '@/components/game/NapoleonSelector'
 import { PlayerHand } from '@/components/game/PlayerHand'
-import { useGameState } from '@/hooks/useGameState'
-import { calculateGameResult } from '@/lib/scoring'
-import type { Card as CardType } from '@/types/game'
+import { TrickResult } from '@/components/game/TrickResult'
+import { GameProvider, useGame } from '@/contexts/GameContext'
+import { GAME_PHASES } from '@/lib/constants'
+import { getNextDeclarationPlayer } from '@/lib/napoleonRules'
+import { calculateGameResult, getPlayerFaceCardCount } from '@/lib/scoring'
+import type { Card as CardType, NapoleonDeclaration } from '@/types/game'
 
-export default function GamePage() {
-  const params = useParams()
-  const gameId = params.gameId as string
-  const [currentPlayerId, _setCurrentPlayerId] = useState<string>('player_1') // 実際の実装では認証から取得
+function GamePageContent() {
+  const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null) // 実際の実装では認証から取得
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
 
-  const { gameState, loading, error, actions, utils } = useGameState(gameId)
+  const { gameState, loading, error, actions, utils } = useGame()
+
+  // プレイヤーIDを設定（AIモードでは人間プレイヤー、通常モードでは最初のプレイヤー）
+  // プレイヤーIDの設定を最適化（プレイヤー構成が変わった時のみ実行）
+  useEffect(() => {
+    if (gameState && gameState.players.length > 0) {
+      const hasAI = gameState.players.some((p) => p.isAI)
+      if (hasAI) {
+        const humanPlayer = gameState.players.find((p) => !p.isAI)
+        if (humanPlayer && humanPlayer.id !== currentPlayerId) {
+          setCurrentPlayerId(humanPlayer.id)
+        }
+      } else if (!currentPlayerId) {
+        // 通常モードでは最初のプレイヤーを選択
+        setCurrentPlayerId(gameState.players[0].id)
+      }
+    }
+  }, [gameState, currentPlayerId])
+
+  // playableCardsの計算をメモ化 (early returnより前に配置)
+  const playableCards = useMemo(() => {
+    return currentPlayerId && gameState
+      ? utils.getPlayableCards(currentPlayerId)
+      : []
+  }, [currentPlayerId, utils, gameState])
 
   if (loading) {
     return (
@@ -55,9 +83,12 @@ export default function GamePage() {
     )
   }
 
-  const currentPlayer = gameState.players.find((p) => p.id === currentPlayerId)
-  const isCurrentTurn = utils.getCurrentPlayer()?.id === currentPlayerId
-  const playableCards = utils.getPlayableCards(currentPlayerId)
+  const currentPlayer = currentPlayerId
+    ? gameState.players.find((p) => p.id === currentPlayerId)
+    : null
+  const isCurrentTurn = currentPlayerId
+    ? utils.getCurrentPlayer()?.id === currentPlayerId
+    : false
 
   const handleCardClick = (cardId: string) => {
     if (!isCurrentTurn || !playableCards.includes(cardId)) return
@@ -66,19 +97,57 @@ export default function GamePage() {
   }
 
   const handlePlayCard = () => {
-    if (!selectedCardId || !isCurrentTurn) return
+    if (!selectedCardId || !isCurrentTurn || !currentPlayerId) return
 
     actions.playCard(currentPlayerId, selectedCardId)
     setSelectedCardId(null)
   }
 
-  const handleNapoleonSelect = (playerId: string, napoleonCard?: CardType) => {
-    actions.setNapoleon(playerId, napoleonCard)
+  const handleNapoleonSelect = (
+    _playerId: string,
+    declaration: NapoleonDeclaration
+  ) => {
+    actions.declareNapoleon(declaration)
+  }
+
+  const handleNapoleonPass = (playerId: string) => {
+    actions.passNapoleon(playerId)
+  }
+
+  const handleAdjutantSelect = (adjutantCard: CardType) => {
+    actions.setAdjutant(adjutantCard)
+  }
+
+  const handleCardExchange = (cardsToDiscard: CardType[]) => {
+    if (!currentPlayerId) return
+    actions.exchangeCards(currentPlayerId, cardsToDiscard)
   }
 
   // ゲーム終了時の結果表示
-  if (gameState.phase === 'finished') {
+  if (gameState.phase === GAME_PHASES.FINISHED) {
+    // 12ターン目のトリック結果表示中は結果画面を待機
+    if (gameState.showingTrickResult && gameState.lastCompletedTrick) {
+      console.log('🎯 FINISHED phase - Still showing trick result, waiting...')
+      // トリック結果表示を優先し、ゲーム結果画面は後で表示
+      return (
+        <div className="min-h-screen bg-gray-100 py-4">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-2xl font-bold">Napoleon Game</h1>
+            </div>
+            {/* 12ターン目のトリック結果表示 */}
+            <TrickResult
+              trick={gameState.lastCompletedTrick}
+              players={gameState.players}
+              onContinue={() => actions.closeTrickResult()}
+            />
+          </div>
+        </div>
+      )
+    }
+
     const result = calculateGameResult(gameState)
+    console.log('🎯 FINISHED phase - Showing final game results')
 
     return (
       <div className="min-h-screen bg-gray-100 py-8">
@@ -92,38 +161,42 @@ export default function GamePage() {
                   result.napoleonWon ? 'text-yellow-600' : 'text-blue-600'
                 }`}
               >
-                {result.napoleonWon ? 'Napoleon Team Wins!' : 'Citizens Win!'}
+                {result.napoleonWon
+                  ? 'Napoleon Team Wins!'
+                  : 'Allied Forces Win!'}
               </div>
               <p className="text-gray-600">
-                Napoleon team won {result.tricksWon} out of 12 tricks
+                Napoleon team won {result.faceCardsWon} out of 20 face cards
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              {result.scores.map((score, _index) => {
-                const player = gameState.players.find(
-                  (p) => p.id === score.playerId
+              {gameState.players.map((player) => {
+                const faceCardsWon = getPlayerFaceCardCount(
+                  gameState,
+                  player.id
                 )
+                const isWinner = result.napoleonWon
+                  ? player.isNapoleon || player.isAdjutant
+                  : !player.isNapoleon && !player.isAdjutant
+
                 return (
                   <div
-                    key={score.playerId}
+                    key={player.id}
                     className={`p-4 rounded-lg ${
-                      score.isWinner ? 'bg-green-100' : 'bg-red-100'
+                      isWinner ? 'bg-green-100' : 'bg-red-100'
                     }`}
                   >
-                    <div className="font-semibold">{player?.name}</div>
+                    <div className="font-semibold">{player.name}</div>
                     <div className="text-sm text-gray-600">
-                      {player?.isNapoleon && 'Napoleon'}
-                      {player?.isAdjutant && 'Adjutant'}
-                      {!player?.isNapoleon && !player?.isAdjutant && 'Citizen'}
+                      {player.isNapoleon && 'Napoleon'}
+                      {player.isAdjutant && 'Adjutant'}
+                      {!player.isNapoleon &&
+                        !player.isAdjutant &&
+                        'Allied Forces'}
                     </div>
-                    <div
-                      className={`text-lg font-bold ${
-                        score.points > 0 ? 'text-green-600' : 'text-red-600'
-                      }`}
-                    >
-                      {score.points > 0 ? '+' : ''}
-                      {score.points} points
+                    <div className="text-lg font-bold text-blue-600">
+                      Face Cards Won: {faceCardsWon}
                     </div>
                   </div>
                 )
@@ -148,22 +221,64 @@ export default function GamePage() {
   return (
     <div className="min-h-screen bg-gray-100 py-4">
       <div className="max-w-7xl mx-auto px-4">
-        <h1 className="text-2xl font-bold text-center mb-6">Napoleon Game</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">Napoleon Game</h1>
+          {gameState?.players.some((p) => p.isAI) && (
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = '/'
+              }}
+              className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              ← Home
+            </button>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* メインゲームエリア */}
           <div className="lg:col-span-3 space-y-6">
             {/* ナポレオン選択フェーズ */}
-            {gameState.phase === 'napoleon' && (
+            {gameState.phase === GAME_PHASES.NAPOLEON && (
               <NapoleonSelector
                 players={gameState.players}
                 currentPlayerId={currentPlayerId}
+                currentDeclaration={gameState.napoleonDeclaration}
+                nextDeclarationPlayerId={
+                  getNextDeclarationPlayer(gameState)?.id || null
+                }
                 onNapoleonSelect={handleNapoleonSelect}
+                onPass={handleNapoleonPass}
               />
             )}
 
+            {/* 副官選択フェーズ */}
+            {gameState.phase === GAME_PHASES.ADJUTANT &&
+              currentPlayerId &&
+              gameState.napoleonDeclaration &&
+              gameState.napoleonDeclaration.playerId === currentPlayerId && (
+                <AdjutantSelector
+                  gameState={gameState}
+                  napoleonPlayerId={gameState.napoleonDeclaration.playerId}
+                  onAdjutantSelect={handleAdjutantSelect}
+                />
+              )}
+
+            {/* カード交換フェーズ */}
+            {gameState.phase === GAME_PHASES.EXCHANGE &&
+              currentPlayerId &&
+              gameState.napoleonDeclaration &&
+              gameState.napoleonDeclaration.playerId === currentPlayerId && (
+                <CardExchangeSelector
+                  gameState={gameState}
+                  napoleonPlayerId={gameState.napoleonDeclaration.playerId}
+                  onCardExchange={handleCardExchange}
+                />
+              )}
+
             {/* ゲームボード */}
-            {gameState.phase === 'playing' && (
+            {gameState.phase === GAME_PHASES.PLAYING && (
               <GameBoard
                 gameState={gameState}
                 currentPlayerId={currentPlayerId}
@@ -179,7 +294,6 @@ export default function GamePage() {
                   onCardClick={handleCardClick}
                   selectedCardId={selectedCardId || undefined}
                   playableCardIds={playableCards}
-                  showCards={true}
                 />
 
                 {/* プレイボタン */}
@@ -197,19 +311,67 @@ export default function GamePage() {
               </div>
             )}
 
-            {/* 他のプレイヤーの手札（簡略表示） */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {gameState.players
-                .filter((p) => p.id !== currentPlayerId)
-                .map((player) => (
-                  <div
-                    key={player.id}
-                    className="bg-white p-4 rounded-lg shadow"
-                  >
-                    <PlayerHand player={player} showCards={false} />
-                  </div>
-                ))}
-            </div>
+            {/* 各プレイヤーの取得した絵札表示 */}
+            {gameState.phase === GAME_PHASES.PLAYING && (
+              <div className="bg-white rounded-lg shadow-lg p-4">
+                <h3 className="text-lg font-semibold mb-4">
+                  Face Cards Won by Players
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {gameState.players.map((player) => {
+                    // プレイヤーが獲得した絵札を計算
+                    const wonTricks = gameState.tricks.filter(
+                      (trick) => trick.winnerPlayerId === player.id
+                    )
+                    const faceCards = wonTricks.flatMap((trick) =>
+                      trick.cards
+                        .filter((pc) =>
+                          ['10', 'J', 'Q', 'K', 'A'].includes(pc.card.rank)
+                        )
+                        .map((pc) => pc.card)
+                    )
+
+                    return (
+                      <div key={player.id} className="border rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-semibold">{player.name}</h4>
+                          {player.isNapoleon && (
+                            <span className="px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs font-bold">
+                              Napoleon
+                            </span>
+                          )}
+                          {player.isAdjutant && (
+                            <span className="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs font-bold">
+                              Adjutant
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="text-sm text-gray-600 mb-2">
+                          Face Cards Won: {faceCards.length}
+                        </div>
+
+                        {faceCards.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {faceCards.map((card, index) => (
+                              <Card
+                                key={`${card.id}-${index}`}
+                                card={card}
+                                size="tiny"
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-gray-400 text-sm">
+                            No face cards won yet
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* サイドバー */}
@@ -221,6 +383,34 @@ export default function GamePage() {
           </div>
         </div>
       </div>
+
+      {/* トリック結果表示（PLAYINGフェーズ用） */}
+      {gameState.phase === GAME_PHASES.PLAYING &&
+        gameState.showingTrickResult &&
+        gameState.lastCompletedTrick && (
+          <TrickResult
+            trick={gameState.lastCompletedTrick}
+            players={gameState.players}
+            onContinue={() => actions.closeTrickResult()}
+          />
+        )}
     </div>
+  )
+}
+
+export default function GamePage() {
+  const params = useParams()
+  const searchParams = useSearchParams()
+  const gameId = params.gameId as string
+
+  // URLクエリパラメータを取得
+  const playersParam = searchParams.get('players')
+  const isAI = searchParams.get('ai') === 'true'
+  const playerNames = playersParam ? playersParam.split(',') : undefined
+
+  return (
+    <GameProvider gameId={gameId} playerNames={playerNames} isAI={isAI}>
+      <GamePageContent />
+    </GameProvider>
   )
 }

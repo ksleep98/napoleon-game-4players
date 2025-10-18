@@ -6,10 +6,18 @@ node_modules/
 # Testing
 coverage/
 .nyc_output
+test-results/
+playwright-report/
+playwright-report-develop/
+screenshots/
+vercel-auth-state.json
 
 # Next.js
 .next/
 out/
+
+# Vercel & Cloudflare Pages build output
+.vercel/
 
 # Production build
 build/
@@ -67,3 +75,37 @@ temp/
 
 # Prisma generated
 /generated/prisma
+
+# TypeScript incremental compilation
+*.tsbuildinfo
+
+# Development tools
+.serena/
+.claude/
+
+# Deployment
+.vercel/
+.vercel
+
+# Backup files
+*.bak
+*.backup
+*.orig
+
+# Performance monitoring
+*.perf
+perf-*.json
+
+# Cloudflare Pages
+functions/
+wrangler.toml
+
+# SWC cache
+.swc/
+
+# Husky hooks (auto-generated)
+.husky/_/
+
+# Temporary debug files
+debug-*.log
+trace-*.json

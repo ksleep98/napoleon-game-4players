@@ -8,6 +8,10 @@ permissions:
   pull-requests: write
   contents: read
 
+concurrency:
+  group: pr-description-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   update-pr-description:
     runs-on: ubuntu-latest
@@ -22,7 +26,8 @@ jobs:
         id: changed-files
         uses: tj-actions/changed-files@v42
         with:
-          files_separator: ","
+          files_separator: " "
+          safe_output: false
 
       - name: Generate PR description
         id: generate-description
@@ -54,18 +59,17 @@ jobs:
           doc_count=0
           other_count=0
 
-          IFS=',' read -ra FILES <<< "${{ steps.changed-files.outputs.all_changed_files }}"
+          IFS=' ' read -ra FILES <<< "${{ steps.changed-files.outputs.all_changed_files }}"
+
           for file in "${FILES[@]}"; do
-            if [[ $file == *.ts || $file == *.tsx || $file == *.js || $file == *.jsx ]]; then
-              if [[ $file == *test* || $file == *spec* ]]; then
-                test_count=$((test_count + 1))
-              else
-                js_ts_count=$((js_ts_count + 1))
-              fi
-            elif [[ $file == *.json || $file == *.yml || $file == *.yaml || $file == *config* ]]; then
-              config_count=$((config_count + 1))
+            if [[ $file == tests/* || $file == *test.* || $file == *spec.* ]]; then
+              test_count=$((test_count + 1))
             elif [[ $file == *.md ]]; then
               doc_count=$((doc_count + 1))
+            elif [[ $file == *.ts || $file == *.tsx || $file == *.js || $file == *.jsx ]]; then
+              js_ts_count=$((js_ts_count + 1))
+            elif [[ $file == *.json || $file == *.yml || $file == *.yaml || $file == *config* || $file == *.lock ]]; then
+              config_count=$((config_count + 1))
             else
               other_count=$((other_count + 1))
             fi
@@ -92,26 +96,51 @@ jobs:
           fi
           echo "" >> pr_description.md
 
-          # Detailed file list
+          # Detailed file list - カテゴリ別に整理
           echo "<details>" >> pr_description.md
           echo "<summary>📋 Detailed File List</summary>" >> pr_description.md
           echo "" >> pr_description.md
 
-          for file in "${FILES[@]}"; do
-            if [[ $file == *.ts || $file == *.tsx || $file == *.js || $file == *.jsx ]]; then
-              echo "- 🔧 \`$file\`" >> pr_description.md
-            elif [[ $file == *test* || $file == *spec* ]]; then
-              echo "- 🧪 \`$file\`" >> pr_description.md
-            elif [[ $file == *.json || $file == *.yml || $file == *.yaml ]]; then
-              echo "- ⚙️ \`$file\`" >> pr_description.md
-            elif [[ $file == *.md ]]; then
-              echo "- 📚 \`$file\`" >> pr_description.md
-            else
-              echo "- 📄 \`$file\`" >> pr_description.md
-            fi
-          done
-
+          # Tests
+          echo "#### 🧪 Tests" >> pr_description.md
           echo "" >> pr_description.md
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -E '^tests/|\.test\.|\.spec\.' | while read -r file; do
+            [ -n "$file" ] && echo "- \`$file\`" >> pr_description.md
+          done
+          echo "" >> pr_description.md
+
+          # Documentation
+          echo "#### 📚 Documentation" >> pr_description.md
+          echo "" >> pr_description.md
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep '\.md$' | while read -r file; do
+            [ -n "$file" ] && echo "- \`$file\`" >> pr_description.md
+          done
+          echo "" >> pr_description.md
+
+          # Source Code
+          echo "#### 🔧 Source Code" >> pr_description.md
+          echo "" >> pr_description.md
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -E '\.(ts|tsx|js|jsx)$' | grep -v -E '^tests/|\.test\.|\.spec\.' | while read -r file; do
+            [ -n "$file" ] && echo "- \`$file\`" >> pr_description.md
+          done
+          echo "" >> pr_description.md
+
+          # Configuration
+          echo "#### ⚙️ Configuration" >> pr_description.md
+          echo "" >> pr_description.md
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -E '\.(json|yml|yaml|lock)$|config' | while read -r file; do
+            [ -n "$file" ] && echo "- \`$file\`" >> pr_description.md
+          done
+          echo "" >> pr_description.md
+
+          # Other Files
+          echo "#### 📄 Other Files" >> pr_description.md
+          echo "" >> pr_description.md
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -v -E '\.(ts|tsx|js|jsx|md|json|yml|yaml|lock)$|config|^tests/|\.test\.|\.spec\.' | while read -r file; do
+            [ -n "$file" ] && echo "- \`$file\`" >> pr_description.md
+          done
+          echo "" >> pr_description.md
+
           echo "</details>" >> pr_description.md
           echo "" >> pr_description.md
 
@@ -120,13 +149,14 @@ jobs:
           echo "" >> pr_description.md
 
           if [ $js_ts_count -gt 0 ]; then
-            if echo "$ts_js_files" | grep -q "test\\|spec"; then
+            changed_files="${{ steps.changed-files.outputs.all_changed_files }}"
+            if echo "$changed_files" | grep -q "test\\|spec"; then
               echo "- 🧪 **Tests** - Test files modified/added" >> pr_description.md
             fi
-            if echo "$ts_js_files" | grep -q "src/lib/gameLogic.ts\\|src/lib/scoring.ts"; then
+            if echo "$changed_files" | grep -q "src/lib/gameLogic.ts\\|src/lib/scoring.ts"; then
               echo "- 🎮 **Game Logic** - Core game functionality updated" >> pr_description.md
             fi
-            if echo "$ts_js_files" | grep -q "component\\|ui\\|page"; then
+            if echo "$changed_files" | grep -q "component\\|ui\\|page"; then
               echo "- 💄 **UI/UX** - User interface improvements" >> pr_description.md
             fi
           fi
@@ -170,8 +200,8 @@ jobs:
             echo "" >> pr_description.md
             echo "\`\`\`bash" >> pr_description.md
             echo "git checkout ${{ github.head_ref }}" >> pr_description.md
-            echo "npm install" >> pr_description.md
-            echo "npm run dev" >> pr_description.md
+            echo "pnpm install" >> pr_description.md
+            echo "pnpm dev" >> pr_description.md
             echo "# Visit http://localhost:3000" >> pr_description.md
             echo "\`\`\`" >> pr_description.md
             echo "" >> pr_description.md
@@ -181,10 +211,10 @@ jobs:
           echo "" >> pr_description.md
           echo "*🤖 This description was automatically generated from code changes*" >> pr_description.md
 
-          # Set output for next step - escape for JSON
+          # Set output for next step - proper JSON escaping
           {
             echo 'pr_body<<EOF'
-            cat pr_description.md | sed 's/`/\\`/g' | sed 's/\$/\\$/g'
+            cat pr_description.md
             echo EOF
           } >> $GITHUB_OUTPUT
 

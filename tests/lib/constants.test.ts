@@ -1,4 +1,5 @@
 import {
+  CARD_RANKS,
   CARD_VALUES,
   createDeck,
   createGameDeck,
@@ -45,13 +46,13 @@ describe('Constants', () => {
 
     it('should not contain any 2s', () => {
       const gameDeck = createGameDeck()
-      const twos = gameDeck.filter((card) => card.rank === '2')
+      const twos = gameDeck.filter((card) => card.rank === CARD_RANKS.TWO)
       expect(twos).toHaveLength(0)
     })
 
     it('should contain all other ranks', () => {
       const gameDeck = createGameDeck()
-      const ranksExcluding2s = RANKS.filter((rank) => rank !== '2')
+      const ranksExcluding2s = RANKS.filter((rank) => rank !== CARD_RANKS.TWO)
 
       SUITS.forEach((suit) => {
         ranksExcluding2s.forEach((rank) => {
@@ -68,7 +69,7 @@ describe('Constants', () => {
       expect(GAME_CONFIG.CARDS_PER_PLAYER).toBe(12)
       expect(GAME_CONFIG.TOTAL_CARDS_USED).toBe(52)
       expect(GAME_CONFIG.HIDDEN_CARDS).toBe(4)
-      expect(GAME_CONFIG.TARGET_TRICKS).toBe(8)
+      expect(GAME_CONFIG.TARGET_FACE_CARDS).toBe(13)
     })
 
     it('should have mathematically correct card distribution', () => {

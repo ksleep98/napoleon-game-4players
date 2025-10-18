@@ -13,10 +13,15 @@
 ```
 tests/
 ├── lib/
-│   ├── cardUtils.test.ts      # カードユーティリティ
-│   ├── constants.test.ts      # 定数・デッキ生成
-│   ├── gameLogic.test.ts      # ゲームロジック
-│   └── scoring.test.ts        # スコア計算
+│   ├── cardUtils.test.ts               # カードユーティリティ
+│   ├── constants.test.ts               # 定数・デッキ生成
+│   ├── gameLogic.test.ts               # ゲームロジック
+│   ├── scoring.test.ts                 # スコア計算
+│   └── supabase/
+│       ├── client.test.ts              # Supabaseセッション管理
+│       ├── client-functions.test.ts    # 実関数テスト
+│       ├── session-management.test.ts  # RLS修正確認
+│       └── environment.test.ts         # 環境設定テスト
 ```
 
 ## 実装済みテスト
@@ -48,13 +53,42 @@ tests/
 - `isGameDecided()` - 勝敗確定判定
 - `calculateGameResult()` - 最終結果計算
 
+### Supabase関連テスト (新規追加)
+
+#### client.test.ts
+
+- `setPlayerSession()` - ローカルストレージへの保存
+- `getPlayerSession()` - セッション情報取得
+- 統合テスト - 保存・取得の一貫性
+- パフォーマンステスト - 大量処理の検証
+- エラーハンドリング - ストレージエラー対応
+- SSR対応 - window非存在環境での動作
+
+#### client-functions.test.ts
+
+- 実関数呼び出しテスト
+- 型安全性確認
+- モック環境での動作確認
+
+#### session-management.test.ts
+
+- RLS修正による動作確認
+- ローカルストレージベースセッション管理
+- 開発環境での安全な動作
+
+#### environment.test.ts
+
+- 環境変数設定テスト
+- Supabase接続設定確認
+- 開発・本番環境の切り分け
+
 ## テスト結果
 
 ```
-Test Suites: 4 passed, 4 total
-Tests:       34 passed, 34 total
+Test Suites: 8 passed, 8 total
+Tests:       75 passed, 75 total
 Snapshots:   0 total
-Time:        ~400ms
+Time:        ~800ms
 ```
 
 ## 特記事項
@@ -75,11 +109,11 @@ Time:        ~400ms
 
 ```bash
 # 全テスト実行
-npm test
+pnpm test
 
 # ウォッチモード
-npm run test:watch
+pnpm test:watch
 
 # カバレッジレポート
-npm run test:coverage
+pnpm test:coverage
 ```

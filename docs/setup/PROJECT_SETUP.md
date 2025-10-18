@@ -6,7 +6,7 @@
 - フレームワーク: Next.js 15.4 (App Router)
 - UI ライブラリ: React 19.x
 - スタイリング: Tailwind CSS
-- データベース: Prisma ORM (SQLite)
+- データベース: Supabase (PostgreSQL)
 - テストフレームワーク: Jest + React Testing Library
 - コード品質: Biome (Linter + Formatter)
 - エディター設定: .editorconfig
@@ -14,43 +14,62 @@
 ## 環境要件
 
 - Node.js 22.14.0（現在使用中）
-- npm（パッケージマネージャー）
+- pnpm（パッケージマネージャー - 高速・効率的）
 - VSCode エディタ推奨
 
 ## 推奨 VSCode 拡張
 
 - Biome (biomejs.biome)
 - Tailwind CSS IntelliSense (bradlc.vscode-tailwindcss)
-- Prisma (Prisma.prisma)
+
+## プロジェクト最適化済み
+
+### 🗑️ 削除された不要ファイル
+
+- `docs/database/PERFORMANCE_SETUP.md` (重複)
+- `docs/CODING_STANDARDS.md` (重複)
+- `src/lib/supabase/schema.sql` (古いスキーマファイル)
+- `scripts/kill-port-3000.js` (未使用スクリプト)
+- `.github/workflows/.vscode-settings` (誤配置ファイル)
+
+### 📦 パッケージ最適化
+
+- **削除**: `critters`, `vercel` (未使用依存関係)
+- **現在**: 37パッケージに最適化済み
+- **効果**: 依存関係軽量化・メンテナンス性向上
+
+### ⚡ パフォーマンス最適化
+
+- PostgreSQL関数統合による50-120ms改善
+- Vercel日本リージョン対応
+- 詳細: [データベースパフォーマンス設定](../database/DATABASE_PERFORMANCE_SETUP.md)
 
 ## 初期セットアップコマンド
 
 ```bash
 # プロジェクト初期化
 mkdir -p src tests docs
-npm init -y
+pnpm init
 
 # Next.js + TypeScript セットアップ
-npm install next@15.4 react@latest react-dom@latest
-npm install -D typescript @types/react @types/react-dom @types/node
+pnpm install next@15.4 react@latest react-dom@latest
+pnpm install -D typescript @types/react @types/react-dom @types/node
 
 # Tailwind CSS セットアップ
-npm install -D tailwindcss postcss autoprefixer
+pnpm install -D tailwindcss postcss autoprefixer
 
-# Prisma ORM セットアップ
-npm install -D prisma
-npm install @prisma/client
-npx prisma init
+# Supabase セットアップ
+pnpm install @supabase/supabase-js
 
 # Jest テストセットアップ
-npm install -D jest @types/jest jest-environment-jsdom @testing-library/react @testing-library/jest-dom @testing-library/dom
+pnpm install -D jest @types/jest jest-environment-jsdom @testing-library/react @testing-library/jest-dom @testing-library/dom
 
 # Biome セットアップ (ESLint/Prettier代替)
-npm install -D @biomejs/biome
+pnpm install -D @biomejs/biome
 npx @biomejs/biome init
 
 # Husky + lint-staged セットアップ
-npm install -D husky lint-staged
+pnpm install -D husky lint-staged
 npx husky init
 ```
 
@@ -66,11 +85,11 @@ npx husky init
 - ✅ .gitignore - Git 除外設定
 - ✅ docs/CODING_STANDARDS.md - コーディング規約
 - ✅ src/app/ - Next.js App Router 構成
-- ✅ prisma/schema.prisma - データベーススキーマ
+- ✅ src/lib/supabase/ - Supabase統合・リアルタイム同期・データベーススキーマ
 
 ## インストール手順
 
 1. リポジトリクローン
-2. `npm install` で依存関係解決
-3. 開発サーバー起動: `npm run dev`
+2. `pnpm install` で依存関係解決
+3. 開発サーバー起動: `pnpm dev`
 4. http://localhost:3000 でアクセス確認

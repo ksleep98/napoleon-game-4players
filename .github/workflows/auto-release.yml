@@ -101,8 +101,8 @@ jobs:
           echo "\`\`\`bash" >> release_notes.md
           echo "git clone https://github.com/${{ github.repository }}.git" >> release_notes.md
           echo "cd napoleon-game-4players" >> release_notes.md
-          echo "npm install" >> release_notes.md
-          echo "npm run dev" >> release_notes.md
+          echo "pnpm install" >> release_notes.md
+          echo "pnpm dev" >> release_notes.md
           echo "\`\`\`" >> release_notes.md
           echo "" >> release_notes.md
 

@@ -1,0 +1,66 @@
+# 本番環境E2Eテスト（オプション）
+name: E2E Production Tests
+
+on:
+  # 本番デプロイ後に実行
+  workflow_run:
+    workflows: ["Deploy to Production"]
+    types:
+      - completed
+    branches: [main]
+
+  # 手動実行も可能
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: "Target URL to test"
+        required: true
+        default: "https://your-app.vercel.app"
+
+jobs:
+  e2e-production:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Setup Node.js with cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.14.0"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run E2E tests against production
+        env:
+          # 本番環境のURL
+          PLAYWRIGHT_BASE_URL: ${{ github.event.inputs.target_url || 'https://your-app.vercel.app' }}
+          # webServerを無効化（本番URLを使用）
+          PLAYWRIGHT_SKIP_WEBSERVER: "1"
+          # Skip E2E tests temporarily until Vercel production environment is ready
+          SKIP_E2E_TESTS: "true"
+        run: |
+          echo "🌐 Testing against: $PLAYWRIGHT_BASE_URL"
+          pnpm test:e2e:ci:local
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-e2e-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 30

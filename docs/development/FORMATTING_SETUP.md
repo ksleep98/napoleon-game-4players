@@ -71,17 +71,17 @@ Biome中心の統一的なコードフォーマット環境の設定と使用方
 
 ```bash
 # Biome: JS/TS/JSONファイルのリント・フォーマット
-npm run lint          # リント検証
-npm run lint:fix       # 自動修正
-npm run format         # フォーマット実行
-npm run format:check   # フォーマット検証
+pnpm lint          # リント検証
+pnpm lint:fix       # 自動修正
+pnpm format         # フォーマット実行
+pnpm format:check   # フォーマット検証
 
 # Prettier: YAML/Markdownファイルのフォーマット
-npm run format:other   # フォーマット実行
-npm run format:other:check  # フォーマット検証
+pnpm format:other   # フォーマット実行
+pnpm format:other:check  # フォーマット検証
 
 # 全体チェック
-npm run ci-check       # 全ファイル品質検証
+pnpm ci-check       # 全ファイル品質検証
 ```
 
 ### 自動実行（pre-commit）
@@ -185,9 +185,9 @@ module.exports = {
 # GitHub Actions例
 - name: Check formatting
   run: |
-    npm run lint           # Biome検証
-    npm run format:check   # Biome フォーマット検証  
-    npm run format:other:check  # Prettier検証
+    pnpm lint           # Biome検証
+    pnpm format:check   # Biome フォーマット検証
+    pnpm format:other:check  # Prettier検証
 ```
 
 ### トラブルシューティング
@@ -206,7 +206,7 @@ cat .vscode/settings.json
 
 ```bash
 # Biome再インストール
-npm install @biomejs/biome@latest
+pnpm install @biomejs/biome@latest
 npx @biomejs/biome --version
 ```
 
