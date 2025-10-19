@@ -26,6 +26,8 @@ dist/
 # Environment variables
 .env
 .env*.local
+.env.production
+!.env.production.example  # Track safe template only
 
 # Database
 *.db
