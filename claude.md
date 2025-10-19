@@ -117,6 +117,17 @@ pnpm cleanup:smart  # 手動スマート版（GitHub CLI連携）
 - **統計機能**: プレイヤー履歴・戦績
 - **本番環境**: RLS有効化・セキュリティ強化
 
+## セキュリティ
+
+### 環境変数管理
+
+**⚠️ 重要**: 本番環境の認証情報は絶対にGitにコミットしないでください。
+
+- ✅ `.env.example`, `.env.production.example` のみGit追跡
+- ❌ `.env`, `.env.local`, `.env.production` はGit追跡禁止
+- 本番環境の認証情報は**Vercel環境変数のみ**で管理
+- 詳細: [環境変数セキュリティガイド](./docs/security/ENVIRONMENT_VARIABLES.md)
+
 ## 開発ルール
 
 ### コード規約
