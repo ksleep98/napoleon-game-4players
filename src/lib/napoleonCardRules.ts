@@ -61,30 +61,88 @@ export function isHeartQueen(card: Card): boolean {
 
 /**
  * 対応する狩りJペアかどうかを判定
- * - スペードJ（切り札）とハートJ（最弱）
- * - クラブJ（切り札）とダイヤJ（最弱）
+ * 裏スート関係にあるJ同士（片方が切り札J）
+ * - スペードJ（切り札）とクラブJ（裏J）
+ * - クラブJ（切り札）とスペードJ（裏J）
+ * - ハートJ（切り札）とダイヤJ（裏J）
+ * - ダイヤJ（切り札）とハートJ（裏J）
+ */
+/**
+ * 対応する狩りJペアかどうかを判定
+ *
+ * 狩りJのルール：
+ * - 表J（切り札J）とその狩J（表Jの裏スートのJ）
+ * - 裏J（裏スートJ）とその狩J（裏Jの裏スートのJ）
+ *
+ * 例：クラブが切り札の場合
+ * - 表J: ♣J、その狩J: ♦J（♣Jの裏スート）
+ * - 裏J: ♠J、その狩J: ♥J（♠Jの裏スート）
+ *
+ * COUNTER_SUITS定義：
+ * - spades ↔ clubs
+ * - hearts ↔ diamonds
+ */
+/**
+ * 対応する狩りJペアかどうかを判定
+ *
+ * 狩りJのルール：
+ * スートペア1: spades ↔ clubs
+ * スートペア2: hearts ↔ diamonds
+ *
+ * - 表J（切り札J）とその狩J（別ペアのスートで、表Jでも裏JでもないJ）
+ * - 裏J（裏スートJ）とその狩J（別ペアのスートで、表Jでも裏Jでもないj）
+ *
+ * 例：クラブが切り札の場合
+ * - 表J: ♣J（ペア1）、その狩J: ♦J（ペア2）
+ * - 裏J: ♠J（ペア1）、その狩J: ♥J（ペア2）
+ *
+ * 例：ダイヤが切り札の場合
+ * - 表J: ♦J（ペア2）、その狩J: ♣J（ペア1）
+ * - 裏J: ♥J（ペア2）、その狩J: ♠J（ペア1）
  */
 export function isHuntingJackPair(
   card1: Card,
   card2: Card,
   trumpSuit: Suit
 ): boolean {
-  const pairs = [
-    ['spades', 'hearts'],
-    ['clubs', 'diamonds'],
-  ]
-
-  for (const [suit1, suit2] of pairs) {
-    if (
-      ((card1.suit === suit1 && card2.suit === suit2) ||
-        (card1.suit === suit2 && card2.suit === suit1)) &&
-      card1.rank === CARD_RANKS.JACK &&
-      card2.rank === CARD_RANKS.JACK
-    ) {
-      // どちらかが切り札Jである必要がある
-      return card1.suit === trumpSuit || card2.suit === trumpSuit
-    }
+  // 両方Jでない場合はfalse
+  if (card1.rank !== CARD_RANKS.JACK || card2.rank !== CARD_RANKS.JACK) {
+    return false
   }
+
+  // スートペアを判定する関数
+  // ペア1: spades/clubs, ペア2: hearts/diamonds
+  const getPairGroup = (suit: Suit): 1 | 2 => {
+    return suit === 'spades' || suit === 'clubs' ? 1 : 2
+  }
+
+  const card1Pair = getPairGroup(card1.suit)
+  const card2Pair = getPairGroup(card2.suit)
+
+  // 別ペアでない場合はfalse
+  if (card1Pair === card2Pair) {
+    return false
+  }
+
+  // 表J（切り札J）とその狩Jのペア
+  if (isTrumpJack(card1, trumpSuit)) {
+    // card2が表Jでも裏Jでもないことを確認
+    return !isTrumpJack(card2, trumpSuit) && !isCounterJack(card2, trumpSuit)
+  }
+
+  if (isTrumpJack(card2, trumpSuit)) {
+    return !isTrumpJack(card1, trumpSuit) && !isCounterJack(card1, trumpSuit)
+  }
+
+  // 裏J（裏スートJ）とその狩Jのペア
+  if (isCounterJack(card1, trumpSuit)) {
+    return !isTrumpJack(card2, trumpSuit) && !isCounterJack(card2, trumpSuit)
+  }
+
+  if (isCounterJack(card2, trumpSuit)) {
+    return !isTrumpJack(card1, trumpSuit) && !isCounterJack(card1, trumpSuit)
+  }
+
   return false
 }
 
@@ -208,6 +266,13 @@ export function checkYoromekiRule(
 /**
  * 狩りJルールの判定
  */
+/**
+ * 狩りJルールの判定
+ *
+ * 狩りJルール：
+ * - 表J or 裏J と 狩J（別ペアの普通のJ）が同じトリックにある場合
+ * - 狩J（最弱のJ）が勝利する
+ */
 export function checkHuntingJackRule(
   trick: Trick,
   trumpSuit: Suit
@@ -237,8 +302,12 @@ export function checkHuntingJackRule(
         const hasMighty = trick.cards.some((pc) => isMighty(pc.card))
         if (hasMighty) return null
 
-        // 最弱Jを返す（切り札でない方）
-        return isTrumpJack(jack1.card, trumpSuit) ? jack2 : jack1
+        // 狩Jを返す（表Jでも裏Jでもない方）
+        const isJack1TrumpOrCounter =
+          isTrumpJack(jack1.card, trumpSuit) ||
+          isCounterJack(jack1.card, trumpSuit)
+
+        return isJack1TrumpOrCounter ? jack2 : jack1
       }
     }
   }
