@@ -12,28 +12,27 @@ jobs:
     name: Keep Development Supabase Active
     runs-on: ubuntu-latest
     steps:
-      - name: Query Development Database
+      - name: Health Check Development Database
         continue-on-error: true
         run: |
-          echo "Querying development database..."
+          echo "Health checking development database..."
 
-          # playersテーブルに簡単なクエリを実行
+          # health_check RPC関数を呼び出し（RLSの影響を受けない）
           RESPONSE=$(curl -s -w "\n%{http_code}" \
             -H "apikey: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
             -H "Authorization: Bearer ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
-            "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/players?select=id&limit=1")
+            "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/rpc/health_check")
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | sed '$d')
 
           echo "Response code: $HTTP_CODE"
+          echo "Response: $BODY"
 
           if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-            echo "✅ Development database query successful"
-            echo "Response: $BODY"
+            echo "✅ Development database health check successful"
           else
-            echo "⚠️ Development database query returned status $HTTP_CODE"
-            echo "Response: $BODY"
+            echo "⚠️ Development database health check returned status $HTTP_CODE"
             exit 1
           fi
 
@@ -41,28 +40,27 @@ jobs:
     name: Keep Production Supabase Active
     runs-on: ubuntu-latest
     steps:
-      - name: Query Production Database
+      - name: Health Check Production Database
         continue-on-error: true
         run: |
-          echo "Querying production database..."
+          echo "Health checking production database..."
 
-          # playersテーブルに簡単なクエリを実行
+          # health_check RPC関数を呼び出し（RLSの影響を受けない）
           RESPONSE=$(curl -s -w "\n%{http_code}" \
             -H "apikey: ${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
             -H "Authorization: Bearer ${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
-            "${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/players?select=id&limit=1")
+            "${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/rpc/health_check")
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | sed '$d')
 
           echo "Response code: $HTTP_CODE"
+          echo "Response: $BODY"
 
           if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-            echo "✅ Production database query successful"
-            echo "Response: $BODY"
+            echo "✅ Production database health check successful"
           else
-            echo "⚠️ Production database query returned status $HTTP_CODE"
-            echo "Response: $BODY"
+            echo "⚠️ Production database health check returned status $HTTP_CODE"
             exit 1
           fi
 
