@@ -1,0 +1,115 @@
+name: Supabase Keep-Alive
+
+on:
+  # 毎週月曜日の午前9時（UTC）= 日本時間18時に実行
+  schedule:
+    - cron: "0 9 * * 1"
+  # 手動実行も可能
+  workflow_dispatch:
+
+jobs:
+  keep-alive-development:
+    name: Keep Development Supabase Active
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Development Supabase
+        run: |
+          echo "Pinging development Supabase instance..."
+
+          # Supabase REST APIにアクセス
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -H "apikey: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "Response code: $HTTP_CODE"
+          echo "Response body: $BODY"
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✅ Development Supabase is active"
+          else
+            echo "⚠️ Development Supabase returned status $HTTP_CODE"
+          fi
+
+      - name: Query Development Database
+        run: |
+          echo "Querying development database..."
+
+          # playersテーブルに簡単なクエリを実行
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -H "apikey: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/players?select=id&limit=1")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✅ Development database query successful"
+          else
+            echo "⚠️ Development database query returned status $HTTP_CODE"
+          fi
+
+  keep-alive-production:
+    name: Keep Production Supabase Active
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Production Supabase
+        run: |
+          echo "Pinging production Supabase instance..."
+
+          # Supabase REST APIにアクセス
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -H "apikey: ${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            "${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "Response code: $HTTP_CODE"
+          echo "Response body: $BODY"
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✅ Production Supabase is active"
+          else
+            echo "⚠️ Production Supabase returned status $HTTP_CODE"
+          fi
+
+      - name: Query Production Database
+        run: |
+          echo "Querying production database..."
+
+          # playersテーブルに簡単なクエリを実行
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -H "apikey: ${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            "${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/players?select=id&limit=1")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✅ Production database query successful"
+          else
+            echo "⚠️ Production database query returned status $HTTP_CODE"
+          fi
+
+  notify:
+    name: Send Notification
+    runs-on: ubuntu-latest
+    needs: [keep-alive-development, keep-alive-production]
+    if: always()
+    steps:
+      - name: Check Results
+        run: |
+          echo "Keep-alive workflow completed"
+          echo "Development status: ${{ needs.keep-alive-development.result }}"
+          echo "Production status: ${{ needs.keep-alive-production.result }}"
+
+          if [ "${{ needs.keep-alive-development.result }}" == "success" ] && [ "${{ needs.keep-alive-production.result }}" == "success" ]; then
+            echo "✅ All Supabase instances are active"
+          else
+            echo "⚠️ Some Supabase instances may have issues"
+          fi
