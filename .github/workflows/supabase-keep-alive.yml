@@ -12,29 +12,8 @@ jobs:
     name: Keep Development Supabase Active
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Development Supabase
-        run: |
-          echo "Pinging development Supabase instance..."
-
-          # Supabase REST APIにアクセス
-          RESPONSE=$(curl -s -w "\n%{http_code}" \
-            -H "apikey: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
-            "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/")
-
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-          BODY=$(echo "$RESPONSE" | sed '$d')
-
-          echo "Response code: $HTTP_CODE"
-          echo "Response body: $BODY"
-
-          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-            echo "✅ Development Supabase is active"
-          else
-            echo "⚠️ Development Supabase returned status $HTTP_CODE"
-          fi
-
       - name: Query Development Database
+        continue-on-error: true
         run: |
           echo "Querying development database..."
 
@@ -45,40 +24,25 @@ jobs:
             "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/players?select=id&limit=1")
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "Response code: $HTTP_CODE"
 
           if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
             echo "✅ Development database query successful"
+            echo "Response: $BODY"
           else
             echo "⚠️ Development database query returned status $HTTP_CODE"
+            echo "Response: $BODY"
+            exit 1
           fi
 
   keep-alive-production:
     name: Keep Production Supabase Active
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Production Supabase
-        run: |
-          echo "Pinging production Supabase instance..."
-
-          # Supabase REST APIにアクセス
-          RESPONSE=$(curl -s -w "\n%{http_code}" \
-            -H "apikey: ${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
-            "${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/")
-
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-          BODY=$(echo "$RESPONSE" | sed '$d')
-
-          echo "Response code: $HTTP_CODE"
-          echo "Response body: $BODY"
-
-          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-            echo "✅ Production Supabase is active"
-          else
-            echo "⚠️ Production Supabase returned status $HTTP_CODE"
-          fi
-
       - name: Query Production Database
+        continue-on-error: true
         run: |
           echo "Querying production database..."
 
@@ -89,11 +53,17 @@ jobs:
             "${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/players?select=id&limit=1")
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "Response code: $HTTP_CODE"
 
           if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
             echo "✅ Production database query successful"
+            echo "Response: $BODY"
           else
             echo "⚠️ Production database query returned status $HTTP_CODE"
+            echo "Response: $BODY"
+            exit 1
           fi
 
   notify:
