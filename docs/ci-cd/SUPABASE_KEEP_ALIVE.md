@@ -11,15 +11,25 @@ Supabase無料プランでは、1週間アクセスがないとインスタン�
 ## 動作内容
 
 1. **開発環境Supabase**へアクセス
-   - REST APIにpingを送信
-   - データベースクエリを実行
+   - データベースクエリを実行（`players`テーブルへのSELECTクエリ）
+   - インスタンスを起動・維持
 
 2. **本番環境Supabase**へアクセス
-   - REST APIにpingを送信
-   - データベースクエリを実行
+   - データベースクエリを実行（`players`テーブルへのSELECTクエリ）
+   - インスタンスを起動・維持
 
 3. **結果通知**
    - 各環境のステータスをログに出力
+   - 一方の環境が失敗しても全体のワークフローは継続（`continue-on-error: true`）
+
+### 実装の変更履歴
+
+**v1.1 (2025-10-25)**: ワークフロー簡素化
+
+- REST API root endpoint (`/rest/v1/`) へのアクセスを削除（401エラー回避）
+- データベーステーブルクエリのみに変更（インスタンス起動に十分）
+- `continue-on-error: true` を追加（片方の環境失敗でも全体は継続）
+- レスポンスボディのロギング追加（デバッグ情報強化）
 
 ## GitHub Secrets 設定
 
@@ -71,6 +81,30 @@ Supabase無料プランでは、1週間アクセスがないとインスタン�
 4. `Project URL` をコピー → GitHub Secretsに `PROD_NEXT_PUBLIC_SUPABASE_URL` として追加
 5. `anon public` キーをコピー → GitHub Secretsに `PROD_NEXT_PUBLIC_SUPABASE_ANON_KEY` として追加
 
+## 自動セットアップスクリプト
+
+環境変数ファイルから自動的にGitHub Secretsを設定できます：
+
+```bash
+# スクリプトに実行権限を付与
+chmod +x scripts/setup-supabase-secrets.sh
+
+# GitHub Secretsを自動設定
+./scripts/setup-supabase-secrets.sh
+```
+
+このスクリプトは以下を実行します：
+
+1. `.env.local` から開発環境の変数を読み込み
+2. `.env.production` から本番環境の変数を読み込み
+3. GitHub CLI (`gh`) を使用して自動的にSecretsを設定
+
+**前提条件**:
+
+- GitHub CLI (`gh`) がインストール済み
+- リポジトリへの認証済み
+- `.env.local` と `.env.production` に正しい値が設定済み
+
 ## 手動実行方法
 
 1. GitHubリポジトリページへ移動
@@ -78,6 +112,12 @@ Supabase無料プランでは、1週間アクセスがないとインスタン�
 3. 左サイドバーから `Supabase Keep-Alive` を選択
 4. `Run workflow` ボタンをクリック
 5. `Run workflow` を確認
+
+**コマンドラインからの実行**:
+
+```bash
+gh workflow run supabase-keep-alive.yml
+```
 
 ## トラブルシューティング
 
@@ -91,7 +131,16 @@ Supabase無料プランでは、1週間アクセスがないとインスタン�
 2. Supabase Dashboardで正しいURLとキーを確認
 3. Secretsを更新
 
-### エラー: "401 Unauthorized"
+### エラー: "401 Unauthorized" (REST API root endpoint)
+
+**原因**: REST API root endpoint (`/rest/v1/`) へのアクセスは`anon key`では許可されていません。
+
+**解決方法**:
+
+- **v1.1以降では修正済み**: データベーステーブルクエリのみを使用するため、この問題は発生しません
+- 古いバージョンを使用している場合は、ワークフローを最新版に更新してください
+
+### エラー: "401 Unauthorized" (データベースクエリ)
 
 **原因**: APIキーが無効または期限切れの可能性があります。
 
@@ -99,7 +148,7 @@ Supabase無料プランでは、1週間アクセスがないとインスタン�
 
 1. Supabase Dashboardでanon keyを再確認
 2. 必要に応じてキーを再生成
-3. GitHub Secretsを更新
+3. GitHub Secretsを更新（`./scripts/setup-supabase-secrets.sh` で自動更新可能）
 
 ### エラー: "PGRST116"（テーブルが見つからない）
 
@@ -138,8 +187,34 @@ schedule:
 - **anon key は公開可能**: anon keyは公開されても問題ありませんが、Secretsとして管理することを推奨
 - **RLSポリシー**: データベースのRow Level Security (RLS)が適切に設定されていることを確認
 
+## テスト結果
+
+### 最終テスト (2025-10-25)
+
+**テスト環境**:
+
+- GitHub Actions Workflow ID: 18803035447
+- 実行時間: 24秒
+- ステータス: ✅ Success
+
+**結果**:
+
+- ✅ 開発環境: データベースクエリ成功
+- ✅ 本番環境: データベースクエリ成功
+
+**確認コマンド**:
+
+```bash
+# 最新の実行状況を確認
+gh run list --workflow=supabase-keep-alive.yml --limit 5
+
+# 特定の実行のログを確認
+gh run view <RUN_ID> --log
+```
+
 ## 参考リンク
 
 - [Supabase Documentation - Pausing and Resuming](https://supabase.com/docs/guides/platform/pause-and-resume)
 - [GitHub Actions - Scheduled Events](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#schedule)
 - [Cron Expression Generator](https://crontab.guru/)
+- [GitHub CLI Documentation](https://cli.github.com/manual/)
