@@ -110,7 +110,7 @@ jobs:
       - name: Run E2E tests on production
         run: pnpm test:e2e:production
         env:
-          PLAYWRIGHT_BASE_URL: https://napoleon-game-4players.vercel.app
+          PLAYWRIGHT_BASE_URL: https://napoleon-game.vercel.app
           SKIP_E2E_TESTS: false
 
       - name: Upload E2E test results
@@ -132,5 +132,5 @@ jobs:
       - name: Production deployment success
         run: |
           echo "🚀 Production deployment completed successfully!"
-          echo "🔗 Production URL: https://napoleon-game-4players.vercel.app"
+          echo "🔗 Production URL: https://napoleon-game.vercel.app"
           echo "✅ All tests passed"
