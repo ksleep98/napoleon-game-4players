@@ -4,11 +4,95 @@ on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened]
+  deployment_status:
 
 jobs:
-  deploy-preview:
+  comment-preview-url:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.head.ref == 'develop'
+    if: |
+      github.event.pull_request.head.ref == 'develop' &&
+      github.event_name == 'deployment_status' &&
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment_status.environment == 'Preview'
+
+    steps:
+      - name: Comment PR with Preview URL
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const deploymentUrl = '${{ github.event.deployment_status.target_url }}';
+
+            const body = `## 🚀 Vercel Preview Deployment (Production Config)
+
+            ✅ **Preview URL**: ${deploymentUrl}
+
+            ### 設定
+            - 本番環境の設定を使用
+            - Vercelの自動デプロイメント
+            - Vercel環境変数を適用
+
+            ### テスト方法
+            1. 上記URLにアクセス
+            2. 本番環境と同じ動作を確認
+            3. 問題なければこのPRをマージ
+
+            ### 📊 デプロイメント情報
+            - Environment: ${{ github.event.deployment_status.environment }}
+            - State: ${{ github.event.deployment_status.state }}
+            - Deployed from: \`${{ github.event.pull_request.head.ref }}\`
+
+            ---
+            _⚡ Deployed by Vercel_`;
+
+            // Get PR number from deployment
+            const prNumber = context.payload.deployment.payload.pr_number ||
+                           context.issue.number;
+
+            if (!prNumber) {
+              console.log('No PR number found, skipping comment');
+              return;
+            }
+
+            // Check if we already commented
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+
+            const botComment = comments.data.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('Vercel Preview Deployment (Production Config)')
+            );
+
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+              console.log(`Updated comment ${botComment.id}`);
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: body
+              });
+              console.log(`Created new comment on PR #${prNumber}`);
+            }
+
+  run-e2e-tests:
+    runs-on: ubuntu-latest
+    needs: comment-preview-url
+    if: |
+      github.event.pull_request.head.ref == 'develop' &&
+      github.event_name == 'deployment_status' &&
+      github.event.deployment_status.state == 'success'
 
     steps:
       - name: Checkout code
@@ -41,86 +125,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Vercel CLI
-        run: pnpm add -g vercel@latest
-
-      - name: Pull Vercel Environment Information
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Build Project Artifacts
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PROD_SUPABASE_SERVICE_ROLE_KEY }}
-          NEXT_PUBLIC_APP_ENV: production
-
-      - name: Deploy Project Artifacts to Vercel
-        id: deploy
-        run: |
-          url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }} 2>&1 | tee /dev/stderr | grep -oP 'https://[^\s]+' | tail -1)
-          echo "preview_url=$url" >> $GITHUB_OUTPUT
-          echo "🚀 Preview URL: $url"
-
-      - name: Comment PR with Preview URL
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
-          script: |
-            const previewUrl = '${{ steps.deploy.outputs.preview_url }}';
-
-            const body = `## 🚀 Vercel Preview Deployment (Production Config)
-
-            ✅ **Preview URL**: ${previewUrl}
-
-            ### 設定
-            - 本番環境の設定を使用
-            - 本番Supabaseデータベースに接続
-            - 本番環境変数を適用
-
-            ### テスト方法
-            1. 上記URLにアクセス
-            2. 本番環境と同じ動作を確認
-            3. 問題なければこのPRをマージ
-
-            ---
-            _⚡ Deployed by Vercel Preview_`;
-
-            // Check if we already commented
-            const comments = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-
-            const botComment = comments.data.find(comment =>
-              comment.user.type === 'Bot' &&
-              comment.body.includes('Vercel Preview Deployment (Production Config)')
-            );
-
-            if (botComment) {
-              // Update existing comment
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body: body
-              });
-            } else {
-              // Create new comment
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: body
-              });
-            }
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
 
       - name: Run E2E tests on Preview
         run: pnpm test:e2e:production
         continue-on-error: true
         env:
-          PLAYWRIGHT_BASE_URL: ${{ steps.deploy.outputs.preview_url }}
+          PLAYWRIGHT_BASE_URL: ${{ github.event.deployment_status.target_url }}
           SKIP_E2E_TESTS: false
 
       - name: Upload E2E test results

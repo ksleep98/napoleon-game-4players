@@ -2,69 +2,57 @@
 
 ## 概要
 
-Release PR (develop → main) が作成されると、本番環境の設定でVercelプレビューデプロイメントが自動的に作成されます。
+Release PR (develop → main) が作成されると、Vercelが自動的にプレビューデプロイメントを作成し、GitHub ActionsがプレビューURLをPRにコメントします。
 
 ## 機能
 
-- ✅ Release PR作成時に自動デプロイ
-- ✅ 本番環境の設定を使用
-- ✅ 本番Supabaseデータベースに接続
+- ✅ Release PR作成時にVercelが自動デプロイ
+- ✅ Vercel環境変数を使用（本番設定）
 - ✅ プレビューURLをPRに自動コメント
-- ✅ E2Eテストを自動実行
+- ✅ E2Eテストを自動実行（プレビューURL使用）
 
 ## セットアップ手順
 
-### 1. Vercel Tokenの取得
+### 1. Vercel環境変数の設定
 
-1. [Vercel Dashboard](https://vercel.com/account/tokens)にアクセス
-2. **Create Token**をクリック
-3. Token名を入力（例: `GitHub Actions Token`）
-4. Scopeを選択:
-   - **Full Account** または
-   - 特定のプロジェクトのみ
-5. **Create**をクリック
-6. 表示されたTokenをコピー（後で使用）
+Vercel Dashboardで本番用の環境変数を設定:
 
-### 2. GitHub Secretsに追加
+1. [Vercel Dashboard](https://vercel.com)にアクセス
+2. プロジェクトを選択
+3. **Settings** → **Environment Variables**
+4. 以下の変数を追加:
 
-```bash
-# GitHub CLIを使用
-gh secret set VERCEL_TOKEN
-
-# または手動で設定:
-# https://github.com/ksleep98/napoleon-game-4players/settings/secrets/actions
+```
+NEXT_PUBLIC_SUPABASE_URL = 本番SupabaseのURL
+NEXT_PUBLIC_SUPABASE_ANON_KEY = 本番SupabaseのAnon Key
+SUPABASE_SERVICE_ROLE_KEY = 本番SupabaseのService Role Key
+NEXT_PUBLIC_APP_ENV = production
 ```
 
-入力内容:
+各変数で **Preview** 環境にもチェックを入れる
 
-- **Name**: `VERCEL_TOKEN`
-- **Value**: 手順1でコピーしたToken
+### 2. Vercel Git統合の確認
 
-### 3. Vercel Project ID & Org IDの取得
-
-Vercelプロジェクトのルートディレクトリに`.vercel/project.json`が自動生成されています。
-
-```bash
-cat .vercel/project.json
-```
-
-出力例:
+`vercel.json`で設定済み:
 
 ```json
 {
-  "projectId": "prj_xxx...",
-  "orgId": "team_xxx..."
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "develop": true
+    }
+  }
 }
 ```
 
-### 4. Vercel設定ファイルの確認
+### 3. GitHub Actionsのパーミッション確認
 
-`.vercel/project.json`がリポジトリにコミットされていることを確認:
+Repositoryの設定でActions権限を確認:
 
-```bash
-git add .vercel/project.json
-git commit -m "chore: add Vercel project configuration"
-```
+1. **Settings** → **Actions** → **General**
+2. **Workflow permissions** → **Read and write permissions** を選択
+3. **Save**
 
 ## 動作フロー
 
