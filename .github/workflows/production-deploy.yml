@@ -62,9 +62,9 @@ jobs:
       - name: Build for production
         run: pnpm build
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL_PROD }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY_PROD }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PROD }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PROD_SUPABASE_SERVICE_ROLE_KEY }}
           NEXT_PUBLIC_APP_ENV: production
           NODE_ENV: production
 
@@ -110,7 +110,7 @@ jobs:
       - name: Run E2E tests on production
         run: pnpm test:e2e:production
         env:
-          PLAYWRIGHT_BASE_URL: ${{ secrets.PRODUCTION_URL }}
+          PLAYWRIGHT_BASE_URL: https://napoleon-game-4players.vercel.app
           SKIP_E2E_TESTS: false
 
       - name: Upload E2E test results
@@ -132,5 +132,5 @@ jobs:
       - name: Production deployment success
         run: |
           echo "🚀 Production deployment completed successfully!"
-          echo "🔗 Production URL: ${{ secrets.PRODUCTION_URL }}"
+          echo "🔗 Production URL: https://napoleon-game-4players.vercel.app"
           echo "✅ All tests passed"
