@@ -10,10 +10,10 @@ jobs:
   comment-preview-url:
     runs-on: ubuntu-latest
     if: |
-      github.event.pull_request.head.ref == 'develop' &&
       github.event_name == 'deployment_status' &&
       github.event.deployment_status.state == 'success' &&
-      github.event.deployment_status.environment == 'Preview'
+      github.event.deployment_status.environment == 'Preview' &&
+      github.event.deployment.ref == 'develop'
 
     steps:
       - name: Comment PR with Preview URL
@@ -22,6 +22,7 @@ jobs:
           github-token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
             const deploymentUrl = '${{ github.event.deployment_status.target_url }}';
+            const deploymentRef = '${{ github.event.deployment.ref }}';
 
             const body = `## 🚀 Vercel Preview Deployment (Production Config)
 
@@ -40,14 +41,26 @@ jobs:
             ### 📊 デプロイメント情報
             - Environment: ${{ github.event.deployment_status.environment }}
             - State: ${{ github.event.deployment_status.state }}
-            - Deployed from: \`${{ github.event.pull_request.head.ref }}\`
+            - Deployed from: \`${deploymentRef}\`
 
             ---
             _⚡ Deployed by Vercel_`;
 
-            // Get PR number from deployment
-            const prNumber = context.payload.deployment.payload.pr_number ||
-                           context.issue.number;
+            // Find the PR for develop -> main
+            const pulls = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: `${context.repo.owner}:develop`,
+              base: 'main'
+            });
+
+            if (pulls.data.length === 0) {
+              console.log('No open PR found for develop -> main');
+              return;
+            }
+
+            const prNumber = pulls.data[0].number;
 
             if (!prNumber) {
               console.log('No PR number found, skipping comment');
@@ -90,9 +103,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: comment-preview-url
     if: |
-      github.event.pull_request.head.ref == 'develop' &&
       github.event_name == 'deployment_status' &&
-      github.event.deployment_status.state == 'success'
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment.ref == 'develop'
 
     steps:
       - name: Checkout code
