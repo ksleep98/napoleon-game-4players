@@ -38,8 +38,8 @@ gh secret set VERCEL_TOKEN --repo ksleep98/napoleon-game-4players
 # Organization ID (既に設定済み)
 echo "team_d6zobA7XarMx00GQB0D6TexU" | gh secret set VERCEL_ORG_ID
 
-# Project ID (既に設定済み)
-echo "prj_ReolB2EblRHxSx8fREdFWecMYNKA" | gh secret set VERCEL_PROJECT_ID
+# Project ID (napoleon-game-dev - 既に設定済み)
+echo "prj_GSp6xU2t6160ftNzYSiOsTSn6gcH" | gh secret set VERCEL_PROJECT_ID
 
 # 本番Supabase環境変数 (既に設定済み)
 # PROD_NEXT_PUBLIC_SUPABASE_URL
