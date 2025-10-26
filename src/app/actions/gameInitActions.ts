@@ -285,7 +285,7 @@ export async function initializeAIGameAction(
     if (!saveResult.success) {
       console.error('Failed to save AI game state:', saveResult.error)
       throw new GameActionError(
-        'Failed to save AI game state',
+        `Failed to save AI game state: ${saveResult.error}`,
         GAME_ACTION_ERROR_CODES.SAVE_FAILED
       )
     }

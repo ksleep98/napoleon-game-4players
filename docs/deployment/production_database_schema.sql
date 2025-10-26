@@ -168,6 +168,10 @@ CREATE POLICY "game_results_insert_policy" ON game_results
 -- 5. パフォーマンス最適化関数（オプション）
 -- ============================================
 
+-- 既存の関数を削除（署名が異なる場合のため）
+DROP FUNCTION IF EXISTS get_game_state(text);
+DROP FUNCTION IF EXISTS update_player_status(text, boolean);
+
 -- ゲーム状態を高速に取得する関数
 CREATE OR REPLACE FUNCTION get_game_state(p_game_id text)
 RETURNS TABLE (
