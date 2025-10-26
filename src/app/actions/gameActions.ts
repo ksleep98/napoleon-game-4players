@@ -155,8 +155,13 @@ export async function saveGameStateAction(
     }
 
     if (saveResult?.error) {
+      const errorDetails = JSON.stringify({
+        message: saveResult.error.message,
+        code: saveResult.error.code,
+        details: saveResult.error.details,
+      })
       throw new GameActionError(
-        `Database operation failed: ${saveResult.error.message}`,
+        `Database operation failed: ${errorDetails}`,
         'DATABASE_ERROR'
       )
     }
