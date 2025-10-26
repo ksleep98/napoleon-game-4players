@@ -47,7 +47,28 @@ echo "prj_GSp6xU2t6160ftNzYSiOsTSn6gcH" | gh secret set VERCEL_PROJECT_ID
 # PROD_SUPABASE_SERVICE_ROLE_KEY
 ```
 
-### 3. Vercel Git統合の確認
+### 3. Vercel プロジェクトの環境変数設定
+
+**重要**: プレビューデプロイメントで本番環境変数を使用するには、Vercelダッシュボードで環境変数を設定する必要があります。
+
+1. https://vercel.com/kks-projects-204e9670/napoleon-game-dev/settings/environment-variables にアクセス
+2. 以下の環境変数を **Preview** 環境に追加：
+
+| 環境変数名                        | 値                             | 環境    |
+| --------------------------------- | ------------------------------ | ------- |
+| `NEXT_PUBLIC_SUPABASE_URL`        | 本番SupabaseのURL              | Preview |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY`   | 本番Supabaseの匿名キー         | Preview |
+| `SUPABASE_SERVICE_ROLE_KEY`       | 本番SupabaseのService Role Key | Preview |
+| `NEXT_PUBLIC_APP_ENV`             | `production`                   | Preview |
+| `NEXT_PUBLIC_ENABLE_PERF_MONITOR` | `false`                        | Preview |
+
+**注意**:
+
+- これらの環境変数は **Preview** 環境にのみ設定してください
+- **Production** や **Development** 環境には設定しないでください
+- Service Role Keyは機密情報なので、安全に管理してください
+
+### 4. Vercel Git統合の確認
 
 `vercel.json`で設定済み（開発用プレビューのため、ONのまま）:
 
@@ -64,7 +85,7 @@ echo "prj_GSp6xU2t6160ftNzYSiOsTSn6gcH" | gh secret set VERCEL_PROJECT_ID
 
 **注意:** Vercelの自動デプロイは開発環境変数を使用します。本番環境変数を使用したプレビューはGitHub Actionsで別途デプロイされます。
 
-### 4. GitHub Actionsのパーミッション確認
+### 5. GitHub Actionsのパーミッション確認
 
 Repositoryの設定でActions権限を確認:
 
@@ -159,6 +180,18 @@ git push
 
 1. GitHub Actionsのログを確認
 2. Vercel Dashboardでデプロイメントステータスを確認
+
+### エラー: "Service Role Key is required for server actions"
+
+**原因**: Vercelプロジェクトのpreview環境に`SUPABASE_SERVICE_ROLE_KEY`が設定されていない
+
+**解決方法**:
+
+1. Vercel Dashboard (https://vercel.com/kks-projects-204e9670/napoleon-game-dev/settings/environment-variables) にアクセス
+2. `SUPABASE_SERVICE_ROLE_KEY` を **Preview** 環境に追加
+3. 値に本番SupabaseのService Role Keyを設定
+4. **Save** をクリック
+5. 次回のデプロイから環境変数が反映されます
 
 ## セキュリティ
 
