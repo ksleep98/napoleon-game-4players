@@ -52,6 +52,9 @@
     "develop:protect": "node scripts/setup-develop-protection.js enable",
     "develop:unprotect": "node scripts/setup-develop-protection.js disable",
     "develop:status": "node scripts/setup-develop-protection.js status",
+    "vercel:setup": "./scripts/setup-vercel-token.sh",
+    "vercel:link": "vercel link",
+    "vercel:preview": "vercel deploy --prebuilt",
     "prepare": "husky"
   },
   "dependencies": {
