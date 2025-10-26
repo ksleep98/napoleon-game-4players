@@ -12,8 +12,7 @@ jobs:
     if: |
       github.event_name == 'deployment_status' &&
       github.event.deployment_status.state == 'success' &&
-      github.event.deployment_status.environment == 'Preview' &&
-      github.event.deployment.ref == 'develop'
+      github.event.deployment_status.environment == 'Preview'
 
     steps:
       - name: Comment PR with Preview URL
@@ -22,7 +21,37 @@ jobs:
           github-token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
             const deploymentUrl = '${{ github.event.deployment_status.target_url }}';
-            const deploymentRef = '${{ github.event.deployment.ref }}';
+            const deploymentSha = '${{ github.event.deployment.sha }}';
+
+            // Find the PR for develop -> main
+            const pulls = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: `${context.repo.owner}:develop`,
+              base: 'main'
+            });
+
+            if (pulls.data.length === 0) {
+              console.log('No open PR found for develop -> main, skipping comment');
+              return;
+            }
+
+            const pr = pulls.data[0];
+            const prNumber = pr.number;
+
+            // Verify this deployment is for the develop branch (by checking if the SHA is in develop)
+            const branches = await github.rest.repos.listBranchesForHeadCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: deploymentSha
+            });
+
+            const isDevelopBranch = branches.data.some(branch => branch.name === 'develop');
+            if (!isDevelopBranch) {
+              console.log(`Deployment SHA ${deploymentSha} is not on develop branch, skipping`);
+              return;
+            }
 
             const body = `## 🚀 Vercel Preview Deployment (Production Config)
 
@@ -41,26 +70,10 @@ jobs:
             ### 📊 デプロイメント情報
             - Environment: ${{ github.event.deployment_status.environment }}
             - State: ${{ github.event.deployment_status.state }}
-            - Deployed from: \`${deploymentRef}\`
+            - Deployed SHA: \`${deploymentSha.substring(0, 7)}\`
 
             ---
             _⚡ Deployed by Vercel_`;
-
-            // Find the PR for develop -> main
-            const pulls = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              head: `${context.repo.owner}:develop`,
-              base: 'main'
-            });
-
-            if (pulls.data.length === 0) {
-              console.log('No open PR found for develop -> main');
-              return;
-            }
-
-            const prNumber = pulls.data[0].number;
 
             if (!prNumber) {
               console.log('No PR number found, skipping comment');
@@ -104,8 +117,7 @@ jobs:
     needs: comment-preview-url
     if: |
       github.event_name == 'deployment_status' &&
-      github.event.deployment_status.state == 'success' &&
-      github.event.deployment.ref == 'develop'
+      github.event.deployment_status.state == 'success'
 
     steps:
       - name: Checkout code
