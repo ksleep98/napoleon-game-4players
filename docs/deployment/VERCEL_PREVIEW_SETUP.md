@@ -2,38 +2,54 @@
 
 ## 概要
 
-Release PR (develop → main) が作成されると、Vercelが自動的にプレビューデプロイメントを作成し、GitHub ActionsがプレビューURLをPRにコメントします。
+Release PR (develop → main) が作成されると、GitHub ActionsがVercel CLIを使用して本番環境変数でビルド・デプロイし、プレビューURLをPRにコメントします。
+
+**重要:** Vercelの自動デプロイは**ONのまま**でOKです。開発用プレビュー（開発環境変数）とは別に、本番環境変数を使用したプレビューが追加でデプロイされます。
 
 ## 機能
 
-- ✅ Release PR作成時にVercelが自動デプロイ
-- ✅ Vercel環境変数を使用（本番設定）
+- ✅ Release PR作成時にGitHub Actionsが本番設定でデプロイ
+- ✅ 本番Supabase環境変数を使用
+- ✅ Perfボタン非表示（`NEXT_PUBLIC_ENABLE_PERF_MONITOR=false`）
 - ✅ プレビューURLをPRに自動コメント
 - ✅ E2Eテストを自動実行（プレビューURL使用）
 
 ## セットアップ手順
 
-### 1. Vercel環境変数の設定
+### 1. Vercel API Tokenの作成
 
-Vercel Dashboardで本番用の環境変数を設定:
+1. https://vercel.com/account/tokens にアクセス
+2. **Create Token** をクリック
+3. Token名: `github-actions-napoleon-game`
+4. Scope: **Full Account** を選択
+5. Expiration: **No Expiration** または適切な期限を設定
+6. **Create** をクリック
+7. 表示されたTokenをコピー
 
-1. [Vercel Dashboard](https://vercel.com)にアクセス
-2. プロジェクトを選択
-3. **Settings** → **Environment Variables**
-4. 以下の変数を追加:
+### 2. GitHub Secretsの設定
 
+以下のコマンドでSecretsを設定（既に設定済みの場合はスキップ）:
+
+```bash
+# Vercel Token
+gh secret set VERCEL_TOKEN --repo ksleep98/napoleon-game-4players
+# コピーしたTokenを貼り付けてEnterキーを押す
+
+# Organization ID (既に設定済み)
+echo "team_d6zobA7XarMx00GQB0D6TexU" | gh secret set VERCEL_ORG_ID
+
+# Project ID (既に設定済み)
+echo "prj_ReolB2EblRHxSx8fREdFWecMYNKA" | gh secret set VERCEL_PROJECT_ID
+
+# 本番Supabase環境変数 (既に設定済み)
+# PROD_NEXT_PUBLIC_SUPABASE_URL
+# PROD_NEXT_PUBLIC_SUPABASE_ANON_KEY
+# PROD_SUPABASE_SERVICE_ROLE_KEY
 ```
-NEXT_PUBLIC_SUPABASE_URL = 本番SupabaseのURL
-NEXT_PUBLIC_SUPABASE_ANON_KEY = 本番SupabaseのAnon Key
-SUPABASE_SERVICE_ROLE_KEY = 本番SupabaseのService Role Key
-NEXT_PUBLIC_APP_ENV = production
-```
 
-各変数で **Preview** 環境にもチェックを入れる
+### 3. Vercel Git統合の確認
 
-### 2. Vercel Git統合の確認
-
-`vercel.json`で設定済み:
+`vercel.json`で設定済み（開発用プレビューのため、ONのまま）:
 
 ```json
 {
@@ -46,7 +62,9 @@ NEXT_PUBLIC_APP_ENV = production
 }
 ```
 
-### 3. GitHub Actionsのパーミッション確認
+**注意:** Vercelの自動デプロイは開発環境変数を使用します。本番環境変数を使用したプレビューはGitHub Actionsで別途デプロイされます。
+
+### 4. GitHub Actionsのパーミッション確認
 
 Repositoryの設定でActions権限を確認:
 
