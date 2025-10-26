@@ -19,7 +19,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "npm"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
@@ -82,7 +81,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "npm"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
