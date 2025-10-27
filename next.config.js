@@ -18,6 +18,39 @@ const nextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
+  // Security headers for production
+  async headers() {
+    if (process.env.NODE_ENV === 'production') {
+      return [
+        {
+          source: '/(.*)',
+          headers: [
+            {
+              key: 'X-Frame-Options',
+              value: 'DENY',
+            },
+            {
+              key: 'X-Content-Type-Options',
+              value: 'nosniff',
+            },
+            {
+              key: 'Referrer-Policy',
+              value: 'origin-when-cross-origin',
+            },
+            {
+              key: 'X-XSS-Protection',
+              value: '1; mode=block',
+            },
+            {
+              key: 'Strict-Transport-Security',
+              value: 'max-age=31536000; includeSubDomains',
+            },
+          ],
+        },
+      ]
+    }
+    return []
+  },
   // Webpack最適化設定
   webpack: (config, { isServer }) => {
     // バンドル分割最適化（簡素化）

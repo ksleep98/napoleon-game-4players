@@ -1,0 +1,83 @@
+name: Supabase Keep-Alive
+
+on:
+  # 毎週月曜日の午前9時（UTC）= 日本時間18時に実行
+  schedule:
+    - cron: "0 9 * * 1"
+  # 手動実行も可能
+  workflow_dispatch:
+
+jobs:
+  keep-alive-development:
+    name: Keep Development Supabase Active
+    runs-on: ubuntu-latest
+    steps:
+      - name: Health Check Development Database
+        continue-on-error: true
+        run: |
+          echo "Health checking development database..."
+
+          # health_check RPC関数を呼び出し（RLSの影響を受けない）
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -H "apikey: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/rpc/health_check")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "Response code: $HTTP_CODE"
+          echo "Response: $BODY"
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✅ Development database health check successful"
+          else
+            echo "⚠️ Development database health check returned status $HTTP_CODE"
+            exit 1
+          fi
+
+  keep-alive-production:
+    name: Keep Production Supabase Active
+    runs-on: ubuntu-latest
+    steps:
+      - name: Health Check Production Database
+        continue-on-error: true
+        run: |
+          echo "Health checking production database..."
+
+          # health_check RPC関数を呼び出し（RLSの影響を受けない）
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -H "apikey: ${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            "${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_URL }}/rest/v1/rpc/health_check")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "Response code: $HTTP_CODE"
+          echo "Response: $BODY"
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✅ Production database health check successful"
+          else
+            echo "⚠️ Production database health check returned status $HTTP_CODE"
+            exit 1
+          fi
+
+  notify:
+    name: Send Notification
+    runs-on: ubuntu-latest
+    needs: [keep-alive-development, keep-alive-production]
+    if: always()
+    steps:
+      - name: Check Results
+        run: |
+          echo "Keep-alive workflow completed"
+          echo "Development status: ${{ needs.keep-alive-development.result }}"
+          echo "Production status: ${{ needs.keep-alive-production.result }}"
+
+          if [ "${{ needs.keep-alive-development.result }}" == "success" ] && [ "${{ needs.keep-alive-production.result }}" == "success" ]; then
+            echo "✅ All Supabase instances are active"
+          else
+            echo "⚠️ Some Supabase instances may have issues"
+          fi
