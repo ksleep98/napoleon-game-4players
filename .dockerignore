@@ -8,7 +8,6 @@ coverage/
 .nyc_output
 test-results/
 playwright-report/
-playwright-report-develop/
 screenshots/
 vercel-auth-state.json
 
@@ -16,19 +15,13 @@ vercel-auth-state.json
 .next/
 out/
 
-# Vercel & Cloudflare Pages build output
-.vercel/
-
 # Production build
 build/
 dist/
 
-# Environment variables
-.env
+# Environment variables (use .env file instead)
 .env*.local
 .env.production
-!.env.production.example  # Track safe template only
-!.env.docker.example      # Track Docker environment template
 
 # Database
 *.db
@@ -57,18 +50,6 @@ pids
 *.seed
 *.pid.lock
 
-# Optional npm cache directory
-.npm
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
 # Temporary folders
 tmp/
 temp/
@@ -76,39 +57,39 @@ temp/
 # Claude Code
 .claude/
 
-# Prisma generated
-/generated/prisma
-
 # TypeScript incremental compilation
 *.tsbuildinfo
 
 # Development tools
 .serena/
-.claude/
 
 # Deployment
 .vercel/
-.vercel
 
 # Backup files
 *.bak
 *.backup
 *.orig
 
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Docker
+Dockerfile.dev
+docker-compose.yml
+.dockerignore
+
+# Documentation (not needed in container)
+docs/
+README.md
+CLAUDE.md
+
+# CI/CD
+.github/
+.husky/
+
 # Performance monitoring
 *.perf
 perf-*.json
-
-# Cloudflare Pages
-functions/
-wrangler.toml
-
-# SWC cache
-.swc/
-
-# Husky hooks (auto-generated)
-.husky/_/
-
-# Temporary debug files
-debug-*.log
-trace-*.json
