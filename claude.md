@@ -40,6 +40,8 @@
 
 ## クイック スタート
 
+### 通常の開発環境
+
 ```bash
 # 1. リポジトリクローン
 git clone https://github.com/ksleep98/napoleon-game-4players.git
@@ -58,11 +60,51 @@ pnpm cleanup        # 手動インタラクティブ版
 pnpm cleanup:smart  # 手動スマート版（GitHub CLI連携）
 ```
 
+### Docker環境 (シンプル・推奨)
+
+```bash
+# 1. リポジトリクローン
+git clone https://github.com/ksleep98/napoleon-game-4players.git
+cd napoleon-game-4players
+
+# 2. Dockerイメージをビルド
+./docker-dev.sh build
+
+# 3. コンテナを起動してpnpm dev実行
+./docker-dev.sh run
+
+# 4. アプリケーションにアクセス
+# → http://localhost:3000
+```
+
+詳細: [Dockerシンプルセットアップ](./docs/setup/DOCKER_SIMPLE_SETUP.md)
+
+### Docker Compose環境 (フルスタック・DB含む)
+
+```bash
+# 1. リポジトリクローン
+git clone https://github.com/ksleep98/napoleon-game-4players.git
+cd napoleon-game-4players
+
+# 2. 環境変数ファイル作成
+cp .env.docker.example .env
+
+# 3. Docker Composeで起動
+docker-compose up -d
+
+# 4. アプリケーションにアクセス
+# → http://localhost:3000
+```
+
+詳細: [Docker Composeセットアップ](./docs/setup/DOCKER_SETUP.md)
+
 ## 詳細ドキュメント
 
 ### 📋 セットアップ・環境構築
 
 - [プロジェクトセットアップ](./docs/setup/PROJECT_SETUP.md) - 技術スタック・初期設定
+- [Dockerシンプルセットアップ](./docs/setup/DOCKER_SIMPLE_SETUP.md) - Dockerコンテナで開発（シンプル・推奨）
+- [Docker Composeセットアップ](./docs/setup/DOCKER_SETUP.md) - フルスタックローカル環境・DB含む
 - [開発コマンド一覧](./docs/development/COMMANDS.md) - pnpm scripts・使い方
 - [フォーマット設定](./docs/development/FORMATTING_SETUP.md) - Biome/Prettier統合・VSCode設定
 - [コーディングルール](./docs/development/CODING_RULES.md) - 定数参照・静的import・品質基準
