@@ -21,13 +21,13 @@ const CardComponent = function Card({
   onClick,
   className = '',
 }: CardProps) {
-  // サイズクラスをメモ化
+  // サイズクラスをメモ化（モバイルファースト）
   const sizeClasses = useMemo(
     () => ({
-      tiny: 'w-8 h-12 text-xs',
-      small: 'w-12 h-16 text-xs',
-      medium: 'w-16 h-24 text-sm',
-      large: 'w-20 h-32 text-base',
+      tiny: 'w-6 h-9 md:w-8 md:h-12 text-[0.5rem] md:text-xs',
+      small: 'w-10 h-14 md:w-12 md:h-16 text-[0.65rem] md:text-xs',
+      medium: 'w-12 h-18 md:w-16 md:h-24 text-xs md:text-sm',
+      large: 'w-16 h-24 md:w-20 md:h-32 text-sm md:text-base',
     }),
     []
   )

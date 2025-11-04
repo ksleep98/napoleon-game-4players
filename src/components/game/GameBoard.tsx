@@ -105,12 +105,12 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2 md:space-y-4">
       {/* メインゲームボード */}
-      <div className="relative w-full max-w-6xl mx-auto h-[600px] bg-green-700 rounded-xl shadow-lg border-4 border-green-800">
+      <div className="relative w-full max-w-6xl mx-auto h-[350px] md:h-[600px] bg-green-700 rounded-xl shadow-lg border-2 md:border-4 border-green-800">
         {/* ゲーム情報 */}
-        <div className="absolute top-2 left-2 bg-gray-900 bg-opacity-95 text-white rounded-lg p-3 text-sm shadow-lg border border-gray-700">
-          <div className="font-semibold mb-1">Game Progress</div>
+        <div className="absolute top-1 md:top-2 left-1 md:left-2 bg-gray-900 bg-opacity-95 text-white rounded-lg p-1.5 md:p-3 text-[0.65rem] md:text-sm shadow-lg border border-gray-700">
+          <div className="font-semibold mb-0.5 md:mb-1">Progress</div>
           <div>Tricks: {progress.tricksPlayed}/12</div>
           <div className="flex justify-between items-center mt-2">
             <span className="text-yellow-400 font-medium">Napoleon:</span>
@@ -147,8 +147,8 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
         </div>
 
         {/* プレイヤー別絵札獲得数表示 - 自分を強調 */}
-        <div className="absolute top-2 right-2 bg-gray-900 bg-opacity-95 text-white rounded-lg p-3 text-xs shadow-lg border border-gray-700">
-          <div className="font-semibold mb-2">Face Cards Won</div>
+        <div className="absolute top-1 md:top-2 right-1 md:right-2 bg-gray-900 bg-opacity-95 text-white rounded-lg p-1.5 md:p-3 text-[0.6rem] md:text-xs shadow-lg border border-gray-700">
+          <div className="font-semibold mb-1 md:mb-2">Cards</div>
           {playerFaceCards.map((data) => {
             const roleColor = data.player.isNapoleon
               ? 'text-yellow-400'
@@ -190,9 +190,9 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
 
         {/* 下（自分） - 親コンテナに対して直接配置 */}
         {cardsByPosition.bottom && (
-          <div className="absolute bottom-14 left-1/2 transform -translate-x-1/2 flex flex-col items-center z-10">
-            <Card card={cardsByPosition.bottom.card} size="medium" />
-            <div className="text-center text-xs text-white mt-4 bg-black bg-opacity-60 rounded px-2 py-1">
+          <div className="absolute bottom-8 md:bottom-14 left-1/2 transform -translate-x-1/2 flex flex-col items-center z-10">
+            <Card card={cardsByPosition.bottom.card} size="small" />
+            <div className="text-center text-[0.6rem] md:text-xs text-white mt-1 md:mt-4 bg-black bg-opacity-60 rounded px-1 md:px-2 py-0.5 md:py-1">
               {(() => {
                 const player = gameState.players.find(
                   (p) => p.id === cardsByPosition.bottom?.playerId
@@ -212,12 +212,12 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
 
         {/* トリック表示エリア（中央） */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="relative w-96 h-96">
+          <div className="relative w-60 h-60 md:w-96 md:h-96">
             {/* 左 */}
             {cardsByPosition.left && (
-              <div className="absolute left-12 top-1/2 transform translate-y-4 flex flex-col items-center">
-                <Card card={cardsByPosition.left.card} size="medium" />
-                <div className="text-center text-xs text-white mt-4 bg-black bg-opacity-60 rounded px-2 py-1">
+              <div className="absolute left-4 md:left-12 top-1/2 transform translate-y-2 md:translate-y-4 flex flex-col items-center">
+                <Card card={cardsByPosition.left.card} size="small" />
+                <div className="text-center text-[0.6rem] md:text-xs text-white mt-1 md:mt-4 bg-black bg-opacity-60 rounded px-1 md:px-2 py-0.5 md:py-1">
                   {(() => {
                     const player = gameState.players.find(
                       (p) => p.id === cardsByPosition.left?.playerId
@@ -237,8 +237,8 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
 
             {/* 上 */}
             {cardsByPosition.top && (
-              <div className="absolute top-16 left-1/2 transform -translate-x-1/2 flex flex-col items-center">
-                <div className="text-center text-xs text-white mb-4 bg-black bg-opacity-60 rounded px-2 py-1">
+              <div className="absolute top-8 md:top-16 left-1/2 transform -translate-x-1/2 flex flex-col items-center">
+                <div className="text-center text-[0.6rem] md:text-xs text-white mb-1 md:mb-4 bg-black bg-opacity-60 rounded px-1 md:px-2 py-0.5 md:py-1">
                   {(() => {
                     const player = gameState.players.find(
                       (p) => p.id === cardsByPosition.top?.playerId
@@ -253,15 +253,15 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
                     )
                   })()}
                 </div>
-                <Card card={cardsByPosition.top.card} size="medium" />
+                <Card card={cardsByPosition.top.card} size="small" />
               </div>
             )}
 
             {/* 右 */}
             {cardsByPosition.right && (
-              <div className="absolute right-12 top-1/2 transform translate-y-4 flex flex-col items-center">
-                <Card card={cardsByPosition.right.card} size="medium" />
-                <div className="text-center text-xs text-white mt-4 bg-black bg-opacity-60 rounded px-2 py-1">
+              <div className="absolute right-4 md:right-12 top-1/2 transform translate-y-2 md:translate-y-4 flex flex-col items-center">
+                <Card card={cardsByPosition.right.card} size="small" />
+                <div className="text-center text-[0.6rem] md:text-xs text-white mt-1 md:mt-4 bg-black bg-opacity-60 rounded px-1 md:px-2 py-0.5 md:py-1">
                   {(() => {
                     const player = gameState.players.find(
                       (p) => p.id === cardsByPosition.right?.playerId
@@ -282,10 +282,10 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
         </div>
 
         {/* 現在のプレイヤーと手番情報 */}
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-900 bg-opacity-95 text-white rounded-lg p-2 text-sm shadow-lg border border-gray-700">
-          <div className="flex items-center gap-2">
+        <div className="absolute bottom-1 md:bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-900 bg-opacity-95 text-white rounded-lg p-1 md:p-2 text-[0.65rem] md:text-sm shadow-lg border border-gray-700">
+          <div className="flex items-center gap-1 md:gap-2">
             <span>Turn:</span>
-            <span className="font-bold text-blue-400">
+            <span className="font-bold text-blue-400 truncate max-w-20 md:max-w-none">
               {currentPlayer?.name}
             </span>
             {currentPlayer?.isNapoleon && (
