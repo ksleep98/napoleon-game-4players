@@ -24,21 +24,21 @@ body {
 @media (max-width: 768px) {
   /* Reduce overall padding for mobile */
   .mobile-compact {
-    padding: 0.5rem !important;
+    padding: 0.5rem;
   }
 
   /* Smaller text for mobile */
   .mobile-text-sm {
-    font-size: 0.75rem !important;
+    font-size: 0.75rem;
   }
 
   .mobile-text-xs {
-    font-size: 0.625rem !important;
+    font-size: 0.625rem;
   }
 
   /* Tighter spacing */
   .mobile-gap-tight {
-    gap: 0.25rem !important;
+    gap: 0.25rem;
   }
 
   /* Fit content to screen */
