@@ -331,6 +331,24 @@ function GamePageContent() {
                         .map((pc) => pc.card)
                     )
 
+                    // 副官が判明しているかどうかをチェック
+                    const isAdjutantRevealed =
+                      gameState.tricks.some((trick) =>
+                        trick.cards.some(
+                          (playedCard) =>
+                            gameState.napoleonCard &&
+                            playedCard.card.id === gameState.napoleonCard.id
+                        )
+                      ) ||
+                      gameState.tricks.some((trick) =>
+                        trick.cards.some(
+                          (playedCard) => playedCard.revealsAdjutant
+                        )
+                      ) ||
+                      gameState.currentTrick.cards.some(
+                        (playedCard) => playedCard.revealsAdjutant
+                      )
+
                     return (
                       <div
                         key={player.id}
@@ -345,7 +363,7 @@ function GamePageContent() {
                               N
                             </span>
                           )}
-                          {player.isAdjutant && (
+                          {player.isAdjutant && isAdjutantRevealed && (
                             <span className="px-1 py-0.5 md:px-2 md:py-1 bg-green-200 text-green-800 rounded-full text-[0.6rem] md:text-xs font-bold">
                               A
                             </span>
