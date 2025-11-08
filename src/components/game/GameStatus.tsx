@@ -73,47 +73,40 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
       ))
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-4 space-y-4">
-      {/* ゲーム基本情報 */}
-      <div className="border-b pb-3">
-        <h3 className="font-bold text-lg text-gray-800">Game Status</h3>
-        <div className="text-sm text-gray-600 space-y-1 mt-2">
-          <div>
-            Phase:{' '}
-            <span className="font-medium">
-              {getPhaseDisplay(gameState.phase)}
-            </span>
-          </div>
-          <div>
-            Game ID: <span className="font-mono text-xs">{gameState.id}</span>
-          </div>
-        </div>
+    <div className="bg-white rounded-lg shadow-md p-2 md:p-4 space-y-2 md:space-y-4">
+      {/* ゲーム基本情報 - Phase と Game ID を非表示 */}
+      <div className="border-b pb-2 md:pb-3">
+        <h3 className="font-bold text-base md:text-lg text-gray-800">
+          Game Status
+        </h3>
       </div>
 
-      {/* ナポレオン宣言情報 */}
+      {/* ナポレオン宣言情報 - モバイル最適化 */}
       {gameState.napoleonDeclaration && (
-        <div className="border-b pb-3">
-          <h4 className="font-semibold text-gray-800 mb-2">
+        <div className="border-b pb-2 md:pb-3">
+          <h4 className="font-semibold text-sm md:text-base text-gray-800 mb-1 md:mb-2">
             Napoleon Declaration
           </h4>
-          <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
-            <div className="flex items-center justify-center gap-4 text-sm">
+          <div className="bg-yellow-50 border border-yellow-200 p-2 md:p-3 rounded-lg">
+            <div className="flex items-center justify-center gap-2 md:gap-4 text-sm">
               <div className="text-center">
-                <div className="text-xl font-bold text-yellow-700">
+                <div className="text-base md:text-xl font-bold text-yellow-700">
                   {gameState.napoleonDeclaration.targetTricks}
                 </div>
-                <div className="text-xs text-yellow-600">tricks</div>
+                <div className="text-[0.6rem] md:text-xs text-yellow-600">
+                  tricks
+                </div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-yellow-700">
+                <div className="text-xl md:text-2xl font-bold text-yellow-700">
                   {SUIT_SYMBOLS[gameState.napoleonDeclaration.suit]}
                 </div>
-                <div className="text-xs text-yellow-600 capitalize">
+                <div className="text-[0.6rem] md:text-xs text-yellow-600 capitalize">
                   {gameState.napoleonDeclaration.suit}
                 </div>
               </div>
             </div>
-            <div className="text-center text-sm text-yellow-700 mt-2">
+            <div className="text-center text-xs md:text-sm text-yellow-700 mt-1 md:mt-2">
               <span className="font-semibold">
                 Declared by: {napoleonPlayer?.name}
               </span>
