@@ -6,7 +6,7 @@ import { AdjutantSelector } from '@/components/game/AdjutantSelector'
 import { Card } from '@/components/game/Card'
 import { CardExchangeSelector } from '@/components/game/CardExchangeSelector'
 import { GameBoard } from '@/components/game/GameBoard'
-import { GameStatus } from '@/components/game/GameStatus'
+import { CompactGameProgress, GameStatus } from '@/components/game/GameStatus'
 import { NapoleonSelector } from '@/components/game/NapoleonSelector'
 import { PlayerHand } from '@/components/game/PlayerHand'
 import { TrickResult } from '@/components/game/TrickResult'
@@ -236,11 +236,6 @@ function GamePageContent() {
           )}
         </div>
 
-        {/* GameStatus - モバイルでは上部に表示 */}
-        <div className="lg:hidden mb-2">
-          <GameStatus gameState={gameState} currentPlayerId={currentPlayerId} />
-        </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-2 md:gap-6">
           {/* メインゲームエリア */}
           <div className="lg:col-span-3 space-y-2 md:space-y-6">
@@ -281,6 +276,11 @@ function GamePageContent() {
                   onCardExchange={handleCardExchange}
                 />
               )}
+
+            {/* コンパクトなProgress表示 - モバイルのみ、PLAYINGフェーズ */}
+            <div className="lg:hidden">
+              <CompactGameProgress gameState={gameState} />
+            </div>
 
             {/* ゲームボード */}
             {gameState.phase === GAME_PHASES.PLAYING && (

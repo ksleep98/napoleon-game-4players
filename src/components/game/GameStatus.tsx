@@ -314,3 +314,60 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
     </div>
   )
 }
+
+// モバイル用のコンパクトなProgress表示
+export function CompactGameProgress({ gameState }: { gameState: GameState }) {
+  const progress = getGameProgress(gameState)
+  const napoleonPlayer = gameState.players.find((p) => p.isNapoleon)
+
+  // PLAYINGフェーズでのみ表示
+  if (gameState.phase !== GAME_PHASES.PLAYING) {
+    return null
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow-md p-2 text-xs">
+      <div className="flex items-center justify-between gap-2">
+        {/* Tricks */}
+        <div className="flex flex-col items-center">
+          <span className="text-gray-600">Tricks</span>
+          <span className="font-bold text-sm">{progress.tricksPlayed}/12</span>
+        </div>
+
+        {/* Napoleon Team */}
+        <div className="flex flex-col items-center">
+          <span className="text-gray-600">Napoleon</span>
+          <span className="font-bold text-yellow-600 text-sm">
+            {progress.napoleonTeamFaceCards}
+          </span>
+        </div>
+
+        {/* Alliance Team */}
+        <div className="flex flex-col items-center">
+          <span className="text-gray-600">Alliance</span>
+          <span className="font-bold text-blue-600 text-sm">
+            {progress.citizenTeamFaceCards}
+          </span>
+        </div>
+
+        {/* Napoleon needs */}
+        <div className="flex flex-col items-center text-center">
+          <span className="text-gray-600">Napoleon needs</span>
+          <span className="font-bold text-sm">
+            {progress.napoleonNeedsToWin} more
+          </span>
+        </div>
+      </div>
+
+      {/* Adjutant Card info - コンパクト表示 */}
+      {gameState.napoleonCard && napoleonPlayer && (
+        <div className="mt-1 pt-1 border-t text-center text-gray-600">
+          <span className="text-[0.65rem]">
+            Adjutant Card: {gameState.napoleonCard.rank}{' '}
+            {SUIT_SYMBOLS[gameState.napoleonCard.suit]}
+          </span>
+        </div>
+      )}
+    </div>
+  )
+}
