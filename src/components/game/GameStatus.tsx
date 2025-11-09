@@ -27,19 +27,6 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
     ? getPlayerStats(gameState, currentPlayerId)
     : null
 
-  const getPhaseDisplay = (phase: string) => {
-    const phaseMap = {
-      [GAME_PHASES.SETUP]: 'Game Setup',
-      dealing: 'Dealing Cards',
-      [GAME_PHASES.NAPOLEON]: 'Napoleon Declaration',
-      [GAME_PHASES.ADJUTANT]: 'Adjutant Selection',
-      [GAME_PHASES.EXCHANGE]: 'Card Exchange',
-      [GAME_PHASES.PLAYING]: 'Playing',
-      [GAME_PHASES.FINISHED]: 'Game Finished',
-    }
-    return phaseMap[phase as keyof typeof phaseMap] || phase
-  }
-
   const getRoleDisplay = (role: string) => {
     const roleMap = {
       napoleon: PLAYER_ROLES.NAPOLEON,

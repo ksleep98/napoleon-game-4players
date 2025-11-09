@@ -236,6 +236,11 @@ function GamePageContent() {
           )}
         </div>
 
+        {/* GameStatus - モバイルでは上部に表示 */}
+        <div className="lg:hidden mb-2">
+          <GameStatus gameState={gameState} currentPlayerId={currentPlayerId} />
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-2 md:gap-6">
           {/* メインゲームエリア */}
           <div className="lg:col-span-3 space-y-2 md:space-y-6">
@@ -397,8 +402,8 @@ function GamePageContent() {
             )}
           </div>
 
-          {/* サイドバー */}
-          <div className="lg:col-span-1">
+          {/* サイドバー - デスクトップのみ表示 */}
+          <div className="hidden lg:block lg:col-span-1">
             <GameStatus
               gameState={gameState}
               currentPlayerId={currentPlayerId}
