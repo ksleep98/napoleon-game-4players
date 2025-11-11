@@ -10,7 +10,7 @@ on:
 jobs:
   keep-alive-development:
     name: Keep Development Supabase Active
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Health Check Development Database
         continue-on-error: true
@@ -38,7 +38,7 @@ jobs:
 
   keep-alive-production:
     name: Keep Production Supabase Active
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Health Check Production Database
         continue-on-error: true
@@ -66,7 +66,7 @@ jobs:
 
   notify:
     name: Send Notification
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     needs: [keep-alive-development, keep-alive-production]
     if: always()
     steps:
