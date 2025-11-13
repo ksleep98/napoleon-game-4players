@@ -108,8 +108,8 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
     <div className="space-y-2 md:space-y-4">
       {/* メインゲームボード */}
       <div className="relative w-full max-w-6xl mx-auto h-[350px] md:h-[600px] bg-green-700 rounded-xl shadow-lg border-2 md:border-4 border-green-800">
-        {/* ゲーム情報 */}
-        <div className="absolute top-1 md:top-2 left-1 md:left-2 bg-gray-900 bg-opacity-95 text-white rounded-lg p-1.5 md:p-3 text-[0.65rem] md:text-sm shadow-lg border border-gray-700">
+        {/* ゲーム情報 - デスクトップのみ表示（モバイルはCompactGameProgressで表示） */}
+        <div className="hidden lg:block absolute top-1 md:top-2 left-1 md:left-2 bg-gray-900 bg-opacity-95 text-white rounded-lg p-1.5 md:p-3 text-[0.65rem] md:text-sm shadow-lg border border-gray-700">
           <div className="font-semibold mb-0.5 md:mb-1">Progress</div>
           <div>Tricks: {progress.tricksPlayed}/12</div>
           <div className="flex justify-between items-center mt-2">
