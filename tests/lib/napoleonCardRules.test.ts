@@ -1657,5 +1657,119 @@ describe('Napoleon Card Rules', () => {
       // セイム2ルールが発動して2が勝つ
       expect(winner?.playerId).toBe('p2') // ハートの2（セイム2）
     })
+
+    it('should enable yoromeki rule on first trick - heart queen wins against mighty', () => {
+      // 1トリック目でもよろめきルールは有効
+      // マイティー（♠A）とハートのQ、表Jも裏Jもない場合
+      const trick: Trick = {
+        id: 'first-trick-yoromeki',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.SPADES}-${CARD_RANKS.ACE}`,
+              SUIT_ENUM.SPADES,
+              CARD_RANKS.ACE
+            ),
+            'p1',
+            0
+          ), // マイティー
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.QUEEN}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.QUEEN
+            ),
+            'p2',
+            1
+          ), // ハートのQ
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.SEVEN}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.SEVEN
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.DIAMONDS,
+              CARD_RANKS.KING
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.CLUBS,
+        true
+      )
+
+      expect(winner).not.toBeNull()
+      // よろめき発動：ハートのQが勝つ
+      expect(winner?.playerId).toBe('p2')
+    })
+
+    it('should enable hunting jack rule on first trick - hunting jack defeats trump jack', () => {
+      // 1トリック目でも狩りJルールは有効
+      // 切り札がスペードの場合、表J（♠J）の狩J = ♥J
+      const trick: Trick = {
+        id: 'first-trick-hunting-jack',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.SPADES}-${CARD_RANKS.JACK}`,
+              SUIT_ENUM.SPADES,
+              CARD_RANKS.JACK
+            ),
+            'p1',
+            0
+          ), // 表J（切り札ジャック）
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.JACK}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.JACK
+            ),
+            'p2',
+            1
+          ), // 狩J（表Jの狩りJ）
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.SEVEN}`,
+              SUIT_ENUM.DIAMONDS,
+              CARD_RANKS.SEVEN
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.KING
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.SPADES,
+        true
+      )
+
+      expect(winner).not.toBeNull()
+      // 狩りJルール発動：狩J（♥J）が勝つ
+      expect(winner?.playerId).toBe('p2')
+    })
   })
 })
