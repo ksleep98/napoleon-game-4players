@@ -155,7 +155,22 @@ export function getCardStrength(
   leadingSuit: Suit,
   isFirstTrick: boolean = false
 ): number {
-  // 最初のトリックでは切り札判定を無効化（普通のスートとして扱う）
+  // マイティーは常に最強（1トリック目でも有効）
+  if (isMighty(card)) {
+    return CARD_STRENGTH.MIGHTY
+  }
+
+  // 切り札ジャックは常に強い（1トリック目でも有効）
+  if (isTrumpJack(card, trumpSuit)) {
+    return CARD_STRENGTH.TRUMP_JACK
+  }
+
+  // 裏ジャックは常に強い（1トリック目でも有効）
+  if (isCounterJack(card, trumpSuit)) {
+    return CARD_STRENGTH.COUNTER_JACK
+  }
+
+  // 最初のトリックではその他の切り札判定を無効化
   if (isFirstTrick) {
     // リードスートのカード
     if (card.suit === leadingSuit) {
@@ -167,22 +182,7 @@ export function getCardStrength(
     return CARD_STRENGTH.OTHER_BASE + card.value
   }
 
-  // 通常のトリック（2トリック目以降）：切り札判定が有効
-  // マイティー
-  if (isMighty(card)) {
-    return CARD_STRENGTH.MIGHTY
-  }
-
-  // 切り札ジャック
-  if (isTrumpJack(card, trumpSuit)) {
-    return CARD_STRENGTH.TRUMP_JACK
-  }
-
-  // 裏ジャック
-  if (isCounterJack(card, trumpSuit)) {
-    return CARD_STRENGTH.COUNTER_JACK
-  }
-
+  // 通常のトリック（2トリック目以降）：全ての切り札判定が有効
   // その他の切り札
   if (isTrump(card, trumpSuit)) {
     // 切り札以外のJは最弱（値を1に設定）
@@ -341,30 +341,7 @@ export function determineWinnerWithSpecialRules(
 
   const leadingSuit = trick.cards[0].card.suit
 
-  // 最初のトリックでは切り札判定と特殊ルールを無効化
-  if (isFirstTrick) {
-    // 通常の強度比較のみ（切り札なし）
-    let winner = trick.cards[0]
-    let maxStrength = getCardStrength(winner.card, trumpSuit, leadingSuit, true)
-
-    for (const playedCard of trick.cards) {
-      const strength = getCardStrength(
-        playedCard.card,
-        trumpSuit,
-        leadingSuit,
-        true
-      )
-      if (strength > maxStrength) {
-        maxStrength = strength
-        winner = playedCard
-      }
-    }
-
-    return winner
-  }
-
-  // 2トリック目以降：特殊ルールと切り札判定が有効
-  // よろめきと狩りJルールの特別な判定
+  // 1. よろめきと狩りJルールの特別な判定（1トリック目でも有効）
   const mightyCard = trick.cards.find((pc) => isMighty(pc.card))
   const heartQueenCard = trick.cards.find((pc) => isHeartQueen(pc.card))
 
@@ -382,26 +359,33 @@ export function determineWinnerWithSpecialRules(
     if (yoromekiWinner) return yoromekiWinner
   }
 
-  // 2. 狩りJルール（よろめきがない、または無効な場合）
+  // 2. 狩りJルール（よろめきがない、または無効な場合）（1トリック目でも有効）
   const huntingJackWinner = checkHuntingJackRule(trick, trumpSuit)
   if (huntingJackWinner) return huntingJackWinner
 
-  // 3. セイム2ルール
-  const same2Winner = checkSame2Rule(trick, trumpSuit)
-  if (same2Winner) {
-    return same2Winner
+  // 3. セイム2ルール（最初のトリックでは無効）
+  if (!isFirstTrick) {
+    const same2Winner = checkSame2Rule(trick, trumpSuit)
+    if (same2Winner) {
+      return same2Winner
+    }
   }
 
   // 4. 通常の強度比較
   let winner = trick.cards[0]
-  let maxStrength = getCardStrength(winner.card, trumpSuit, leadingSuit, false)
+  let maxStrength = getCardStrength(
+    winner.card,
+    trumpSuit,
+    leadingSuit,
+    isFirstTrick
+  )
 
   for (const playedCard of trick.cards) {
     const strength = getCardStrength(
       playedCard.card,
       trumpSuit,
       leadingSuit,
-      false
+      isFirstTrick
     )
     if (strength > maxStrength) {
       maxStrength = strength
