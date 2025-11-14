@@ -1,6 +1,7 @@
 import { processAIPlayingPhase, processAllAIPhases } from '@/lib/ai/gameTricks'
 import { GAME_PHASES } from '@/lib/constants'
 import { determineWinnerWithSpecialRules } from '@/lib/napoleonCardRules'
+import { isGameDecided } from '@/lib/scoring'
 import type {
   Card,
   GameState,
@@ -429,6 +430,27 @@ export function completeTrick(gameState: GameState): GameState {
   }
 
   const allTricks = [...gameState.tricks, completedTrick]
+
+  // 早期ゲーム終了チェック（勝敗が確定した場合）
+  const updatedStateForCheck = {
+    ...gameState,
+    tricks: allTricks,
+    currentTrick: completedTrick,
+  }
+  const decisionResult = isGameDecided(updatedStateForCheck)
+
+  if (decisionResult.decided) {
+    // 勝敗が確定したのでゲーム終了
+    return {
+      ...gameState,
+      currentTrick: completedTrick,
+      tricks: allTricks,
+      phase: GAME_PHASES.FINISHED,
+      showingTrickResult: true,
+      lastCompletedTrick: completedTrick,
+      updatedAt: new Date(),
+    }
+  }
 
   // ゲーム終了チェック（12ターン目）
   if (allTricks.length === 12) {
