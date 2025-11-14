@@ -152,8 +152,22 @@ export function isHuntingJackPair(
 export function getCardStrength(
   card: Card,
   trumpSuit: Suit,
-  leadingSuit: Suit
+  leadingSuit: Suit,
+  isFirstTrick: boolean = false
 ): number {
+  // 最初のトリックでは切り札判定を無効化（普通のスートとして扱う）
+  if (isFirstTrick) {
+    // リードスートのカード
+    if (card.suit === leadingSuit) {
+      const value = card.rank === CARD_RANKS.JACK ? 1 : card.value
+      return CARD_STRENGTH.LEADING_BASE + value
+    }
+
+    // その他のスート（トリックを取れない）
+    return CARD_STRENGTH.OTHER_BASE + card.value
+  }
+
+  // 通常のトリック（2トリック目以降）：切り札判定が有効
   // マイティー
   if (isMighty(card)) {
     return CARD_STRENGTH.MIGHTY
@@ -327,6 +341,29 @@ export function determineWinnerWithSpecialRules(
 
   const leadingSuit = trick.cards[0].card.suit
 
+  // 最初のトリックでは切り札判定と特殊ルールを無効化
+  if (isFirstTrick) {
+    // 通常の強度比較のみ（切り札なし）
+    let winner = trick.cards[0]
+    let maxStrength = getCardStrength(winner.card, trumpSuit, leadingSuit, true)
+
+    for (const playedCard of trick.cards) {
+      const strength = getCardStrength(
+        playedCard.card,
+        trumpSuit,
+        leadingSuit,
+        true
+      )
+      if (strength > maxStrength) {
+        maxStrength = strength
+        winner = playedCard
+      }
+    }
+
+    return winner
+  }
+
+  // 2トリック目以降：特殊ルールと切り札判定が有効
   // よろめきと狩りJルールの特別な判定
   const mightyCard = trick.cards.find((pc) => isMighty(pc.card))
   const heartQueenCard = trick.cards.find((pc) => isHeartQueen(pc.card))
@@ -349,21 +386,23 @@ export function determineWinnerWithSpecialRules(
   const huntingJackWinner = checkHuntingJackRule(trick, trumpSuit)
   if (huntingJackWinner) return huntingJackWinner
 
-  // 3. セイム2ルール（最初のトリック以外）
-  if (!isFirstTrick) {
-    // checkSame2Rule関数を使用（マイティと裏Jの両方をチェック）
-    const same2Winner = checkSame2Rule(trick, trumpSuit)
-    if (same2Winner) {
-      return same2Winner
-    }
+  // 3. セイム2ルール
+  const same2Winner = checkSame2Rule(trick, trumpSuit)
+  if (same2Winner) {
+    return same2Winner
   }
 
   // 4. 通常の強度比較
   let winner = trick.cards[0]
-  let maxStrength = getCardStrength(winner.card, trumpSuit, leadingSuit)
+  let maxStrength = getCardStrength(winner.card, trumpSuit, leadingSuit, false)
 
   for (const playedCard of trick.cards) {
-    const strength = getCardStrength(playedCard.card, trumpSuit, leadingSuit)
+    const strength = getCardStrength(
+      playedCard.card,
+      trumpSuit,
+      leadingSuit,
+      false
+    )
     if (strength > maxStrength) {
       maxStrength = strength
       winner = playedCard

@@ -1258,4 +1258,291 @@ describe('Napoleon Card Rules', () => {
       expect(winner?.playerId).toBe('p4') // Ace should win normally
     })
   })
+
+  describe('First Trick Trump Disabling', () => {
+    it('should disable trump on first trick - trump suit loses to leading suit', () => {
+      // 最初のトリック：切り札が無効化される
+      // リードスート: ハート, 切り札: スペード
+      // ハートの3が出て、スペードのキング（切り札）が出ても、リードスートが勝つ
+      const trick: Trick = {
+        id: 'first-trick',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.THREE}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.THREE
+            ),
+            'p1',
+            0
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.SPADES}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.SPADES,
+              CARD_RANKS.KING
+            ),
+            'p2',
+            1
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.TWO}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.TWO
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.ACE}`,
+              SUIT_ENUM.DIAMONDS,
+              CARD_RANKS.ACE
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      // 最初のトリック（isFirstTrick = true）
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.SPADES, // 切り札はスペード
+        true
+      )
+
+      expect(winner).not.toBeNull()
+      // リードスート（ハート）の最も強いカードが勝つ
+      expect(winner?.playerId).toBe('p1') // ハートの3
+    })
+
+    it('should disable mighty on first trick - mighty treated as normal spade', () => {
+      // 最初のトリック：マイティー（♠A）も普通のカードとして扱われる
+      // リードスート: ハート, マイティー（♠A）が出ても切り札として機能しない
+      const trick: Trick = {
+        id: 'first-trick-mighty',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.FIVE}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.FIVE
+            ),
+            'p1',
+            0
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.SPADES}-${CARD_RANKS.ACE}`, // マイティー
+              SUIT_ENUM.SPADES,
+              CARD_RANKS.ACE
+            ),
+            'p2',
+            1
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.KING
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.ACE}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.ACE
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.SPADES,
+        true
+      )
+
+      expect(winner).not.toBeNull()
+      // マイティーは無効化され、リードスートの最強カードが勝つ
+      expect(winner?.playerId).toBe('p3') // ハートのキング
+    })
+
+    it('should disable trump jack on first trick', () => {
+      // 最初のトリック：切り札ジャックも普通のカードとして扱われる
+      const trick: Trick = {
+        id: 'first-trick-trump-jack',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.FOUR}`,
+              SUIT_ENUM.DIAMONDS,
+              CARD_RANKS.FOUR
+            ),
+            'p1',
+            0
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.JACK}`, // 切り札ジャック
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.JACK
+            ),
+            'p2',
+            1
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.QUEEN}`,
+              SUIT_ENUM.DIAMONDS,
+              CARD_RANKS.QUEEN
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.SEVEN}`,
+              SUIT_ENUM.DIAMONDS,
+              CARD_RANKS.SEVEN
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.HEARTS, // 切り札はハート
+        true
+      )
+
+      expect(winner).not.toBeNull()
+      // 切り札ジャックは無効化され、リードスートの最強カードが勝つ
+      expect(winner?.playerId).toBe('p3') // ダイヤのクイーン
+    })
+
+    it('should enable trump on second trick', () => {
+      // 2トリック目以降：切り札が有効化される
+      const trick: Trick = {
+        id: 'second-trick',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.ACE}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.ACE
+            ),
+            'p1',
+            0
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.SPADES}-${CARD_RANKS.FIVE}`, // 切り札
+              SUIT_ENUM.SPADES,
+              CARD_RANKS.FIVE
+            ),
+            'p2',
+            1
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.KING
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.QUEEN}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.QUEEN
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      // 2トリック目（isFirstTrick = false）
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.SPADES, // 切り札はスペード
+        false
+      )
+
+      expect(winner).not.toBeNull()
+      // 切り札が有効化され、スペードの5が勝つ
+      expect(winner?.playerId).toBe('p2')
+    })
+
+    it('should follow lead suit on first trick when no trump', () => {
+      // 最初のトリック：リードスートに従う
+      const trick: Trick = {
+        id: 'first-trick-follow-suit',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.FIVE}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.FIVE
+            ),
+            'p1',
+            0
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.KING
+            ),
+            'p2',
+            1
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.THREE}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.THREE
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.ACE}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.ACE
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.HEARTS,
+        true
+      )
+
+      expect(winner).not.toBeNull()
+      // リードスートの最強カードが勝つ
+      expect(winner?.playerId).toBe('p4') // クラブのエース
+    })
+  })
 })
