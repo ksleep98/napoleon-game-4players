@@ -1319,9 +1319,9 @@ describe('Napoleon Card Rules', () => {
       expect(winner?.playerId).toBe('p1') // ハートの3
     })
 
-    it('should disable mighty on first trick - mighty treated as normal spade', () => {
-      // 最初のトリック：マイティー（♠A）も普通のカードとして扱われる
-      // リードスート: ハート, マイティー（♠A）が出ても切り札として機能しない
+    it('should enable mighty on first trick - mighty wins even on first trick', () => {
+      // 最初のトリック：マイティー（♠A）は1トリック目でも有効
+      // リードスート: ハート, マイティー（♠A）が最強
       const trick: Trick = {
         id: 'first-trick-mighty',
         cards: [
@@ -1372,12 +1372,12 @@ describe('Napoleon Card Rules', () => {
       )
 
       expect(winner).not.toBeNull()
-      // マイティーは無効化され、リードスートの最強カードが勝つ
-      expect(winner?.playerId).toBe('p3') // ハートのキング
+      // マイティーは1トリック目でも有効で勝つ
+      expect(winner?.playerId).toBe('p2') // マイティー（♠A）
     })
 
-    it('should disable trump jack on first trick', () => {
-      // 最初のトリック：切り札ジャックも普通のカードとして扱われる
+    it('should enable trump jack on first trick - trump jack wins', () => {
+      // 最初のトリック：切り札ジャックは1トリック目でも有効
       const trick: Trick = {
         id: 'first-trick-trump-jack',
         cards: [
@@ -1428,8 +1428,8 @@ describe('Napoleon Card Rules', () => {
       )
 
       expect(winner).not.toBeNull()
-      // 切り札ジャックは無効化され、リードスートの最強カードが勝つ
-      expect(winner?.playerId).toBe('p3') // ダイヤのクイーン
+      // 切り札ジャックは1トリック目でも有効で勝つ
+      expect(winner?.playerId).toBe('p2') // ハートのジャック（切り札ジャック）
     })
 
     it('should enable trump on second trick', () => {
@@ -1543,6 +1543,119 @@ describe('Napoleon Card Rules', () => {
       expect(winner).not.toBeNull()
       // リードスートの最強カードが勝つ
       expect(winner?.playerId).toBe('p4') // クラブのエース
+    })
+
+    it('should disable Same2 rule on first trick', () => {
+      // 最初のトリック：セイム2ルールは無効
+      // 全員が同じスート（リードスート）で2が出ても、セイム2は発動しない
+      const trick: Trick = {
+        id: 'first-trick-same2',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.FIVE}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.FIVE
+            ),
+            'p1',
+            0
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.TWO}`, // セイム2候補
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.TWO
+            ),
+            'p2',
+            1
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.KING
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.THREE}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.THREE
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.CLUBS, // 切り札はクラブ（ハートではない）
+        true
+      )
+
+      expect(winner).not.toBeNull()
+      // セイム2は無効化され、リードスートの最強カードが勝つ
+      expect(winner?.playerId).toBe('p3') // ハートのキング
+    })
+
+    it('should enable Same2 rule on second trick', () => {
+      // 2トリック目以降：セイム2ルールが有効
+      const trick: Trick = {
+        id: 'second-trick-same2',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.FIVE}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.FIVE
+            ),
+            'p1',
+            0
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.TWO}`, // セイム2
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.TWO
+            ),
+            'p2',
+            1
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.KING
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.THREE}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.THREE
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.CLUBS, // 切り札はクラブ（ハートではない）
+        false
+      )
+
+      expect(winner).not.toBeNull()
+      // セイム2ルールが発動して2が勝つ
+      expect(winner?.playerId).toBe('p2') // ハートの2（セイム2）
     })
   })
 })
