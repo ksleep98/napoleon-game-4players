@@ -1,5 +1,6 @@
 import { CARD_RANKS, GAME_PHASES, SUIT_ENUM } from '@/lib/constants'
 import {
+  completeTrick,
   createNewTrick,
   declareNapoleon,
   determineWinner,
@@ -412,6 +413,339 @@ describe('Game Logic', () => {
           )
         }).toThrow('Only Napoleon can exchange cards')
       })
+    })
+  })
+
+  describe('Early Game Termination', () => {
+    /**
+     * Helper function to create a game state in playing phase with specified face cards distribution
+     */
+    function createPlayingGameState(
+      napoleonFaceCards: number,
+      completedTricks: number
+    ): GameState {
+      // Setup Napoleon declaration
+      const declaration: NapoleonDeclaration = {
+        playerId: gameState.players[0].id,
+        targetTricks: 15, // Default target
+        suit: SUIT_ENUM.SPADES,
+        adjutantCard: gameState.players[1].hand[0],
+      }
+
+      const stateWithNapoleon = declareNapoleon(gameState, declaration)
+
+      // Mock completed tricks
+      let remainingFaceCards = napoleonFaceCards
+      const tricks = Array.from({ length: completedTricks }, (_, index) => {
+        // Each trick has 4 cards, distribute face cards accordingly
+        const faceCardsThisTrick = Math.min(remainingFaceCards, 4)
+        const cards = []
+
+        for (let i = 0; i < 4; i++) {
+          const isFaceCard = i < faceCardsThisTrick
+          cards.push({
+            card: {
+              id: `card-${index}-${i}`,
+              suit: SUIT_ENUM.HEARTS,
+              rank: isFaceCard ? CARD_RANKS.ACE : CARD_RANKS.TWO,
+              value: isFaceCard ? 14 : 2,
+            },
+            playerId: gameState.players[i].id,
+            order: i,
+          })
+        }
+
+        remainingFaceCards -= faceCardsThisTrick
+
+        return {
+          id: `trick-${index}`,
+          cards,
+          completed: true,
+          winnerPlayerId: stateWithNapoleon.players[0].id, // Napoleon wins
+        }
+      })
+
+      return {
+        ...stateWithNapoleon,
+        phase: GAME_PHASES.PLAYING,
+        tricks,
+        players: stateWithNapoleon.players.map((p, i) => ({
+          ...p,
+          isNapoleon: i === 0,
+          isAdjutant: i === 1,
+        })),
+      }
+    }
+
+    it('should end game early when Napoleon reaches target face cards', () => {
+      // Napoleon needs 15 face cards, has already won 12 from 3 tricks
+      // The 4th trick will give Napoleon 3 more face cards, reaching 15 total
+      const playingState = createPlayingGameState(12, 3)
+
+      // Create a current trick with 3 face cards (ACE, KING, QUEEN) + 1 non-face card
+      // Napoleon wins this trick, gaining 3 more face cards (12 + 3 = 15 total)
+      const currentTrick: Trick = {
+        id: 'current-trick',
+        cards: [
+          {
+            card: {
+              id: 'card-1',
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.ACE,
+              value: 14,
+            },
+            playerId: playingState.players[0].id,
+            order: 0,
+          },
+          {
+            card: {
+              id: 'card-2',
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.KING,
+              value: 13,
+            },
+            playerId: playingState.players[1].id,
+            order: 1,
+          },
+          {
+            card: {
+              id: 'card-3',
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.QUEEN,
+              value: 12,
+            },
+            playerId: playingState.players[2].id,
+            order: 2,
+          },
+          {
+            card: {
+              id: 'card-4',
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.THREE,
+              value: 3,
+            },
+            playerId: playingState.players[3].id,
+            order: 3,
+          },
+        ],
+        completed: false,
+        leadingSuit: SUIT_ENUM.HEARTS,
+      }
+
+      const stateWithTrick = {
+        ...playingState,
+        currentTrick,
+        trumpSuit: SUIT_ENUM.SPADES,
+      }
+
+      const result = completeTrick(stateWithTrick)
+
+      // Game should end in FINISHED phase
+      expect(result.phase).toBe(GAME_PHASES.FINISHED)
+      expect(result.tricks.length).toBe(4) // 3 previous + 1 current
+      expect(result.showingTrickResult).toBe(true)
+    })
+
+    it('should end game early when Napoleon cannot possibly win', () => {
+      // Napoleon needs 15 face cards, but has 0 and only 2 tricks remaining
+      // Maximum possible: 0 + (2 * 5) = 10 face cards < 15 required
+      const playingState = createPlayingGameState(0, 10)
+
+      // Create a current trick
+      const currentTrick: Trick = {
+        id: 'current-trick',
+        cards: [
+          {
+            card: {
+              id: 'card-1',
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.TWO,
+              value: 2,
+            },
+            playerId: playingState.players[2].id, // Alliance wins
+            order: 0,
+          },
+          {
+            card: {
+              id: 'card-2',
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.THREE,
+              value: 3,
+            },
+            playerId: playingState.players[1].id,
+            order: 1,
+          },
+          {
+            card: {
+              id: 'card-3',
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.FOUR,
+              value: 4,
+            },
+            playerId: playingState.players[2].id,
+            order: 2,
+          },
+          {
+            card: {
+              id: 'card-4',
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.FIVE,
+              value: 5,
+            },
+            playerId: playingState.players[3].id,
+            order: 3,
+          },
+        ],
+        completed: false,
+        leadingSuit: SUIT_ENUM.HEARTS,
+      }
+
+      const stateWithTrick = {
+        ...playingState,
+        currentTrick,
+        trumpSuit: SUIT_ENUM.SPADES,
+      }
+
+      const result = completeTrick(stateWithTrick)
+
+      // Game should end in FINISHED phase because Napoleon cannot win
+      expect(result.phase).toBe(GAME_PHASES.FINISHED)
+      expect(result.tricks.length).toBe(11) // 10 previous + 1 current
+    })
+
+    it('should continue game when outcome is not yet decided', () => {
+      // Napoleon needs 15 face cards, has 10, with 3 tricks remaining
+      // Maximum possible: 10 + (3 * 5) = 25 face cards >= 15 required
+      // Minimum possible with alliance winning all: 10 face cards < 15 required
+      // Outcome is not decided yet
+      const playingState = createPlayingGameState(10, 8)
+
+      const currentTrick: Trick = {
+        id: 'current-trick',
+        cards: [
+          {
+            card: {
+              id: 'card-1',
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.KING,
+              value: 13,
+            },
+            playerId: playingState.players[0].id,
+            order: 0,
+          },
+          {
+            card: {
+              id: 'card-2',
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.THREE,
+              value: 3,
+            },
+            playerId: playingState.players[1].id,
+            order: 1,
+          },
+          {
+            card: {
+              id: 'card-3',
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.FOUR,
+              value: 4,
+            },
+            playerId: playingState.players[2].id,
+            order: 2,
+          },
+          {
+            card: {
+              id: 'card-4',
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.FIVE,
+              value: 5,
+            },
+            playerId: playingState.players[3].id,
+            order: 3,
+          },
+        ],
+        completed: false,
+        leadingSuit: SUIT_ENUM.HEARTS,
+      }
+
+      const stateWithTrick = {
+        ...playingState,
+        currentTrick,
+        trumpSuit: SUIT_ENUM.SPADES,
+      }
+
+      const result = completeTrick(stateWithTrick)
+
+      // Game should continue in PLAYING phase
+      expect(result.phase).toBe(GAME_PHASES.PLAYING)
+      expect(result.tricks.length).toBe(9) // 8 previous + 1 current
+      expect(result.currentTrick.cards).toHaveLength(0) // New trick started
+    })
+
+    it('should still end at 12 tricks even without early termination', () => {
+      // Napoleon needs 15 face cards, has 14, at trick 11
+      // Game could end early on trick 12, but we test the 12-trick end condition
+      const playingState = createPlayingGameState(14, 11)
+
+      const currentTrick: Trick = {
+        id: 'current-trick',
+        cards: [
+          {
+            card: {
+              id: 'card-1',
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.TWO,
+              value: 2,
+            },
+            playerId: playingState.players[0].id,
+            order: 0,
+          },
+          {
+            card: {
+              id: 'card-2',
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.THREE,
+              value: 3,
+            },
+            playerId: playingState.players[1].id,
+            order: 1,
+          },
+          {
+            card: {
+              id: 'card-3',
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.FOUR,
+              value: 4,
+            },
+            playerId: playingState.players[2].id,
+            order: 2,
+          },
+          {
+            card: {
+              id: 'card-4',
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.FIVE,
+              value: 5,
+            },
+            playerId: playingState.players[3].id,
+            order: 3,
+          },
+        ],
+        completed: false,
+        leadingSuit: SUIT_ENUM.HEARTS,
+      }
+
+      const stateWithTrick = {
+        ...playingState,
+        currentTrick,
+        trumpSuit: SUIT_ENUM.SPADES,
+      }
+
+      const result = completeTrick(stateWithTrick)
+
+      // Game should end because it's the 12th trick
+      expect(result.phase).toBe(GAME_PHASES.FINISHED)
+      expect(result.tricks.length).toBe(12)
     })
   })
 })
