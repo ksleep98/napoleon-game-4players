@@ -9,7 +9,6 @@ import {
   initializeAIGame,
   initializeGame,
   passNapoleonDeclaration,
-  playCard,
   setAdjutant,
 } from '@/lib/gameLogic'
 import type { Card, GameState, NapoleonDeclaration, Trick } from '@/types/game'
