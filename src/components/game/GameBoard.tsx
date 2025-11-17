@@ -150,9 +150,26 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
         <div className="absolute top-1 md:top-2 right-1 md:right-2 bg-gray-900 bg-opacity-95 text-white rounded-lg p-1.5 md:p-3 text-[0.6rem] md:text-xs shadow-lg border border-gray-700">
           <div className="font-semibold mb-1 md:mb-2">Cards</div>
           {playerFaceCards.map((data) => {
+            // 副官が判明しているかチェック
+            const isAdjutantRevealed =
+              data.player.isAdjutant &&
+              (gameState.tricks.some((trick) =>
+                trick.cards.some(
+                  (playedCard) =>
+                    gameState.napoleonCard &&
+                    playedCard.card.id === gameState.napoleonCard.id
+                )
+              ) ||
+                gameState.tricks.some((trick) =>
+                  trick.cards.some((playedCard) => playedCard.revealsAdjutant)
+                ) ||
+                gameState.currentTrick.cards.some(
+                  (playedCard) => playedCard.revealsAdjutant
+                ))
+
             const roleColor = data.player.isNapoleon
               ? 'text-yellow-400'
-              : data.player.isAdjutant
+              : isAdjutantRevealed
                 ? 'text-green-400'
                 : 'text-blue-400'
 
