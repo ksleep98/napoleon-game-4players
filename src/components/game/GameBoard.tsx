@@ -293,11 +293,24 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
                 N
               </span>
             )}
-            {currentPlayer?.isAdjutant && (
-              <span className="px-1 bg-green-600 text-green-100 rounded text-xs">
-                A
-              </span>
-            )}
+            {currentPlayer?.isAdjutant &&
+              (gameState.tricks.some((trick) =>
+                trick.cards.some(
+                  (playedCard) =>
+                    gameState.napoleonCard &&
+                    playedCard.card.id === gameState.napoleonCard.id
+                )
+              ) ||
+                gameState.tricks.some((trick) =>
+                  trick.cards.some((playedCard) => playedCard.revealsAdjutant)
+                ) ||
+                gameState.currentTrick.cards.some(
+                  (playedCard) => playedCard.revealsAdjutant
+                )) && (
+                <span className="px-1 bg-green-600 text-green-100 rounded text-xs">
+                  A
+                </span>
+              )}
           </div>
         </div>
       </div>
