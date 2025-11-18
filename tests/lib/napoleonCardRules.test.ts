@@ -1258,4 +1258,518 @@ describe('Napoleon Card Rules', () => {
       expect(winner?.playerId).toBe('p4') // Ace should win normally
     })
   })
+
+  describe('First Trick Trump Disabling', () => {
+    it('should disable trump on first trick - trump suit loses to leading suit', () => {
+      // 最初のトリック：切り札が無効化される
+      // リードスート: ハート, 切り札: スペード
+      // ハートの3が出て、スペードのキング（切り札）が出ても、リードスートが勝つ
+      const trick: Trick = {
+        id: 'first-trick',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.THREE}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.THREE
+            ),
+            'p1',
+            0
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.SPADES}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.SPADES,
+              CARD_RANKS.KING
+            ),
+            'p2',
+            1
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.TWO}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.TWO
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.ACE}`,
+              SUIT_ENUM.DIAMONDS,
+              CARD_RANKS.ACE
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      // 最初のトリック（isFirstTrick = true）
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.SPADES, // 切り札はスペード
+        true
+      )
+
+      expect(winner).not.toBeNull()
+      // リードスート（ハート）の最も強いカードが勝つ
+      expect(winner?.playerId).toBe('p1') // ハートの3
+    })
+
+    it('should enable mighty on first trick - mighty wins even on first trick', () => {
+      // 最初のトリック：マイティー（♠A）は1トリック目でも有効
+      // リードスート: ハート, マイティー（♠A）が最強
+      const trick: Trick = {
+        id: 'first-trick-mighty',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.FIVE}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.FIVE
+            ),
+            'p1',
+            0
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.SPADES}-${CARD_RANKS.ACE}`, // マイティー
+              SUIT_ENUM.SPADES,
+              CARD_RANKS.ACE
+            ),
+            'p2',
+            1
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.KING
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.ACE}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.ACE
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.SPADES,
+        true
+      )
+
+      expect(winner).not.toBeNull()
+      // マイティーは1トリック目でも有効で勝つ
+      expect(winner?.playerId).toBe('p2') // マイティー（♠A）
+    })
+
+    it('should enable trump jack on first trick - trump jack wins', () => {
+      // 最初のトリック：切り札ジャックは1トリック目でも有効
+      const trick: Trick = {
+        id: 'first-trick-trump-jack',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.FOUR}`,
+              SUIT_ENUM.DIAMONDS,
+              CARD_RANKS.FOUR
+            ),
+            'p1',
+            0
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.JACK}`, // 切り札ジャック
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.JACK
+            ),
+            'p2',
+            1
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.QUEEN}`,
+              SUIT_ENUM.DIAMONDS,
+              CARD_RANKS.QUEEN
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.SEVEN}`,
+              SUIT_ENUM.DIAMONDS,
+              CARD_RANKS.SEVEN
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.HEARTS, // 切り札はハート
+        true
+      )
+
+      expect(winner).not.toBeNull()
+      // 切り札ジャックは1トリック目でも有効で勝つ
+      expect(winner?.playerId).toBe('p2') // ハートのジャック（切り札ジャック）
+    })
+
+    it('should enable trump on second trick', () => {
+      // 2トリック目以降：切り札が有効化される
+      const trick: Trick = {
+        id: 'second-trick',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.ACE}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.ACE
+            ),
+            'p1',
+            0
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.SPADES}-${CARD_RANKS.FIVE}`, // 切り札
+              SUIT_ENUM.SPADES,
+              CARD_RANKS.FIVE
+            ),
+            'p2',
+            1
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.KING
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.QUEEN}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.QUEEN
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      // 2トリック目（isFirstTrick = false）
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.SPADES, // 切り札はスペード
+        false
+      )
+
+      expect(winner).not.toBeNull()
+      // 切り札が有効化され、スペードの5が勝つ
+      expect(winner?.playerId).toBe('p2')
+    })
+
+    it('should follow lead suit on first trick when no trump', () => {
+      // 最初のトリック：リードスートに従う
+      const trick: Trick = {
+        id: 'first-trick-follow-suit',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.FIVE}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.FIVE
+            ),
+            'p1',
+            0
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.KING
+            ),
+            'p2',
+            1
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.THREE}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.THREE
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.ACE}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.ACE
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.HEARTS,
+        true
+      )
+
+      expect(winner).not.toBeNull()
+      // リードスートの最強カードが勝つ
+      expect(winner?.playerId).toBe('p4') // クラブのエース
+    })
+
+    it('should disable Same2 rule on first trick', () => {
+      // 最初のトリック：セイム2ルールは無効
+      // 全員が同じスート（リードスート）で2が出ても、セイム2は発動しない
+      const trick: Trick = {
+        id: 'first-trick-same2',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.FIVE}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.FIVE
+            ),
+            'p1',
+            0
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.TWO}`, // セイム2候補
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.TWO
+            ),
+            'p2',
+            1
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.KING
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.THREE}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.THREE
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.CLUBS, // 切り札はクラブ（ハートではない）
+        true
+      )
+
+      expect(winner).not.toBeNull()
+      // セイム2は無効化され、リードスートの最強カードが勝つ
+      expect(winner?.playerId).toBe('p3') // ハートのキング
+    })
+
+    it('should enable Same2 rule on second trick', () => {
+      // 2トリック目以降：セイム2ルールが有効
+      const trick: Trick = {
+        id: 'second-trick-same2',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.FIVE}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.FIVE
+            ),
+            'p1',
+            0
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.TWO}`, // セイム2
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.TWO
+            ),
+            'p2',
+            1
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.KING
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.THREE}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.THREE
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.CLUBS, // 切り札はクラブ（ハートではない）
+        false
+      )
+
+      expect(winner).not.toBeNull()
+      // セイム2ルールが発動して2が勝つ
+      expect(winner?.playerId).toBe('p2') // ハートの2（セイム2）
+    })
+
+    it('should enable yoromeki rule on first trick - heart queen wins against mighty', () => {
+      // 1トリック目でもよろめきルールは有効
+      // マイティー（♠A）とハートのQ、表Jも裏Jもない場合
+      const trick: Trick = {
+        id: 'first-trick-yoromeki',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.SPADES}-${CARD_RANKS.ACE}`,
+              SUIT_ENUM.SPADES,
+              CARD_RANKS.ACE
+            ),
+            'p1',
+            0
+          ), // マイティー
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.QUEEN}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.QUEEN
+            ),
+            'p2',
+            1
+          ), // ハートのQ
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.SEVEN}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.SEVEN
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.DIAMONDS,
+              CARD_RANKS.KING
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.CLUBS,
+        true
+      )
+
+      expect(winner).not.toBeNull()
+      // よろめき発動：ハートのQが勝つ
+      expect(winner?.playerId).toBe('p2')
+    })
+
+    it('should enable hunting jack rule on first trick - hunting jack defeats trump jack', () => {
+      // 1トリック目でも狩りJルールは有効
+      // 切り札がスペードの場合、表J（♠J）の狩J = ♥J
+      const trick: Trick = {
+        id: 'first-trick-hunting-jack',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.SPADES}-${CARD_RANKS.JACK}`,
+              SUIT_ENUM.SPADES,
+              CARD_RANKS.JACK
+            ),
+            'p1',
+            0
+          ), // 表J（切り札ジャック）
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.JACK}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.JACK
+            ),
+            'p2',
+            1
+          ), // 狩J（表Jの狩りJ）
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.SEVEN}`,
+              SUIT_ENUM.DIAMONDS,
+              CARD_RANKS.SEVEN
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.KING
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.SPADES,
+        true
+      )
+
+      expect(winner).not.toBeNull()
+      // 狩りJルール発動：狩J（♥J）が勝つ
+      expect(winner?.playerId).toBe('p2')
+    })
+  })
 })
