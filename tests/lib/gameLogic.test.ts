@@ -747,5 +747,131 @@ describe('Game Logic', () => {
       expect(result.phase).toBe(GAME_PHASES.FINISHED)
       expect(result.tricks.length).toBe(12)
     })
+
+    it('should end game early when citizen team exceeds allowed face cards', () => {
+      // Napoleon needs 15 face cards, so citizens can have max 5 (20 total - 15)
+      // If citizens get 6 or more, Napoleon cannot win
+      const playingState = createPlayingGameState(8, 2) // Napoleon has 8 from 2 tricks
+
+      // Create tricks where alliance wins with face cards
+      // Alliance has won 1 trick with 4 face cards, and about to win another with 2 face cards
+      // Total: 4 + 2 = 6 face cards for alliance (exceeds 5 allowed)
+      const allianceTrick: Trick = {
+        id: 'alliance-trick',
+        cards: [
+          {
+            card: {
+              id: 'card-1',
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.ACE,
+              value: 14,
+            },
+            playerId: playingState.players[0].id,
+            order: 0,
+          },
+          {
+            card: {
+              id: 'card-2',
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.KING,
+              value: 13,
+            },
+            playerId: playingState.players[1].id,
+            order: 1,
+          },
+          {
+            card: {
+              id: 'card-3',
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.THREE,
+              value: 3,
+            },
+            playerId: playingState.players[2].id, // Alliance player
+            order: 2,
+          },
+          {
+            card: {
+              id: 'card-4',
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.TWO,
+              value: 2,
+            },
+            playerId: playingState.players[3].id, // Alliance player
+            order: 3,
+          },
+        ],
+        completed: true,
+        winnerPlayerId: playingState.players[2].id, // Alliance wins with 2 face cards
+      }
+
+      // Add this alliance trick to the game state
+      const stateWithAllianceTrick = {
+        ...playingState,
+        tricks: [...playingState.tricks, allianceTrick],
+      }
+
+      // Create current trick where alliance wins again with 4 face cards
+      // This will bring alliance total to 6 face cards (2 + 4 = 6 > 5 allowed)
+      // Alliance player plays trump ACE to win
+      const currentTrick: Trick = {
+        id: 'current-trick',
+        cards: [
+          {
+            card: {
+              id: 'card-5',
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.ACE,
+              value: 14,
+            },
+            playerId: playingState.players[0].id, // Napoleon plays non-trump ACE
+            order: 0,
+          },
+          {
+            card: {
+              id: 'card-6',
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.KING,
+              value: 13,
+            },
+            playerId: playingState.players[1].id, // Adjutant plays non-trump KING
+            order: 1,
+          },
+          {
+            card: {
+              id: 'card-7',
+              suit: SUIT_ENUM.SPADES,
+              rank: CARD_RANKS.ACE,
+              value: 14,
+            },
+            playerId: playingState.players[2].id, // Alliance player plays trump ACE (wins!)
+            order: 2,
+          },
+          {
+            card: {
+              id: 'card-8',
+              suit: SUIT_ENUM.HEARTS,
+              rank: CARD_RANKS.QUEEN,
+              value: 12,
+            },
+            playerId: playingState.players[3].id, // Alliance player plays non-trump QUEEN
+            order: 3,
+          },
+        ],
+        completed: false,
+        leadingSuit: SUIT_ENUM.HEARTS,
+      }
+
+      const stateWithTrick = {
+        ...stateWithAllianceTrick,
+        currentTrick,
+        trumpSuit: SUIT_ENUM.SPADES,
+      }
+
+      const result = completeTrick(stateWithTrick)
+
+      // Game should end in FINISHED phase because alliance exceeded allowed face cards
+      expect(result.phase).toBe(GAME_PHASES.FINISHED)
+      expect(result.showingTrickResult).toBe(true)
+    })
   })
 })

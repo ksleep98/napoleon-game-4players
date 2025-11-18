@@ -153,8 +153,15 @@ export function getTeamFaceCardCounts(gameState: GameState): {
       return total + countFaceCards(trick.cards.map((c) => c.card))
     }, 0)
 
-  const totalFaceCards = 20 // 全絵札数
-  const citizenTeam = totalFaceCards - napoleonTeam
+  // 連合軍が獲得した絵札数を実際に計算
+  const citizenTeam = gameState.tricks
+    .filter(
+      (trick) =>
+        trick.winnerPlayerId && !napoleonTeamIds.includes(trick.winnerPlayerId)
+    )
+    .reduce((total, trick) => {
+      return total + countFaceCards(trick.cards.map((c) => c.card))
+    }, 0)
 
   return { napoleonTeam, citizenTeam }
 }
@@ -196,12 +203,16 @@ export function isGameDecided(gameState: GameState): {
   napoleonWon?: boolean
   reason?: string
 } {
-  const { napoleonTeamFaceCards, tricksRemaining } = getGameProgress(gameState)
+  const { napoleonTeamFaceCards, citizenTeamFaceCards, tricksRemaining } =
+    getGameProgress(gameState)
 
   // 実際の宣言数を取得
   const targetFaceCards =
     gameState.napoleonDeclaration?.targetTricks ??
     NAPOLEON_RULES.TARGET_FACE_CARDS
+
+  // 総絵札数（10, J, Q, K, A の各スート5枚 = 20枚）
+  const TOTAL_FACE_CARDS = 20
 
   // ナポレオン側が既に必要な絵札数を達成
   if (napoleonTeamFaceCards >= targetFaceCards) {
@@ -209,6 +220,16 @@ export function isGameDecided(gameState: GameState): {
       decided: true,
       napoleonWon: true,
       reason: 'Napoleon team reached target face cards',
+    }
+  }
+
+  // 連合軍がナポレオンの負け条件を超えた（ナポレオンが取れる最大枚数を連合軍が超えた）
+  const maxAllowedForCitizens = TOTAL_FACE_CARDS - targetFaceCards
+  if (citizenTeamFaceCards > maxAllowedForCitizens) {
+    return {
+      decided: true,
+      napoleonWon: false,
+      reason: 'Citizen team exceeded allowed face cards for Napoleon to win',
     }
   }
 
