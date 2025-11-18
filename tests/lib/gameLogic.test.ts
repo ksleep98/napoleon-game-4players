@@ -547,11 +547,162 @@ describe('Game Logic', () => {
     })
 
     it('should end game early when Napoleon cannot possibly win', () => {
-      // Napoleon needs 15 face cards, but has 0 and only 2 tricks remaining
-      // Maximum possible: 0 + (2 * 5) = 10 face cards < 15 required
-      const playingState = createPlayingGameState(0, 10)
+      // Napoleon needs 15 face cards, has 5, and citizens have 10
+      // Remaining face cards: 20 - 5 - 10 = 5
+      // Maximum Napoleon can get: 5 + 5 = 10 < 15 required
+      const playingState = createPlayingGameState(5, 3) // Napoleon has 5 from 3 tricks
 
-      // Create a current trick
+      // Add tricks where citizens won with face cards (total 10 face cards)
+      const citizenTricks: Trick[] = [
+        {
+          id: 'citizen-trick-1',
+          cards: [
+            {
+              card: {
+                id: 'c-card-1',
+                suit: SUIT_ENUM.HEARTS,
+                rank: CARD_RANKS.ACE,
+                value: 14,
+              },
+              playerId: playingState.players[0].id,
+              order: 0,
+            },
+            {
+              card: {
+                id: 'c-card-2',
+                suit: SUIT_ENUM.HEARTS,
+                rank: CARD_RANKS.KING,
+                value: 13,
+              },
+              playerId: playingState.players[1].id,
+              order: 1,
+            },
+            {
+              card: {
+                id: 'c-card-3',
+                suit: SUIT_ENUM.HEARTS,
+                rank: CARD_RANKS.QUEEN,
+                value: 12,
+              },
+              playerId: playingState.players[2].id,
+              order: 2,
+            },
+            {
+              card: {
+                id: 'c-card-4',
+                suit: SUIT_ENUM.HEARTS,
+                rank: CARD_RANKS.JACK,
+                value: 11,
+              },
+              playerId: playingState.players[3].id,
+              order: 3,
+            },
+          ],
+          completed: true,
+          winnerPlayerId: playingState.players[2].id, // Citizen wins with 4 face cards
+        },
+        {
+          id: 'citizen-trick-2',
+          cards: [
+            {
+              card: {
+                id: 'c-card-5',
+                suit: SUIT_ENUM.DIAMONDS,
+                rank: CARD_RANKS.TEN,
+                value: 10,
+              },
+              playerId: playingState.players[0].id,
+              order: 0,
+            },
+            {
+              card: {
+                id: 'c-card-6',
+                suit: SUIT_ENUM.DIAMONDS,
+                rank: CARD_RANKS.ACE,
+                value: 14,
+              },
+              playerId: playingState.players[1].id,
+              order: 1,
+            },
+            {
+              card: {
+                id: 'c-card-7',
+                suit: SUIT_ENUM.DIAMONDS,
+                rank: CARD_RANKS.KING,
+                value: 13,
+              },
+              playerId: playingState.players[2].id,
+              order: 2,
+            },
+            {
+              card: {
+                id: 'c-card-8',
+                suit: SUIT_ENUM.DIAMONDS,
+                rank: CARD_RANKS.QUEEN,
+                value: 12,
+              },
+              playerId: playingState.players[3].id,
+              order: 3,
+            },
+          ],
+          completed: true,
+          winnerPlayerId: playingState.players[3].id, // Citizen wins with 4 face cards
+        },
+        {
+          id: 'citizen-trick-3',
+          cards: [
+            {
+              card: {
+                id: 'c-card-9',
+                suit: SUIT_ENUM.CLUBS,
+                rank: CARD_RANKS.JACK,
+                value: 11,
+              },
+              playerId: playingState.players[0].id,
+              order: 0,
+            },
+            {
+              card: {
+                id: 'c-card-10',
+                suit: SUIT_ENUM.CLUBS,
+                rank: CARD_RANKS.TEN,
+                value: 10,
+              },
+              playerId: playingState.players[1].id,
+              order: 1,
+            },
+            {
+              card: {
+                id: 'c-card-11',
+                suit: SUIT_ENUM.CLUBS,
+                rank: CARD_RANKS.TWO,
+                value: 2,
+              },
+              playerId: playingState.players[2].id,
+              order: 2,
+            },
+            {
+              card: {
+                id: 'c-card-12',
+                suit: SUIT_ENUM.CLUBS,
+                rank: CARD_RANKS.THREE,
+                value: 3,
+              },
+              playerId: playingState.players[3].id,
+              order: 3,
+            },
+          ],
+          completed: true,
+          winnerPlayerId: playingState.players[2].id, // Citizen wins with 2 face cards
+        },
+      ]
+
+      const stateWithCitizenTricks = {
+        ...playingState,
+        tricks: [...playingState.tricks, ...citizenTricks],
+      }
+
+      // Create a current trick with no face cards
       const currentTrick: Trick = {
         id: 'current-trick',
         cards: [
@@ -601,7 +752,7 @@ describe('Game Logic', () => {
       }
 
       const stateWithTrick = {
-        ...playingState,
+        ...stateWithCitizenTricks,
         currentTrick,
         trumpSuit: SUIT_ENUM.SPADES,
       }
@@ -609,8 +760,10 @@ describe('Game Logic', () => {
       const result = completeTrick(stateWithTrick)
 
       // Game should end in FINISHED phase because Napoleon cannot win
+      // Napoleon has 5, citizens have 10, remaining = 5
+      // Napoleon max possible: 5 + 5 = 10 < 15
       expect(result.phase).toBe(GAME_PHASES.FINISHED)
-      expect(result.tricks.length).toBe(11) // 10 previous + 1 current
+      expect(result.tricks.length).toBe(7) // 3 Napoleon + 3 citizens + 1 current
     })
 
     it('should continue game when outcome is not yet decided', () => {
