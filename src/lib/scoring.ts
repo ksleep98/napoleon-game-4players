@@ -234,7 +234,7 @@ export function isGameDecided(gameState: GameState): {
   }
 
   // ナポレオン側が残りトリックで取れる最大絵札数を計算
-  const maxRemainingFaceCards = tricksRemaining * 5 // 最大でトリックごとに5枚の絵札がある可能性
+  const maxRemainingFaceCards = tricksRemaining * 4 // 最大でトリックごとに4枚の絵札（4人プレイ）
   if (napoleonTeamFaceCards + maxRemainingFaceCards < targetFaceCards) {
     return {
       decided: true,
