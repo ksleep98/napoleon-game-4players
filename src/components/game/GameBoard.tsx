@@ -9,7 +9,12 @@ interface GameBoardProps {
 }
 
 export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
-  const currentTrick = gameState.currentTrick
+  // トリック結果表示中は lastCompletedTrick を使用、それ以外は currentTrick を使用
+  const currentTrick =
+    gameState.showingTrickResult && gameState.lastCompletedTrick
+      ? gameState.lastCompletedTrick
+      : gameState.currentTrick
+
   const progress = getGameProgress(gameState)
 
   // プレイヤーの位置を計算（4人のプレイヤーを上下左右に配置）

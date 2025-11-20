@@ -54,7 +54,7 @@ cleanup_container() {
 run_dev() {
     cleanup_container
 
-    print_info "Starting container with pnpm dev..."
+    print_info "Starting container with pnpm dev (Hot Reload enabled)..."
     print_info "Access the application at: http://localhost:3000"
     print_info "Press Ctrl+C to stop the server"
 
@@ -66,8 +66,13 @@ run_dev() {
             -p 3000:3000 \
             -v "$(pwd)/src:/app/src" \
             -v "$(pwd)/public:/app/public" \
+            -v "$(pwd)/next.config.js:/app/next.config.js" \
+            -v "$(pwd)/tailwind.config.ts:/app/tailwind.config.ts" \
+            -v "$(pwd)/tsconfig.json:/app/tsconfig.json" \
             -v "$(pwd)/.env.local:/app/.env.local:ro" \
             -e NODE_ENV=development \
+            -e WATCHPACK_POLLING=true \
+            -e CHOKIDAR_USEPOLLING=true \
             "${IMAGE_NAME}" \
             pnpm dev
     else
@@ -77,7 +82,12 @@ run_dev() {
             -p 3000:3000 \
             -v "$(pwd)/src:/app/src" \
             -v "$(pwd)/public:/app/public" \
+            -v "$(pwd)/next.config.js:/app/next.config.js" \
+            -v "$(pwd)/tailwind.config.ts:/app/tailwind.config.ts" \
+            -v "$(pwd)/tsconfig.json:/app/tsconfig.json" \
             -e NODE_ENV=development \
+            -e WATCHPACK_POLLING=true \
+            -e CHOKIDAR_USEPOLLING=true \
             "${IMAGE_NAME}" \
             pnpm dev
     fi
@@ -87,7 +97,7 @@ run_dev() {
 run_shell() {
     cleanup_container
 
-    print_info "Starting container with bash shell..."
+    print_info "Starting container with bash shell (Hot Reload enabled)..."
     print_info "Type 'pnpm dev' to start the development server"
     print_info "Type 'exit' to leave the container"
 
@@ -99,8 +109,13 @@ run_shell() {
             -p 3000:3000 \
             -v "$(pwd)/src:/app/src" \
             -v "$(pwd)/public:/app/public" \
+            -v "$(pwd)/next.config.js:/app/next.config.js" \
+            -v "$(pwd)/tailwind.config.ts:/app/tailwind.config.ts" \
+            -v "$(pwd)/tsconfig.json:/app/tsconfig.json" \
             -v "$(pwd)/.env.local:/app/.env.local:ro" \
             -e NODE_ENV=development \
+            -e WATCHPACK_POLLING=true \
+            -e CHOKIDAR_USEPOLLING=true \
             "${IMAGE_NAME}" \
             bash
     else
@@ -110,7 +125,12 @@ run_shell() {
             -p 3000:3000 \
             -v "$(pwd)/src:/app/src" \
             -v "$(pwd)/public:/app/public" \
+            -v "$(pwd)/next.config.js:/app/next.config.js" \
+            -v "$(pwd)/tailwind.config.ts:/app/tailwind.config.ts" \
+            -v "$(pwd)/tsconfig.json:/app/tsconfig.json" \
             -e NODE_ENV=development \
+            -e WATCHPACK_POLLING=true \
+            -e CHOKIDAR_USEPOLLING=true \
             "${IMAGE_NAME}" \
             bash
     fi
