@@ -593,8 +593,9 @@ describe('Napoleon Card Rules', () => {
         expect(winner?.playerId).toBe('p2') // Hearts J (hunting jack) should win
       })
 
-      it('should detect hunting jack (clubs J vs diamonds J) - counter jack and its hunting jack', () => {
-        // スペードが切り札の場合、裏J（♣J）の狩J = ♦J
+      it('should detect hunting jack (clubs J vs diamonds J) - counter jack and its diagonal hunting jack', () => {
+        // スペードが切り札の場合、裏J（♣J）と狩J（♦J、対角線）
+        // 裏Jの狩Jは対角線上の特定のスート（♦J）のみ
         const trick: Trick = {
           id: 'test-trick',
           cards: [
@@ -606,7 +607,7 @@ describe('Napoleon Card Rules', () => {
               ),
               'p1',
               0
-            ), // 裏J
+            ), // 裏J (counter jack)
             createPlayedCard(
               createCard(
                 `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.JACK}`,
@@ -615,7 +616,7 @@ describe('Napoleon Card Rules', () => {
               ),
               'p2',
               1
-            ), // 裏Jの狩J
+            ), // 裏Jの狩J（対角線）
             createPlayedCard(
               createCard(
                 `${SUIT_ENUM.HEARTS}-${CARD_RANKS.SEVEN}`,
@@ -641,6 +642,157 @@ describe('Napoleon Card Rules', () => {
         const winner = checkHuntingJackRule(trick, SUIT_ENUM.SPADES)
         expect(winner).not.toBeNull()
         expect(winner?.playerId).toBe('p2') // Diamonds J (hunting jack) should win
+      })
+
+      it('should NOT detect hunting jack (clubs J vs hearts J) - hearts J is not counter jack hunting jack', () => {
+        // スペードが切り札の場合、裏J（♣J）とハートのJ
+        // ハートのJは裏Jの狩Jではない（対角線ではない）
+        const trick: Trick = {
+          id: 'test-trick',
+          cards: [
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.CLUBS}-${CARD_RANKS.JACK}`,
+                SUIT_ENUM.CLUBS,
+                CARD_RANKS.JACK
+              ),
+              'p1',
+              0
+            ), // 裏J (counter jack)
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.HEARTS}-${CARD_RANKS.JACK}`,
+                SUIT_ENUM.HEARTS,
+                CARD_RANKS.JACK
+              ),
+              'p2',
+              1
+            ), // 普通のJ（裏Jの狩Jではない）
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.SEVEN}`,
+                SUIT_ENUM.DIAMONDS,
+                CARD_RANKS.SEVEN
+              ),
+              'p3',
+              2
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.SPADES}-${CARD_RANKS.KING}`,
+                SUIT_ENUM.SPADES,
+                CARD_RANKS.KING
+              ),
+              'p4',
+              3
+            ),
+          ],
+          completed: true,
+        }
+
+        const winner = checkHuntingJackRule(trick, SUIT_ENUM.SPADES)
+        expect(winner).toBeNull() // 狩りJルールは発動しない（♥Jは対角線ではない）
+      })
+
+      it('should detect hunting jack (spades J vs hearts J) - trump jack and its diagonal hunting jack', () => {
+        // スペードが切り札の場合、表J（♠J）と狩J（♥J、対角線）
+        // 表Jの狩Jは対角線上の特定のスート（♥J）のみ
+        const trick: Trick = {
+          id: 'test-trick',
+          cards: [
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.SPADES}-${CARD_RANKS.JACK}`,
+                SUIT_ENUM.SPADES,
+                CARD_RANKS.JACK
+              ),
+              'p1',
+              0
+            ), // 表J (trump jack)
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.HEARTS}-${CARD_RANKS.JACK}`,
+                SUIT_ENUM.HEARTS,
+                CARD_RANKS.JACK
+              ),
+              'p2',
+              1
+            ), // 表Jの狩J（対角線）
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.SEVEN}`,
+                SUIT_ENUM.DIAMONDS,
+                CARD_RANKS.SEVEN
+              ),
+              'p3',
+              2
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.CLUBS}-${CARD_RANKS.KING}`,
+                SUIT_ENUM.CLUBS,
+                CARD_RANKS.KING
+              ),
+              'p4',
+              3
+            ),
+          ],
+          completed: true,
+        }
+
+        const winner = checkHuntingJackRule(trick, SUIT_ENUM.SPADES)
+        expect(winner).not.toBeNull()
+        expect(winner?.playerId).toBe('p2') // Hearts J (hunting jack) should win
+      })
+
+      it('should NOT detect hunting jack (spades J vs diamonds J) - diamonds J is not trump jack hunting jack', () => {
+        // スペードが切り札の場合、表J（♠J）とダイヤのJ
+        // ダイヤのJは表Jの狩Jではない（対角線ではない）
+        const trick: Trick = {
+          id: 'test-trick',
+          cards: [
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.SPADES}-${CARD_RANKS.JACK}`,
+                SUIT_ENUM.SPADES,
+                CARD_RANKS.JACK
+              ),
+              'p1',
+              0
+            ), // 表J (trump jack)
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.JACK}`,
+                SUIT_ENUM.DIAMONDS,
+                CARD_RANKS.JACK
+              ),
+              'p2',
+              1
+            ), // 普通のJ（表Jの狩Jではない）
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.HEARTS}-${CARD_RANKS.SEVEN}`,
+                SUIT_ENUM.HEARTS,
+                CARD_RANKS.SEVEN
+              ),
+              'p3',
+              2
+            ),
+            createPlayedCard(
+              createCard(
+                `${SUIT_ENUM.CLUBS}-${CARD_RANKS.KING}`,
+                SUIT_ENUM.CLUBS,
+                CARD_RANKS.KING
+              ),
+              'p4',
+              3
+            ),
+          ],
+          completed: true,
+        }
+
+        const winner = checkHuntingJackRule(trick, SUIT_ENUM.SPADES)
+        expect(winner).toBeNull() // 狩りJルールは発動しない（♦Jは対角線ではない）
       })
 
       it('should NOT apply hunting jack when trump jack and counter jack are together (表J + 裏J)', () => {
@@ -1203,6 +1355,116 @@ describe('Napoleon Card Rules', () => {
       expect(
         getCardStrength(spadesAce, SUIT_ENUM.HEARTS, SUIT_ENUM.CLUBS)
       ).toBe(1000) // MIGHTY
+    })
+
+    it('should confirm counter jack defeats normal jack (hearts J) when no hunting jack rule applies', () => {
+      // スペードが切り札の場合、裏J（♣J）vs ハートのJ
+      // ハートのJは対角線ではないため狩りJルールは発動せず、裏Jが通常の強度（800）で勝利
+      const trick: Trick = {
+        id: 'counter-jack-vs-hearts-jack',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.JACK}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.JACK
+            ),
+            'p1',
+            0
+          ), // 裏J (counter jack) - 800
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.JACK}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.JACK
+            ),
+            'p2',
+            1
+          ), // 普通のJ（対角線ではない、狩Jではない）
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.SEVEN}`,
+              SUIT_ENUM.DIAMONDS,
+              CARD_RANKS.SEVEN
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.SPADES}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.SPADES,
+              CARD_RANKS.KING
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.SPADES, // スペードが切り札 → ♣Jが裏J、♦Jが狩J
+        false
+      )
+      expect(winner).not.toBeNull()
+      expect(winner?.playerId).toBe('p1') // 裏J（♣J）が通常強度で勝利
+    })
+
+    it('should allow diagonal hunting jack to defeat counter jack', () => {
+      // スペードが切り札の場合、裏J（♣J）vs ダイヤのJ（対角線の狩J）
+      // ダイヤのJが狩りJルールで勝利
+      const trick: Trick = {
+        id: 'counter-jack-vs-diagonal-jack',
+        cards: [
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.CLUBS}-${CARD_RANKS.JACK}`,
+              SUIT_ENUM.CLUBS,
+              CARD_RANKS.JACK
+            ),
+            'p1',
+            0
+          ), // 裏J (counter jack)
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.DIAMONDS}-${CARD_RANKS.JACK}`,
+              SUIT_ENUM.DIAMONDS,
+              CARD_RANKS.JACK
+            ),
+            'p2',
+            1
+          ), // 裏Jの狩J（対角線）
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.HEARTS}-${CARD_RANKS.SEVEN}`,
+              SUIT_ENUM.HEARTS,
+              CARD_RANKS.SEVEN
+            ),
+            'p3',
+            2
+          ),
+          createPlayedCard(
+            createCard(
+              `${SUIT_ENUM.SPADES}-${CARD_RANKS.KING}`,
+              SUIT_ENUM.SPADES,
+              CARD_RANKS.KING
+            ),
+            'p4',
+            3
+          ),
+        ],
+        completed: true,
+      }
+
+      const winner = determineWinnerWithSpecialRules(
+        trick,
+        SUIT_ENUM.SPADES, // スペードが切り札 → ♣Jが裏J、♦Jが狩J
+        false
+      )
+      expect(winner).not.toBeNull()
+      expect(winner?.playerId).toBe('p2') // ♦J（狩J）が狩りJルールで勝利
     })
 
     it('should fall back to normal strength when no special rules apply', () => {
