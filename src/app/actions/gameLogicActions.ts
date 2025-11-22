@@ -13,6 +13,7 @@ import {
   getCurrentPlayer,
   passNapoleonDeclaration,
   playCard,
+  redealCards,
   setAdjutant,
 } from '@/lib/gameLogic'
 import type { Card, GameState, NapoleonDeclaration } from '@/types/game'
@@ -156,6 +157,69 @@ export async function passNapoleonAction(
     }
   } catch (error) {
     console.error('passNapoleonAction failed:', error)
+    return {
+      success: false,
+      error: error instanceof GameActionError ? error.message : 'Unknown error',
+    }
+  }
+}
+
+/**
+ * 配り直し Server Action
+ */
+export async function redealCardsAction(
+  gameId: string,
+  playerId: string
+): Promise<GameActionResult<GameState>> {
+  try {
+    // セッション検証
+    const sessionValid = await validateSessionAction(playerId)
+    if (!sessionValid.success) {
+      throw new GameActionError(
+        'Invalid session',
+        GAME_ACTION_ERROR_CODES.UNAUTHORIZED
+      )
+    }
+
+    // 現在のゲーム状態を取得
+    const gameResult = await loadGameStateAction(gameId, playerId)
+    if (!gameResult.success || !gameResult.gameState) {
+      throw new GameActionError(
+        'Game not found',
+        GAME_ACTION_ERROR_CODES.NOT_FOUND
+      )
+    }
+
+    const currentGameState = gameResult.gameState
+
+    // 配り直しが必要かチェック
+    if (!currentGameState.needsRedeal) {
+      throw new GameActionError(
+        'Redeal is not needed',
+        GAME_ACTION_ERROR_CODES.INVALID_STATE
+      )
+    }
+
+    // ゲームロジック実行（カードを配り直し）
+    const updatedGameState = redealCards(currentGameState)
+
+    // 状態保存
+    const saveResult = await saveGameStateAction(updatedGameState, playerId)
+    if (!saveResult.success) {
+      throw new GameActionError(
+        'Failed to save game state',
+        GAME_ACTION_ERROR_CODES.SAVE_FAILED
+      )
+    }
+
+    console.log('Cards redealt successfully - all players passed')
+
+    return {
+      success: true,
+      data: updatedGameState,
+    }
+  } catch (error) {
+    console.error('redealCardsAction failed:', error)
     return {
       success: false,
       error: error instanceof GameActionError ? error.message : 'Unknown error',
