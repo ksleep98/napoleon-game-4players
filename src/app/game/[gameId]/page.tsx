@@ -20,7 +20,6 @@ import type { Card as CardType, NapoleonDeclaration } from '@/types/game'
 function GamePageContent() {
   const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null) // 実際の実装では認証から取得
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
-  const [showRedealMessage, setShowRedealMessage] = useState(false)
 
   const { gameState, loading, error, actions, utils } = useGame()
 
@@ -45,12 +44,10 @@ function GamePageContent() {
   useEffect(() => {
     if (gameState?.needsRedeal) {
       console.log('All players passed - triggering automatic redeal')
-      setShowRedealMessage(true)
 
-      // 1秒後に配り直しを実行（ユーザーにメッセージを表示するため）
+      // 1.5秒後に配り直しを実行（ユーザーにメッセージを表示するため）
       const timer = setTimeout(() => {
         actions.redealCards()
-        setShowRedealMessage(false)
       }, 1500)
 
       return () => clearTimeout(timer)
@@ -64,13 +61,13 @@ function GamePageContent() {
       : []
   }, [currentPlayerId, utils, gameState])
 
-  if (loading || showRedealMessage) {
+  if (loading || gameState?.needsRedeal) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-lg text-gray-600">
-            {showRedealMessage
+            {gameState?.needsRedeal
               ? '全員がパスしました。カードを配り直しています...'
               : 'Loading game...'}
           </p>
