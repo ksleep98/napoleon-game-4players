@@ -125,23 +125,48 @@ function GamePageContent() {
 
   // ゲーム終了時の結果表示
   if (gameState.phase === GAME_PHASES.FINISHED) {
-    // 12ターン目のトリック結果表示中は結果画面を待機
+    // トリック結果表示中は、ゲームボードも表示（早期終了の場合も含む）
     if (gameState.showingTrickResult && gameState.lastCompletedTrick) {
       console.log('🎯 FINISHED phase - Still showing trick result, waiting...')
       // トリック結果表示を優先し、ゲーム結果画面は後で表示
+      // ゲームボードも表示してトリック結果の背景として機能させる
       return (
-        <div className="min-h-screen bg-gray-100 py-4">
-          <div className="max-w-7xl mx-auto px-4">
-            <div className="flex justify-between items-center mb-6">
-              <h1 className="text-2xl font-bold">Napoleon Game</h1>
+        <div className="min-h-screen bg-gray-100 py-1 md:py-4">
+          <div className="max-w-7xl mx-auto px-2 md:px-4">
+            <div className="flex justify-between items-center mb-2 md:mb-6 py-1">
+              <h1 className="text-lg md:text-2xl font-bold">Napoleon Game</h1>
             </div>
-            {/* 12ターン目のトリック結果表示 */}
-            <TrickResult
-              trick={gameState.lastCompletedTrick}
-              players={gameState.players}
-              onContinue={() => actions.closeTrickResult()}
-            />
+
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-2 md:gap-6">
+              <div className="lg:col-span-3 space-y-2 md:space-y-6">
+                {/* コンパクトなProgress表示 - モバイルのみ */}
+                <div className="lg:hidden">
+                  <CompactGameProgress gameState={gameState} />
+                </div>
+
+                {/* ゲームボード - 最後のトリックのカードを表示 */}
+                <GameBoard
+                  gameState={gameState}
+                  currentPlayerId={currentPlayerId}
+                />
+              </div>
+
+              {/* サイドバー - デスクトップのみ表示 */}
+              <div className="hidden lg:block lg:col-span-1">
+                <GameStatus
+                  gameState={gameState}
+                  currentPlayerId={currentPlayerId}
+                />
+              </div>
+            </div>
           </div>
+
+          {/* トリック結果表示（右下に表示） */}
+          <TrickResult
+            trick={gameState.lastCompletedTrick}
+            players={gameState.players}
+            onContinue={() => actions.closeTrickResult()}
+          />
         </div>
       )
     }

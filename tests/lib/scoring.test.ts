@@ -33,7 +33,7 @@ describe('Scoring', () => {
     it('should calculate correct counts with no completed tricks', () => {
       const counts = getTeamFaceCardCounts(mockGameState)
       expect(counts.napoleonTeam).toBe(0)
-      expect(counts.citizenTeam).toBe(20) // 全絵札数 - ナポレオンの絵札数
+      expect(counts.citizenTeam).toBe(0) // トリックがないので連合軍も0枚
     })
 
     it('should calculate correct counts with some face cards won', () => {
@@ -95,7 +95,7 @@ describe('Scoring', () => {
       const counts = getTeamFaceCardCounts(mockGameState)
 
       expect(counts.napoleonTeam).toBe(1) // A = 1 face card
-      expect(counts.citizenTeam).toBe(19) // 20 - 1 = 19
+      expect(counts.citizenTeam).toBe(2) // K, Q = 2 face cards
     })
   })
 
@@ -103,7 +103,7 @@ describe('Scoring', () => {
     it('should calculate correct progress with no completed tricks', () => {
       const progress = getGameProgress(mockGameState)
       expect(progress.napoleonTeamFaceCards).toBe(0)
-      expect(progress.citizenTeamFaceCards).toBe(20)
+      expect(progress.citizenTeamFaceCards).toBe(0) // トリックがないので連合軍も0枚
       expect(progress.tricksPlayed).toBe(0)
       expect(progress.tricksRemaining).toBe(12)
       expect(progress.napoleonNeedsToWin).toBe(13) // TARGET_FACE_CARDS
@@ -162,7 +162,7 @@ describe('Scoring', () => {
       const progress = getGameProgress(mockGameState)
 
       expect(progress.napoleonTeamFaceCards).toBe(1) // Napoleon won A
-      expect(progress.citizenTeamFaceCards).toBe(19) // 20 - 1
+      expect(progress.citizenTeamFaceCards).toBe(0) // Citizen won trick2 but with no face cards (3, 4)
       expect(progress.tricksPlayed).toBe(2)
       expect(progress.tricksRemaining).toBe(10)
       expect(progress.napoleonNeedsToWin).toBe(12) // 13 - 1 = 12

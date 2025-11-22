@@ -79,6 +79,16 @@ const nextConfig = {
         },
       }
     }
+
+    // Docker環境でのホットリロード対応
+    if (process.env.NODE_ENV === 'development') {
+      config.watchOptions = {
+        poll: 1000, // ファイル変更を1秒ごとにチェック
+        aggregateTimeout: 300, // 変更検知後300ms待機してからリビルド
+        ignored: /node_modules/,
+      }
+    }
+
     return config
   },
 }

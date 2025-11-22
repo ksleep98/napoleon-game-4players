@@ -83,22 +83,51 @@ export function isHeartQueen(card: Card): boolean {
  * - hearts ↔ diamonds
  */
 /**
+ * 裏Jの狩Jを取得（対角線パターン）
+ * - ♠が切り札 → 裏J♣ → 狩J♦
+ * - ♣が切り札 → 裏J♠ → 狩J♥
+ * - ♥が切り札 → 裏J♦ → 狩J♣
+ * - ♦が切り札 → 裏J♥ → 狩J♠
+ */
+function getCounterJackHuntingJack(trumpSuit: Suit): Suit {
+  const DIAGONAL_MAP: Record<Suit, Suit> = {
+    spades: 'diamonds',
+    diamonds: 'spades',
+    clubs: 'hearts',
+    hearts: 'clubs',
+  }
+  return DIAGONAL_MAP[trumpSuit]
+}
+
+/**
+ * 表Jの狩Jを取得（対角線パターン）
+ * - ♠が切り札 → 表J♠ → 狩J♥
+ * - ♣が切り札 → 表J♣ → 狩J♦
+ * - ♥が切り札 → 表J♥ → 狩J♣
+ * - ♦が切り札 → 表J♦ → 狩J♠
+ */
+function getTrumpJackHuntingJack(trumpSuit: Suit): Suit {
+  const counterJackHuntingJack = getCounterJackHuntingJack(trumpSuit)
+  return getCounterSuit(counterJackHuntingJack)
+}
+
+/**
  * 対応する狩りJペアかどうかを判定
  *
  * 狩りJのルール：
  * スートペア1: spades ↔ clubs
  * スートペア2: hearts ↔ diamonds
  *
- * - 表J（切り札J）とその狩J（別ペアのスートで、表Jでも裏JでもないJ）
- * - 裏J（裏スートJ）とその狩J（別ペアのスートで、表Jでも裏Jでもないj）
+ * - 表J（切り札J）とその狩J（対角線上の特定のスートのJ）
+ * - 裏J（裏スートJ）とその狩J（対角線上の特定のスートのJ）
+ *
+ * 例：スペードが切り札の場合
+ * - 表J: ♠J（ペア1）、その狩J: ♥J（対角線のみ）
+ * - 裏J: ♣J（ペア1）、その狩J: ♦J（対角線のみ）
  *
  * 例：クラブが切り札の場合
- * - 表J: ♣J（ペア1）、その狩J: ♦J（ペア2）
- * - 裏J: ♠J（ペア1）、その狩J: ♥J（ペア2）
- *
- * 例：ダイヤが切り札の場合
- * - 表J: ♦J（ペア2）、その狩J: ♣J（ペア1）
- * - 裏J: ♥J（ペア2）、その狩J: ♠J（ペア1）
+ * - 表J: ♣J（ペア1）、その狩J: ♦J（対角線のみ）
+ * - 裏J: ♠J（ペア1）、その狩J: ♥J（対角線のみ）
  */
 export function isHuntingJackPair(
   card1: Card,
@@ -124,23 +153,30 @@ export function isHuntingJackPair(
     return false
   }
 
-  // 表J（切り札J）とその狩Jのペア
+  // 表J（切り札J）とその狩Jのペア（対角線上の特定のスートのみ）
+  const trumpJackHuntingJack = getTrumpJackHuntingJack(trumpSuit)
+
   if (isTrumpJack(card1, trumpSuit)) {
-    // card2が表Jでも裏Jでもないことを確認
-    return !isTrumpJack(card2, trumpSuit) && !isCounterJack(card2, trumpSuit)
+    // card2が対角線上の特定のスートのJであることを確認
+    return card2.suit === trumpJackHuntingJack
   }
 
   if (isTrumpJack(card2, trumpSuit)) {
-    return !isTrumpJack(card1, trumpSuit) && !isCounterJack(card1, trumpSuit)
+    // card1が対角線上の特定のスートのJであることを確認
+    return card1.suit === trumpJackHuntingJack
   }
 
-  // 裏J（裏スートJ）とその狩Jのペア
+  // 裏J（裏スートJ）とその狩Jのペア（対角線上の特定のスートのみ）
+  const counterJackHuntingJack = getCounterJackHuntingJack(trumpSuit)
+
   if (isCounterJack(card1, trumpSuit)) {
-    return !isTrumpJack(card2, trumpSuit) && !isCounterJack(card2, trumpSuit)
+    // card2が対角線上の特定のスートのJであることを確認
+    return card2.suit === counterJackHuntingJack
   }
 
   if (isCounterJack(card2, trumpSuit)) {
-    return !isTrumpJack(card1, trumpSuit) && !isCounterJack(card1, trumpSuit)
+    // card1が対角線上の特定のスートのJであることを確認
+    return card1.suit === counterJackHuntingJack
   }
 
   return false
