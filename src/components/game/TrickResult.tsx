@@ -24,8 +24,6 @@ export function TrickResult({ trick, players, onContinue }: TrickResultProps) {
 
   const winner = players.find((p) => p.id === trick.winnerPlayerId)
   const faceCardsInPhase = trick.cards.filter((pc) => isFaceCard(pc.card))
-  const lastCard = trick.cards[trick.cards.length - 1]
-  const lastPlayer = players.find((p) => p.id === lastCard.playerId)
 
   const getCardDisplay = (playedCard: PlayedCard) => {
     const card = playedCard.card

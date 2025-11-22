@@ -203,7 +203,7 @@ export function isGameDecided(gameState: GameState): {
   napoleonWon?: boolean
   reason?: string
 } {
-  const { napoleonTeamFaceCards, citizenTeamFaceCards, tricksRemaining } =
+  const { napoleonTeamFaceCards, citizenTeamFaceCards } =
     getGameProgress(gameState)
 
   // 実際の宣言数を取得

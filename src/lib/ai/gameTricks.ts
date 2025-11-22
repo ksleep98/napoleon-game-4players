@@ -13,9 +13,14 @@ import {
   canDeclareNapoleon,
   getNextDeclarationPlayer,
 } from '../napoleonRules'
+import {
+  type AIDifficultyLevel,
+  getStrategyConfigByDifficulty,
+  selectAICard as selectAICardWithStrategy,
+} from './aiStrategy'
 import { allianceAIStrategy } from './alliance'
+import { getPlayableCards as getPlayableCardsFromSimulator } from './gameSimulator'
 import { napoleonAIStrategy } from './napoleon'
-import { selectBestStrategicCard } from './strategicCardEvaluator'
 
 // ナポレオン決定フェーズの AI 処理（改善版）
 export async function processNapoleonPhase(
@@ -204,7 +209,7 @@ export async function processAIPlayingPhase(
   return updatedState
 }
 
-// AIのカード選択ロジック（シンプル版）
+// AIのカード選択ロジック（ハイブリッド戦略版）
 async function selectAICard(
   hand: Card[],
   gameState: GameState
@@ -229,28 +234,33 @@ async function selectAICard(
     return hand[0]
   }
 
-  // 戦略的AI評価システムを使用
+  // AI難易度を取得（環境変数またはデフォルト）
+  const difficultyLevel: AIDifficultyLevel =
+    (process.env.AI_DIFFICULTY as AIDifficultyLevel) || 'normal'
+
+  // ハイブリッド戦略を使用
   try {
-    const selectedCard = selectBestStrategicCard(
-      playableCards,
+    const strategyConfig = getStrategyConfigByDifficulty(difficultyLevel)
+    const selectedCard = selectAICardWithStrategy(
       gameState,
-      currentPlayer
+      currentPlayer,
+      strategyConfig
     )
 
     if (selectedCard) {
       const cardInfo = `${selectedCard.suit}-${selectedCard.rank}`
-      const strategy = currentPlayer.isNapoleon
+      const strategyType = currentPlayer.isNapoleon
         ? 'Napoleon'
         : currentPlayer.isAdjutant
           ? 'Adjutant'
           : 'Alliance'
       console.log(
-        `AI ${currentPlayer.name} (${strategy}) strategically plays ${cardInfo}`
+        `AI ${currentPlayer.name} (${strategyType}, ${strategyConfig.strategy}) plays ${cardInfo}`
       )
       return selectedCard
     }
   } catch (error) {
-    console.warn('Strategic AI failed, using fallback:', error)
+    console.warn('Hybrid AI strategy failed, using fallback:', error)
   }
 
   // フォールバック：従来のロジック
@@ -282,27 +292,30 @@ function selectFallbackCard(hand: Card[], gameState: GameState): Card {
 }
 
 /**
- * プレイ可能カードを取得
+ * プレイ可能なカードを取得（後方互換性のためのラッパー）
  */
 function getPlayableCards(hand: Card[], gameState: GameState): Card[] {
-  const currentTrick = gameState.currentTrick
+  // 現在の手札を持つプレイヤーを見つける
+  const player = gameState.players.find((p) =>
+    p.hand.some((card) => hand.includes(card))
+  )
 
-  // 最初のプレイヤーの場合、全てのカードがプレイ可能
-  if (currentTrick.cards.length === 0) {
-    return [...hand]
+  if (!player) {
+    // プレイヤーが見つからない場合は従来のロジックを使用
+    const currentTrick = gameState.currentTrick
+
+    if (currentTrick.cards.length === 0) {
+      return [...hand]
+    }
+
+    const leadingSuit = currentTrick.cards[0].card.suit
+    const suitCards = hand.filter((card) => card.suit === leadingSuit)
+
+    return suitCards.length > 0 ? suitCards : [...hand]
   }
 
-  // フォロー義務をチェック
-  const leadingSuit = currentTrick.cards[0].card.suit
-  const suitCards = hand.filter((card) => card.suit === leadingSuit)
-
-  // 同じスートのカードがある場合はそれらのみプレイ可能
-  if (suitCards.length > 0) {
-    return suitCards
-  }
-
-  // フォローできない場合は全てのカードがプレイ可能
-  return [...hand]
+  // gameSimulatorの関数を使用
+  return getPlayableCardsFromSimulator(gameState, player.id)
 }
 
 // すべての AI フェーズを統合処理
