@@ -48,7 +48,7 @@ export const DEFAULT_STRATEGY_CONFIGS: Record<
     mctsConfig: MCTS_PRESETS.fast,
   },
   hard: {
-    strategy: 'hybrid',
+    strategy: 'mcts',
     difficulty: 'hard',
     mctsConfig: MCTS_PRESETS.normal,
   },
