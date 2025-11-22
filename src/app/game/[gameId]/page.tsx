@@ -3,6 +3,7 @@
 import { useParams, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { AdjutantSelector } from '@/components/game/AdjutantSelector'
+import { AIDifficultyBadge } from '@/components/game/AIDifficultyBadge'
 import { Card } from '@/components/game/Card'
 import { CardExchangeSelector } from '@/components/game/CardExchangeSelector'
 import { GameBoard } from '@/components/game/GameBoard'
@@ -248,17 +249,22 @@ function GamePageContent() {
       <div className="max-w-7xl mx-auto px-2 md:px-4">
         <div className="flex justify-between items-center mb-2 md:mb-6 py-1">
           <h1 className="text-lg md:text-2xl font-bold">Napoleon Game</h1>
-          {gameState?.players.some((p) => p.isAI) && (
-            <button
-              type="button"
-              onClick={() => {
-                window.location.href = '/'
-              }}
-              className="px-2 py-1 md:px-4 md:py-2 text-sm md:text-base bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              ← Home
-            </button>
-          )}
+          <div className="flex items-center gap-2 md:gap-4">
+            {/* AI難易度バッジ */}
+            {gameState?.players.some((p) => p.isAI) && <AIDifficultyBadge />}
+            {/* Homeボタン */}
+            {gameState?.players.some((p) => p.isAI) && (
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href = '/'
+                }}
+                className="px-2 py-1 md:px-4 md:py-2 text-sm md:text-base bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                ← Home
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-2 md:gap-6">
