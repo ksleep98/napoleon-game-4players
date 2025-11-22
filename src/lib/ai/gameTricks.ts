@@ -62,7 +62,7 @@ export async function processNapoleonPhase(
 
   // AI難易度設定に基づいて戦略を選択
   const difficultyLevel: AIDifficultyLevel =
-    (process.env.AI_DIFFICULTY as AIDifficultyLevel) || 'normal'
+    (process.env.NEXT_PUBLIC_AI_DIFFICULTY as AIDifficultyLevel) || 'normal'
 
   let strategy: {
     shouldDeclare: boolean
@@ -270,7 +270,7 @@ async function selectAICard(
 
   // AI難易度を取得（環境変数またはデフォルト）
   const difficultyLevel: AIDifficultyLevel =
-    (process.env.AI_DIFFICULTY as AIDifficultyLevel) || 'normal'
+    (process.env.NEXT_PUBLIC_AI_DIFFICULTY as AIDifficultyLevel) || 'normal'
 
   // ハイブリッド戦略を使用
   try {
