@@ -20,6 +20,7 @@ import type { Card as CardType, NapoleonDeclaration } from '@/types/game'
 function GamePageContent() {
   const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null) // 実際の実装では認証から取得
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
+  const [showRedealMessage, setShowRedealMessage] = useState(false)
 
   const { gameState, loading, error, actions, utils } = useGame()
 
@@ -40,6 +41,22 @@ function GamePageContent() {
     }
   }, [gameState, currentPlayerId])
 
+  // 配り直しの自動検出と実行
+  useEffect(() => {
+    if (gameState?.needsRedeal) {
+      console.log('All players passed - triggering automatic redeal')
+      setShowRedealMessage(true)
+
+      // 1秒後に配り直しを実行（ユーザーにメッセージを表示するため）
+      const timer = setTimeout(() => {
+        actions.redealCards()
+        setShowRedealMessage(false)
+      }, 1500)
+
+      return () => clearTimeout(timer)
+    }
+  }, [gameState?.needsRedeal, actions])
+
   // playableCardsの計算をメモ化 (early returnより前に配置)
   const playableCards = useMemo(() => {
     return currentPlayerId && gameState
@@ -47,12 +64,16 @@ function GamePageContent() {
       : []
   }, [currentPlayerId, utils, gameState])
 
-  if (loading) {
+  if (loading || showRedealMessage) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-lg text-gray-600">Loading game...</p>
+          <p className="text-lg text-gray-600">
+            {showRedealMessage
+              ? '全員がパスしました。カードを配り直しています...'
+              : 'Loading game...'}
+          </p>
         </div>
       </div>
     )
