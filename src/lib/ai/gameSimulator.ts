@@ -176,8 +176,6 @@ export function isGameFinished(state: GameState): boolean {
 
     // 連合軍の勝利確定計算
     // 全絵札数 = 20枚（10, J, Q, K, A が各スート5枚 x 4スート）
-    const totalFaceCards = 20
-    const citizenFaceCardsWon = totalFaceCards - napoleonFaceCardsWon
     const maxNapoleonCanGet = napoleonFaceCardsWon + maxPossibleFaceCards
 
     // 連合軍がすでに十分な絵札を獲得（ナポレオンが目標達成不可能）

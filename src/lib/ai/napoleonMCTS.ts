@@ -52,7 +52,7 @@ export const NAPOLEON_MCTS_PRESETS = {
   strong: {
     simulationsPerOption: 50,
     maxOptions: 15,
-    timeLimit: 10000,
+    timeLimit: 5000,
   },
 } as const
 

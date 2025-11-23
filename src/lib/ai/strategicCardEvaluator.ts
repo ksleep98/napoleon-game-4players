@@ -53,7 +53,13 @@ export function evaluateCardStrategicValue(
     strategicValue += evaluateAllianceStrategy(card, gameState)
   }
 
-  // 3. ゲーム進行状況による調整
+  // 3. セイム2ポテンシャル評価
+  strategicValue += evaluateSame2Potential(card, gameState)
+
+  // 4. 4枚揃わないスート評価
+  strategicValue += evaluateNonViableSuit(card, gameState)
+
+  // 5. ゲーム進行状況による調整
   const gameProgress = calculateGameProgress(gameState)
   strategicValue += evaluateGamePhaseStrategy(card, gameProgress, player)
 
@@ -140,26 +146,66 @@ function selectFollowingCard(
   player: Player,
   currentTrick: Trick
 ): Card {
-  const leadingCard = currentTrick.cards[0].card
-  const leadingSuit = leadingCard.suit
-
-  // 同じスートのカードでフォロー可能かチェック
-  const _suitCards = playableCards.filter((card) => card.suit === leadingSuit)
+  // 既に出ているカード全てを考慮して、勝てるか判定
   const canWinTrick = canWinCurrentTrick(playableCards, currentTrick, gameState)
 
-  if (player.isNapoleon) {
-    // ナポレオン：可能な限りトリックを取る
-    if (canWinTrick) {
-      return getLowestWinningCard(playableCards, currentTrick, gameState)
+  // デバッグ：トリックの状況を確認（5%の確率でログ）
+  if (Math.random() < 0.05 && currentTrick.cards.length > 0) {
+    const trickCards = currentTrick.cards
+      .map((c) => `${c.card.suit} ${c.card.rank}`)
+      .join(', ')
+    const bestCard = getBestTrickCard(currentTrick, gameState)
+    console.log(
+      `[Strategic] Trick: [${trickCards}], Best: ${bestCard.card.suit} ${bestCard.card.rank}, CanWin: ${canWinTrick}, Player: ${player.name}`
+    )
+  }
+
+  // 勝てない場合は最弱カードを出す（役割に応じて戦略を変える）
+  if (!canWinTrick) {
+    let weakest: Card
+
+    if (player.isNapoleon || player.isAdjutant) {
+      // ナポレオンチーム：通常の最弱カード
+      weakest = getWeakestCard(playableCards, gameState)
+    } else {
+      // 連合軍：非絵札を優先（絵札を取られないようにする）
+      const weakestNonFace = getWeakestNonFaceCard(playableCards, gameState)
+      weakest = weakestNonFace || getWeakestCard(playableCards, gameState)
     }
-    // 勝てない場合は最弱のカードを出す
-    return getWeakestCard(playableCards, gameState)
+
+    // デバッグ：弱いカード選択（5%の確率でログ）
+    if (Math.random() < 0.05) {
+      const cardType = weakest && isFaceCard(weakest) ? '(face)' : '(non-face)'
+      console.log(
+        `[Strategic] Can't win → Playing weakest ${cardType}: ${weakest.suit} ${weakest.rank}`
+      )
+    }
+    return weakest
+  }
+
+  // 勝てる場合、役割に応じて判断
+  if (player.isNapoleon || player.isAdjutant) {
+    // ナポレオンチーム：勝てるなら勝つ（絵札を集める）
+    // ただし、副官の場合はナポレオンが既に勝っているなら弱い絵札を出す（絵札を増やす）
+    if (player.isAdjutant && isNapoleonWinning(currentTrick, gameState)) {
+      const weakestFace = getWeakestFaceCard(playableCards, gameState)
+      const cardToPlay = weakestFace || getWeakestCard(playableCards, gameState)
+      // デバッグ：副官が弱い絵札選択（5%の確率でログ）
+      if (Math.random() < 0.05) {
+        const cardType = weakestFace ? 'face card' : 'weakest'
+        console.log(
+          `[Strategic] Adjutant: Napoleon winning → Playing weakest ${cardType}: ${cardToPlay.suit} ${cardToPlay.rank}`
+        )
+      }
+      return cardToPlay
+    }
+    return getLowestWinningCard(playableCards, currentTrick, gameState)
   } else {
-    // 連合軍：ナポレオンにトリックを渡さない戦略
-    if (canWinTrick && !isNapoleonWinning(currentTrick, gameState)) {
+    // 連合軍：ナポレオンチームが現在勝っている場合のみ勝つ（ブロック）
+    if (isNapoleonWinning(currentTrick, gameState)) {
       return getLowestWinningCard(playableCards, currentTrick, gameState)
     }
-    // ナポレオンが勝っている場合や勝てない場合は最弱カード
+    // 連合軍が既に勝っている場合は弱いカードを出す（味方に任せる）
     return getWeakestCard(playableCards, gameState)
   }
 }
@@ -234,6 +280,77 @@ function evaluateGamePhaseStrategy(
   }
 
   return bonus
+}
+
+/**
+ * セイム2ポテンシャル評価
+ * 切り札以外の2は、そのスートが4枚揃う可能性がある場合に価値が高い
+ */
+function evaluateSame2Potential(card: Card, gameState: GameState): number {
+  // 2以外のカードは評価しない
+  if (card.rank !== '2') return 0
+
+  const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
+
+  // 切り札の2はセイム2にならないので評価しない
+  if (card.suit === trumpSuit) return 0
+
+  // 現在のトリックを確認
+  const currentTrick = gameState.currentTrick
+
+  // トリックが空の場合、すべてのスートでセイム2の可能性がある
+  if (currentTrick.cards.length === 0) {
+    return 150 // 切り札以外の2に高いボーナス
+  }
+
+  // 現在のトリックで異なるスートが出ている場合、そのスートは4枚揃わない
+  const leadingSuit = currentTrick.cards[0].card.suit
+  const allSameSuit = currentTrick.cards.every(
+    (pc) => pc.card.suit === leadingSuit
+  )
+
+  // まだ全て同じスートの場合
+  if (allSameSuit) {
+    // リードスートと同じなら、セイム2の可能性が高い
+    if (card.suit === leadingSuit) {
+      return 200 // 非常に高いボーナス
+    }
+    // 異なるスートでも、まだ可能性はある
+    return 100
+  }
+
+  // 異なるスートが混ざっている場合、このトリックではセイム2不可
+  // しかし、次のトリックでの可能性はある
+  return 80
+}
+
+/**
+ * 4枚揃わないスート評価
+ * 現在のトリックで異なるスートが出た場合、そのスートは弱い
+ */
+function evaluateNonViableSuit(card: Card, gameState: GameState): number {
+  const currentTrick = gameState.currentTrick
+
+  // トリックが空か、まだ1枚しか出ていない場合は判定不可
+  if (currentTrick.cards.length <= 1) return 0
+
+  const leadingSuit = currentTrick.cards[0].card.suit
+
+  // 異なるスートが出ているかチェック
+  const hasDifferentSuit = currentTrick.cards.some(
+    (pc) => pc.card.suit !== leadingSuit
+  )
+
+  // 異なるスートが出ている = リードスートは4枚揃わない確定
+  if (hasDifferentSuit && card.suit === leadingSuit) {
+    // リードスートのカードは価値が下がる（捨てる優先度が高い）
+    // ただし、絵札や高いカードは別の場面で使えるので、2-5のみペナルティ
+    if (['2', '3', '4', '5'].includes(card.rank)) {
+      return -50 // 低いカードは捨てる優先度が高い
+    }
+  }
+
+  return 0
 }
 
 // ヘルパー関数群
@@ -333,13 +450,54 @@ function getWeakestCard(cards: Card[], gameState: GameState): Card {
   )[0]
 }
 
+/**
+ * カードが絵札かどうか判定（10, J, Q, K, A）
+ */
+function isFaceCard(card: Card): boolean {
+  return ['10', 'J', 'Q', 'K', 'A'].includes(card.rank)
+}
+
+/**
+ * 絵札の中で最も弱いカードを取得
+ * 絵札がない場合はnullを返す
+ */
+function getWeakestFaceCard(cards: Card[], gameState: GameState): Card | null {
+  const faceCards = cards.filter(isFaceCard)
+  if (faceCards.length === 0) return null
+
+  return faceCards.sort(
+    (a, b) =>
+      getCardStrengthSafe(a, gameState) - getCardStrengthSafe(b, gameState)
+  )[0]
+}
+
+/**
+ * 非絵札の中で最も弱いカードを取得
+ * 非絵札がない場合はnullを返す
+ */
+function getWeakestNonFaceCard(
+  cards: Card[],
+  gameState: GameState
+): Card | null {
+  const nonFaceCards = cards.filter((card) => !isFaceCard(card))
+  if (nonFaceCards.length === 0) return null
+
+  return nonFaceCards.sort(
+    (a, b) =>
+      getCardStrengthSafe(a, gameState) - getCardStrengthSafe(b, gameState)
+  )[0]
+}
+
 function isNapoleonWinning(currentTrick: Trick, gameState: GameState): boolean {
   const napoleon = gameState.players.find((p) => p.isNapoleon)
+  const adjutant = gameState.players.find((p) => p.isAdjutant)
   if (!napoleon) return false
 
   const bestCard = getBestTrickCard(currentTrick, gameState)
   return currentTrick.cards.some(
     (trickCard) =>
-      trickCard.playerId === napoleon.id && trickCard.card === bestCard.card
+      (trickCard.playerId === napoleon.id ||
+        trickCard.playerId === adjutant?.id) &&
+      trickCard.card === bestCard.card
   )
 }
