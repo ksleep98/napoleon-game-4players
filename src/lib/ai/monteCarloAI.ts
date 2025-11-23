@@ -162,6 +162,21 @@ export function monteCarloTreeSearch(
     return playableCards[0]
   }
 
+  // すべてのカード選択肢の統計をログ出力（0%が複数ある場合の理解のため）
+  if (Math.random() < 0.1) {
+    // 10%の確率で詳細ログ
+    console.log(`MCTS card options (${rootNode.children.length} cards):`)
+    rootNode.children
+      .sort((a, b) => b.visits - a.visits)
+      .forEach((child) => {
+        const card = child.playedCard
+        const winRate = child.visits > 0 ? (child.wins / child.visits) * 100 : 0
+        console.log(
+          `  ${card?.suit} ${card?.rank}: visits=${child.visits}, winRate=${winRate.toFixed(1)}%`
+        )
+      })
+  }
+
   const bestChild = rootNode.children.reduce((best, child) =>
     child.visits > best.visits ? child : best
   )
