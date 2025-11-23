@@ -50,7 +50,7 @@ export const DEFAULT_STRATEGY_CONFIGS: Record<
   hard: {
     strategy: 'mcts',
     difficulty: 'hard',
-    mctsConfig: MCTS_PRESETS.normal,
+    mctsConfig: MCTS_PRESETS.fast,
   },
 }
 

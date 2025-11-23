@@ -158,8 +158,11 @@ export function monteCarloTreeSearch(
 
   // 最も訪問回数が多い子ノードのアクションを選択
   if (rootNode.children.length === 0) {
-    console.warn('No children nodes, falling back to first playable card')
-    return playableCards[0]
+    console.warn('No children nodes, falling back to strategic selection')
+    return (
+      selectBestStrategicCard(playableCards, gameState, player) ||
+      playableCards[0]
+    )
   }
 
   // すべてのカード選択肢の統計をログ出力（0%が複数ある場合の理解のため）
@@ -177,19 +180,49 @@ export function monteCarloTreeSearch(
       })
   }
 
-  const bestChild = rootNode.children.reduce((best, child) =>
-    child.visits > best.visits ? child : best
-  )
+  // MCTSの候補カードを訪問回数順に取得
+  const sortedChildren = rootNode.children.sort((a, b) => b.visits - a.visits)
+  const candidateCards = sortedChildren
+    .map((child) => child.playedCard)
+    .filter((card): card is Card => card !== null)
 
-  const selectedCard = bestChild.playedCard
-  if (!selectedCard) {
-    console.warn('No selected card found, falling back to first playable card')
+  if (candidateCards.length === 0) {
+    console.warn(
+      'No candidate cards found, falling back to first playable card'
+    )
     return playableCards[0]
   }
 
-  console.log(
-    `Selected card: ${selectedCard.suit} ${selectedCard.rank} (visits: ${bestChild.visits}, win rate: ${((bestChild.wins / bestChild.visits) * 100).toFixed(1)}%)`
+  // 戦略的評価でMCTS候補から最適なカードを選択
+  // これにより、副官の弱い絵札ロジックなどが適用される
+  const selectedCard = selectBestStrategicCard(
+    candidateCards,
+    gameState,
+    player
   )
+
+  if (!selectedCard) {
+    // 戦略的選択が失敗した場合は、最も訪問回数が多いカードを使用
+    const fallbackCard = candidateCards[0]
+    console.warn(
+      `Strategic selection failed, using most visited card: ${fallbackCard.suit} ${fallbackCard.rank}`
+    )
+    return fallbackCard
+  }
+
+  // 選択されたカードの統計情報を取得
+  const selectedChild = sortedChildren.find(
+    (child) => child.playedCard?.id === selectedCard.id
+  )
+  if (selectedChild) {
+    console.log(
+      `Selected card: ${selectedCard.suit} ${selectedCard.rank} (visits: ${selectedChild.visits}, win rate: ${((selectedChild.wins / selectedChild.visits) * 100).toFixed(1)}%)`
+    )
+  } else {
+    console.log(
+      `Selected card: ${selectedCard.suit} ${selectedCard.rank} (strategic override)`
+    )
+  }
 
   return selectedCard
 }
@@ -370,7 +403,7 @@ function didPlayerWin(player: Player, result: GameResult): boolean {
 
 /**
  * シミュレーション用のカード選択
- * ランダム50% + ヒューリスティック50%のバランス
+ * 常に戦略的ヒューリスティック評価を使用してシミュレーションの質を向上
  */
 function selectCardForSimulation(
   cards: Card[],
@@ -384,14 +417,9 @@ function selectCardForSimulation(
     return cards[0]
   }
 
-  // 50%の確率でヒューリスティック評価を使用
-  if (Math.random() < 0.5) {
-    const selected = selectBestStrategicCard(cards, state, player)
-    return selected || cards[0]
-  }
-
-  // 50%の確率でランダム選択
-  return cards[Math.floor(Math.random() * cards.length)]
+  // 常に戦略的カード選択を使用（シミュレーションの質を向上）
+  const selected = selectBestStrategicCard(cards, state, player)
+  return selected || cards[0]
 }
 
 // ===========================
