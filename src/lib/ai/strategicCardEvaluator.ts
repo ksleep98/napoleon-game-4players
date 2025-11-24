@@ -341,12 +341,16 @@ function evaluateSame2Potential(card: Card, gameState: GameState): number {
 
   // トリックが空の場合（リード時）
   if (currentTrick.cards.length === 0) {
-    // 初旬（0-30%）は2でリードしない（温存）
-    if (gameProgress < 0.3) {
-      return 300 // 非常に高いボーナスで温存
+    // 初旬（0-40%）は2でリードしない（強力に温存）
+    if (gameProgress < 0.4) {
+      return 800 // マイティー超えの超高ボーナスで温存
     }
-    // 中盤以降はセイム2を作るチャンス
-    return 150
+    // 中盤（40-70%）もある程度温存
+    if (gameProgress < 0.7) {
+      return 400
+    }
+    // 終盤はセイム2を作るチャンス
+    return 200
   }
 
   // 現在のトリックで異なるスートが出ている場合、そのスートは4枚揃わない
@@ -363,27 +367,45 @@ function evaluateSame2Potential(card: Card, gameState: GameState): number {
       checkIsCounterJack(trickCard.card, trumpSuit)
   )
 
-  // まだ全て同じスートの場合
-  if (allSameSuit && !hasSame2Breaker) {
+  // Mighty/Jackが出ていてセイム2が無効化されている場合
+  if (hasSame2Breaker) {
+    // このトリックで2を出すのは無駄なので、大きなペナルティ
+    // ただし、次のトリックでの可能性を考慮
+    if (gameProgress < 0.3) {
+      return -100 // 初旬は捨てても良い（セイム2無効化されているので）
+    }
+    if (gameProgress < 0.6) {
+      return -150 // 中盤も捨てる傾向
+    }
+    // 終盤は積極的に捨てる
+    return -200
+  }
+
+  // まだ全て同じスートの場合（Mighty/Jackなし）
+  if (allSameSuit) {
     // リードスートと同じなら、セイム2の可能性が高い
     if (card.suit === leadingSuit) {
-      return 250 // 非常に高いボーナス（セイム2発動の可能性）
+      // セイム2発動の可能性があるので、超高ボーナス
+      return 600
     }
     // 異なるスートでも、次のトリックで可能性がある
     // 初旬ほど温存
-    return gameProgress < 0.5 ? 150 : 100
+    if (gameProgress < 0.4) {
+      return 500 // 初旬は強力に温存
+    }
+    return gameProgress < 0.7 ? 300 : 150
   }
 
-  // セイム2が無効化されている場合（異なるスート or Mighty/Jack）
-  // 次のトリックでの可能性に期待するが、初旬ほど温存
+  // 異なるスートが混ざっている場合（セイム2無効）
+  // このトリックでは使えないが、次のトリックでの可能性を考慮
   if (gameProgress < 0.3) {
-    return 200 // 初旬は温存（捨てない）
+    return 0 // 初旬は捨てても良い（ただし他に捨てるカードがあれば）
   }
   if (gameProgress < 0.6) {
-    return 120 // 中盤も温存傾向
+    return -50 // 中盤は捨てる傾向
   }
-  // 終盤は使っても良い
-  return 50
+  // 終盤は積極的に捨てる
+  return -100
 }
 
 /**
@@ -456,9 +478,21 @@ function evaluateSame2Breaker(card: Card, gameState: GameState): number {
     !alreadyHasSame2Breaker &&
     currentTrick.cards.length >= 2
   ) {
-    // 大きなペナルティ（セイム2を無効化してしまう）
-    // ただし、勝つために必要な場合は別なので、ペナルティは中程度
-    return -150
+    // ゲーム進行度を取得
+    const gameProgress = calculateGameProgress(gameState)
+
+    // 非常に大きなペナルティ（マイティーの+500を上回る）
+    // トリックのカード枚数が多いほど（3枚の時）、セイム2の可能性が高いのでペナルティも大きく
+    const basePenalty = currentTrick.cards.length >= 3 ? -600 : -450
+
+    // 初旬ほどセイム2の価値が高いので、ペナルティも大きく
+    if (gameProgress < 0.4) {
+      return basePenalty - 100 // 初旬は特に大きなペナルティ
+    }
+    if (gameProgress < 0.7) {
+      return basePenalty - 50 // 中盤もペナルティ
+    }
+    return basePenalty // 終盤でもペナルティ
   }
 
   return 0
