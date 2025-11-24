@@ -185,20 +185,55 @@ function selectFollowingCard(
 
   // 勝てる場合、役割に応じて判断
   if (player.isNapoleon || player.isAdjutant) {
-    // ナポレオンチーム：勝てるなら勝つ（絵札を集める）
-    // ただし、副官の場合はナポレオンが既に勝っているなら弱い絵札を出す（絵札を増やす）
-    if (player.isAdjutant && isNapoleonWinning(currentTrick, gameState)) {
-      const weakestFace = getWeakestFaceCard(playableCards, gameState)
-      const cardToPlay = weakestFace || getWeakestCard(playableCards, gameState)
-      // デバッグ：副官が弱い絵札選択（5%の確率でログ）
-      if (Math.random() < 0.05) {
-        const cardType = weakestFace ? 'face card' : 'weakest'
-        console.log(
-          `[Strategic] Adjutant: Napoleon winning → Playing weakest ${cardType}: ${cardToPlay.suit} ${cardToPlay.rank}`
-        )
+    // 副官の特殊ロジック
+    if (player.isAdjutant) {
+      // 1. 副官カード早期開示（ナポレオンに認知してもらう）
+      const adjutantCardReveal = shouldRevealAdjutantCard(
+        playableCards,
+        gameState,
+        currentTrick
+      )
+      if (adjutantCardReveal) {
+        if (Math.random() < 0.1) {
+          console.log(
+            `[Strategic] Adjutant: Revealing adjutant card: ${adjutantCardReveal.suit} ${adjutantCardReveal.rank}`
+          )
+        }
+        return adjutantCardReveal
       }
-      return cardToPlay
+
+      // 2. ナポレオンに絵札を渡す（得点稼ぎ）
+      const faceCardPass = shouldPassFaceCardToNapoleon(
+        playableCards,
+        gameState,
+        currentTrick,
+        canWinTrick
+      )
+      if (faceCardPass) {
+        if (Math.random() < 0.1) {
+          console.log(
+            `[Strategic] Adjutant: Passing face card to Napoleon: ${faceCardPass.suit} ${faceCardPass.rank}`
+          )
+        }
+        return faceCardPass
+      }
+
+      // 3. ナポレオンが既に勝っている場合は弱い絵札を出す
+      if (isNapoleonWinning(currentTrick, gameState)) {
+        const weakestFace = getWeakestFaceCard(playableCards, gameState)
+        const cardToPlay =
+          weakestFace || getWeakestCard(playableCards, gameState)
+        if (Math.random() < 0.05) {
+          const cardType = weakestFace ? 'face card' : 'weakest'
+          console.log(
+            `[Strategic] Adjutant: Napoleon winning → Playing weakest ${cardType}: ${cardToPlay.suit} ${cardToPlay.rank}`
+          )
+        }
+        return cardToPlay
+      }
     }
+
+    // ナポレオンチーム：勝てるなら勝つ（絵札を集める）
     return getLowestWinningCard(playableCards, currentTrick, gameState)
   } else {
     // 連合軍：ナポレオンチームが現在勝っている場合のみ勝つ（ブロック）
@@ -500,4 +535,139 @@ function isNapoleonWinning(currentTrick: Trick, gameState: GameState): boolean {
         trickCard.playerId === adjutant?.id) &&
       trickCard.card === bestCard.card
   )
+}
+
+/**
+ * 副官が副官指定カードを早期開示すべきか判定
+ * ナポレオンに副官だと認知してもらうため、スートが呼ばれた時に積極的に出す
+ */
+function shouldRevealAdjutantCard(
+  playableCards: Card[],
+  gameState: GameState,
+  currentTrick: Trick
+): Card | null {
+  // 副官指定カードを取得
+  const adjutantCard = gameState.napoleonDeclaration?.adjutantCard
+  if (!adjutantCard) return null
+
+  // プレイ可能なカードに副官カードがあるかチェック
+  const adjutantCardInHand = playableCards.find(
+    (card) => card.id === adjutantCard.id
+  )
+  if (!adjutantCardInHand) return null
+
+  // トリックが空の場合は開示しない（リード時は出さない）
+  if (currentTrick.cards.length === 0) return null
+
+  // リードスートを取得
+  const leadingSuit = currentTrick.cards[0].card.suit
+
+  // 副官カードのスートがリードスートと一致するかチェック
+  if (adjutantCard.suit !== leadingSuit) return null
+
+  // マイティーとの競合チェック
+  if (checkIsMighty(adjutantCard)) return null
+
+  const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
+
+  // 切り札ジャックとの競合チェック
+  if (checkIsTrumpJack(adjutantCard, trumpSuit)) return null
+  if (checkIsCounterJack(adjutantCard, trumpSuit)) return null
+
+  // 既にマイティーやジャックが出ている場合は出さない（競合回避）
+  const hasMightyOrJack = currentTrick.cards.some(
+    (trickCard) =>
+      checkIsMighty(trickCard.card) ||
+      checkIsTrumpJack(trickCard.card, trumpSuit) ||
+      checkIsCounterJack(trickCard.card, trumpSuit)
+  )
+  if (hasMightyOrJack) return null
+
+  // ゲーム進行度を確認（早期ほど開示しやすい）
+  const gameProgress = calculateGameProgress(gameState)
+
+  // 序盤〜中盤（70%まで）なら積極的に開示
+  if (gameProgress < 0.7) {
+    return adjutantCardInHand
+  }
+
+  // 終盤でも、ナポレオンが副官を認知していない可能性がある場合は開示
+  // （簡易的に30%の確率で開示）
+  if (Math.random() < 0.3) {
+    return adjutantCardInHand
+  }
+
+  return null
+}
+
+/**
+ * 副官がナポレオンに絵札を積極的に渡すべきか判定
+ * ナポレオンチームの得点を増やすため、勝っているナポレオンに絵札を渡す
+ */
+function shouldPassFaceCardToNapoleon(
+  playableCards: Card[],
+  gameState: GameState,
+  currentTrick: Trick,
+  canWinTrick: boolean
+): Card | null {
+  // トリックが空の場合は判定不可
+  if (currentTrick.cards.length === 0) return null
+
+  // ナポレオンを取得
+  const napoleon = gameState.players.find((p) => p.isNapoleon)
+  if (!napoleon) return null
+
+  // ナポレオンが現在勝っているかチェック
+  const napoleonIsWinning = isNapoleonWinning(currentTrick, gameState)
+  if (!napoleonIsWinning) return null
+
+  // プレイ可能な絵札を取得
+  const faceCards = playableCards.filter(isFaceCard)
+  if (faceCards.length === 0) return null
+
+  // 副官が勝てる場合でも、ナポレオンが勝っているなら絵札を渡す方が良い
+  // （ナポレオンに得点を集中させる）
+
+  // 絵札を弱い順にソート（10, Q, K, A の順）
+  const sortedFaceCards = faceCards.sort(
+    (a, b) =>
+      getCardStrengthSafe(a, gameState) - getCardStrengthSafe(b, gameState)
+  )
+
+  // 最も弱い絵札を選択（10やQを優先）
+  const weakestFaceCard = sortedFaceCards[0]
+
+  // ただし、副官が勝てる状況で、より強い絵札を持っている場合
+  // （例：副官がAを持っていて、ナポレオンが現在Kで勝っている場合）
+  // この場合は副官が勝った方が良いので、nullを返す
+  if (canWinTrick) {
+    // 副官が勝てるカードの中で、最も弱い勝てるカードを取得
+    const lowestWinning = getLowestWinningCard(
+      playableCards,
+      currentTrick,
+      gameState
+    )
+    const lowestWinningStrength = getCardStrengthSafe(lowestWinning, gameState)
+
+    // 最も弱い絵札が勝てるカードより弱い場合は、その絵札を出す
+    const weakestFaceStrength = getCardStrengthSafe(weakestFaceCard, gameState)
+
+    if (weakestFaceStrength < lowestWinningStrength) {
+      return weakestFaceCard
+    }
+
+    // 勝てるカードと弱い絵札が同じ場合、40%の確率でナポレオンに譲る
+    if (weakestFaceStrength === lowestWinningStrength && Math.random() < 0.4) {
+      // より弱い絵札を探す（2番目に弱い絵札）
+      if (sortedFaceCards.length > 1) {
+        return sortedFaceCards[1]
+      }
+    }
+
+    // それ以外の場合は勝つべき（副官が勝った方が得点が高い）
+    return null
+  }
+
+  // 副官が勝てない場合は、弱い絵札を出してナポレオンに渡す
+  return weakestFaceCard
 }
