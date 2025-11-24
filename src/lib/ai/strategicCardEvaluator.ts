@@ -56,10 +56,13 @@ export function evaluateCardStrategicValue(
   // 3. セイム2ポテンシャル評価
   strategicValue += evaluateSame2Potential(card, gameState)
 
-  // 4. 4枚揃わないスート評価
+  // 4. セイム2無効化カード評価（Mighty/Jackペナルティ）
+  strategicValue += evaluateSame2Breaker(card, gameState)
+
+  // 5. 4枚揃わないスート評価
   strategicValue += evaluateNonViableSuit(card, gameState)
 
-  // 5. ゲーム進行状況による調整
+  // 6. ゲーム進行状況による調整
   const gameProgress = calculateGameProgress(gameState)
   strategicValue += evaluateGamePhaseStrategy(card, gameProgress, player)
 
@@ -330,12 +333,20 @@ function evaluateSame2Potential(card: Card, gameState: GameState): number {
   // 切り札の2はセイム2にならないので評価しない
   if (card.suit === trumpSuit) return 0
 
+  // ゲーム進行度を取得（初旬ほど2を温存すべき）
+  const gameProgress = calculateGameProgress(gameState)
+
   // 現在のトリックを確認
   const currentTrick = gameState.currentTrick
 
-  // トリックが空の場合、すべてのスートでセイム2の可能性がある
+  // トリックが空の場合（リード時）
   if (currentTrick.cards.length === 0) {
-    return 150 // 切り札以外の2に高いボーナス
+    // 初旬（0-30%）は2でリードしない（温存）
+    if (gameProgress < 0.3) {
+      return 300 // 非常に高いボーナスで温存
+    }
+    // 中盤以降はセイム2を作るチャンス
+    return 150
   }
 
   // 現在のトリックで異なるスートが出ている場合、そのスートは4枚揃わない
@@ -344,19 +355,35 @@ function evaluateSame2Potential(card: Card, gameState: GameState): number {
     (pc) => pc.card.suit === leadingSuit
   )
 
+  // トリックにセイム2を無効化するカード（Mighty、Jack）があるかチェック
+  const hasSame2Breaker = currentTrick.cards.some(
+    (trickCard) =>
+      checkIsMighty(trickCard.card) ||
+      checkIsTrumpJack(trickCard.card, trumpSuit) ||
+      checkIsCounterJack(trickCard.card, trumpSuit)
+  )
+
   // まだ全て同じスートの場合
-  if (allSameSuit) {
+  if (allSameSuit && !hasSame2Breaker) {
     // リードスートと同じなら、セイム2の可能性が高い
     if (card.suit === leadingSuit) {
-      return 200 // 非常に高いボーナス
+      return 250 // 非常に高いボーナス（セイム2発動の可能性）
     }
-    // 異なるスートでも、まだ可能性はある
-    return 100
+    // 異なるスートでも、次のトリックで可能性がある
+    // 初旬ほど温存
+    return gameProgress < 0.5 ? 150 : 100
   }
 
-  // 異なるスートが混ざっている場合、このトリックではセイム2不可
-  // しかし、次のトリックでの可能性はある
-  return 80
+  // セイム2が無効化されている場合（異なるスート or Mighty/Jack）
+  // 次のトリックでの可能性に期待するが、初旬ほど温存
+  if (gameProgress < 0.3) {
+    return 200 // 初旬は温存（捨てない）
+  }
+  if (gameProgress < 0.6) {
+    return 120 // 中盤も温存傾向
+  }
+  // 終盤は使っても良い
+  return 50
 }
 
 /**
@@ -383,6 +410,55 @@ function evaluateNonViableSuit(card: Card, gameState: GameState): number {
     if (['2', '3', '4', '5'].includes(card.rank)) {
       return -50 // 低いカードは捨てる優先度が高い
     }
+  }
+
+  return 0
+}
+
+/**
+ * セイム2無効化カード評価
+ * マイティー・ジャックはセイム2を無効化するため、セイム2の可能性があるトリックでは出さない
+ */
+function evaluateSame2Breaker(card: Card, gameState: GameState): number {
+  const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
+
+  // このカードがセイム2を無効化するカードか判定
+  const isSame2Breaker =
+    checkIsMighty(card) ||
+    checkIsTrumpJack(card, trumpSuit) ||
+    checkIsCounterJack(card, trumpSuit)
+
+  if (!isSame2Breaker) return 0
+
+  const currentTrick = gameState.currentTrick
+
+  // トリックが空の場合は判定しない
+  if (currentTrick.cards.length === 0) return 0
+
+  const leadingSuit = currentTrick.cards[0].card.suit
+
+  // 全て同じスートで、まだセイム2の可能性がある場合
+  const allSameSuit = currentTrick.cards.every(
+    (pc) => pc.card.suit === leadingSuit
+  )
+
+  // まだMighty/Jackが出ていないかチェック
+  const alreadyHasSame2Breaker = currentTrick.cards.some(
+    (trickCard) =>
+      checkIsMighty(trickCard.card) ||
+      checkIsTrumpJack(trickCard.card, trumpSuit) ||
+      checkIsCounterJack(trickCard.card, trumpSuit)
+  )
+
+  // セイム2の可能性があるトリックでMighty/Jackを出すとセイム2を台無しにする
+  if (
+    allSameSuit &&
+    !alreadyHasSame2Breaker &&
+    currentTrick.cards.length >= 2
+  ) {
+    // 大きなペナルティ（セイム2を無効化してしまう）
+    // ただし、勝つために必要な場合は別なので、ペナルティは中程度
+    return -150
   }
 
   return 0
