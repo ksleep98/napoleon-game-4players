@@ -339,6 +339,9 @@ function evaluateSame2Potential(card: Card, gameState: GameState): number {
   // 現在のトリックを確認
   const currentTrick = gameState.currentTrick
 
+  // デバッグ用フラグ（5%の確率でログ出力）
+  const shouldLog = Math.random() < 0.05
+
   // トリックが空の場合（リード時）
   if (currentTrick.cards.length === 0) {
     // 初旬（0-40%）は2でリードしない（強力に温存）
@@ -369,16 +372,48 @@ function evaluateSame2Potential(card: Card, gameState: GameState): number {
 
   // Mighty/Jackが出ていてセイム2が無効化されている場合
   if (hasSame2Breaker) {
-    // このトリックで2を出すのは無駄なので、大きなペナルティ
-    // ただし、次のトリックでの可能性を考慮
-    if (gameProgress < 0.3) {
-      return -100 // 初旬は捨てても良い（セイム2無効化されているので）
+    // このトリックで2を出すのは無駄
+    // トリック内の位置を考慮（早い段階ほど2を温存すべき）
+    const trickPosition = currentTrick.cards.length // 現在何枚出ているか
+
+    // トリックの早い段階（1-2枚目）でMighty/Jackが出ている場合
+    // → まだ手札に余裕があるので、2は絶対に温存すべき
+    if (trickPosition <= 2) {
+      // 序盤・中盤は特に大きなペナルティ（2を絶対に出さない）
+      let penalty = 0
+      if (gameProgress < 0.5) {
+        penalty = -400 // 超大ペナルティで2を温存
+      } else if (gameProgress < 0.7) {
+        penalty = -300 // 中盤後半も大ペナルティ
+      } else {
+        penalty = -200 // 終盤は捨てても良い
+      }
+
+      if (shouldLog) {
+        console.log(
+          `[Same2] ${card.suit} 2: Mighty/Jack in trick (pos=${trickPosition}), gameProgress=${(gameProgress * 100).toFixed(0)}% → penalty=${penalty}`
+        )
+      }
+      return penalty
     }
-    if (gameProgress < 0.6) {
-      return -150 // 中盤も捨てる傾向
+
+    // トリックの後半（3枚目）でMighty/Jackが出ている場合
+    // → 手札が少なくなっているが、まだ温存の価値あり
+    let penalty = 0
+    if (gameProgress < 0.4) {
+      penalty = -200 // 序盤は温存
+    } else if (gameProgress < 0.7) {
+      penalty = -150 // 中盤も温存傾向
+    } else {
+      penalty = -100 // 終盤は積極的に捨てる
     }
-    // 終盤は積極的に捨てる
-    return -200
+
+    if (shouldLog) {
+      console.log(
+        `[Same2] ${card.suit} 2: Mighty/Jack in trick (pos=${trickPosition}, late), gameProgress=${(gameProgress * 100).toFixed(0)}% → penalty=${penalty}`
+      )
+    }
+    return penalty
   }
 
   // まだ全て同じスートの場合（Mighty/Jackなし）
