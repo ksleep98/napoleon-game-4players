@@ -59,10 +59,13 @@ export function evaluateCardStrategicValue(
   // 4. セイム2無効化カード評価（Mighty/Jackペナルティ）
   strategicValue += evaluateSame2Breaker(card, gameState)
 
-  // 5. 4枚揃わないスート評価
+  // 5. セイム2リスク評価（絵札がセイム2で取られるリスク）
+  strategicValue += evaluateSame2RiskForFaceCard(card, gameState, player)
+
+  // 6. 4枚揃わないスート評価
   strategicValue += evaluateNonViableSuit(card, gameState)
 
-  // 6. ゲーム進行状況による調整
+  // 7. ゲーム進行状況による調整
   const gameProgress = calculateGameProgress(gameState)
   strategicValue += evaluateGamePhaseStrategy(card, gameProgress, player)
 
@@ -339,6 +342,9 @@ function evaluateSame2Potential(card: Card, gameState: GameState): number {
   // 現在のトリックを確認
   const currentTrick = gameState.currentTrick
 
+  // デバッグ用フラグ（5%の確率でログ出力）
+  const shouldLog = Math.random() < 0.05
+
   // トリックが空の場合（リード時）
   if (currentTrick.cards.length === 0) {
     // 初旬（0-40%）は2でリードしない（強力に温存）
@@ -369,16 +375,48 @@ function evaluateSame2Potential(card: Card, gameState: GameState): number {
 
   // Mighty/Jackが出ていてセイム2が無効化されている場合
   if (hasSame2Breaker) {
-    // このトリックで2を出すのは無駄なので、大きなペナルティ
-    // ただし、次のトリックでの可能性を考慮
-    if (gameProgress < 0.3) {
-      return -100 // 初旬は捨てても良い（セイム2無効化されているので）
+    // このトリックで2を出すのは無駄
+    // トリック内の位置を考慮（早い段階ほど2を温存すべき）
+    const trickPosition = currentTrick.cards.length // 現在何枚出ているか
+
+    // トリックの早い段階（1-2枚目）でMighty/Jackが出ている場合
+    // → まだ手札に余裕があるので、2は絶対に温存すべき
+    if (trickPosition <= 2) {
+      // 序盤・中盤は特に大きなペナルティ（2を絶対に出さない）
+      let penalty = 0
+      if (gameProgress < 0.5) {
+        penalty = -400 // 超大ペナルティで2を温存
+      } else if (gameProgress < 0.7) {
+        penalty = -300 // 中盤後半も大ペナルティ
+      } else {
+        penalty = -200 // 終盤は捨てても良い
+      }
+
+      if (shouldLog) {
+        console.log(
+          `[Same2] ${card.suit} 2: Mighty/Jack in trick (pos=${trickPosition}), gameProgress=${(gameProgress * 100).toFixed(0)}% → penalty=${penalty}`
+        )
+      }
+      return penalty
     }
-    if (gameProgress < 0.6) {
-      return -150 // 中盤も捨てる傾向
+
+    // トリックの後半（3枚目）でMighty/Jackが出ている場合
+    // → 手札が少なくなっているが、まだ温存の価値あり
+    let penalty = 0
+    if (gameProgress < 0.4) {
+      penalty = -200 // 序盤は温存
+    } else if (gameProgress < 0.7) {
+      penalty = -150 // 中盤も温存傾向
+    } else {
+      penalty = -100 // 終盤は積極的に捨てる
     }
-    // 終盤は積極的に捨てる
-    return -200
+
+    if (shouldLog) {
+      console.log(
+        `[Same2] ${card.suit} 2: Mighty/Jack in trick (pos=${trickPosition}, late), gameProgress=${(gameProgress * 100).toFixed(0)}% → penalty=${penalty}`
+      )
+    }
+    return penalty
   }
 
   // まだ全て同じスートの場合（Mighty/Jackなし）
@@ -493,6 +531,96 @@ function evaluateSame2Breaker(card: Card, gameState: GameState): number {
       return basePenalty - 50 // 中盤もペナルティ
     }
     return basePenalty // 終盤でもペナルティ
+  }
+
+  return 0
+}
+
+/**
+ * セイム2リスク評価（絵札用）
+ * トリックに同じスートが2-3枚出ている状況で、絵札を出すと相手の2に取られるリスクを評価
+ */
+function evaluateSame2RiskForFaceCard(
+  card: Card,
+  gameState: GameState,
+  player: Player
+): number {
+  // 絵札以外は評価しない
+  if (!isFaceCard(card)) return 0
+
+  const currentTrick = gameState.currentTrick
+
+  // トリックが空の場合は評価しない
+  if (currentTrick.cards.length === 0) return 0
+
+  const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
+  const leadingSuit = currentTrick.cards[0].card.suit
+
+  // 切り札は評価しない（セイム2にならない）
+  if (card.suit === trumpSuit) return 0
+
+  // 全て同じスートか確認
+  const allSameSuit = currentTrick.cards.every(
+    (pc) => pc.card.suit === leadingSuit
+  )
+
+  // 異なるスートが混ざっている場合、セイム2のリスクなし
+  if (!allSameSuit) return 0
+
+  // カードが リードスートと一致するか確認
+  if (card.suit !== leadingSuit) return 0
+
+  // Mighty/Jackが出ている場合、セイム2は発動しない
+  const hasSame2Breaker = currentTrick.cards.some(
+    (trickCard) =>
+      checkIsMighty(trickCard.card) ||
+      checkIsTrumpJack(trickCard.card, trumpSuit) ||
+      checkIsCounterJack(trickCard.card, trumpSuit)
+  )
+  if (hasSame2Breaker) return 0
+
+  // トリックの枚数を確認（2-3枚の時がセイム2リスク）
+  const trickCardCount = currentTrick.cards.length
+
+  // 2枚または3枚の時、4枚目で絵札を出すと相手の2に取られるリスク
+  if (trickCardCount >= 2 && trickCardCount <= 3) {
+    // 例外: 意図的に絵札を渡す戦略の場合は適用しない
+    // ナポレオンが既に勝っている場合（副官が絵札を渡す戦略）
+    if (player.isAdjutant && isNapoleonWinning(currentTrick, gameState)) {
+      return 0 // 絵札を渡す戦略なのでペナルティなし
+    }
+
+    // ゲーム進行度を取得
+    const gameProgress = calculateGameProgress(gameState)
+
+    // セイム2リスクのペナルティ
+    // 3枚目（4枚揃う可能性が非常に高い）の方が危険
+    const baseRiskPenalty = trickCardCount === 3 ? -250 : -150
+
+    // トリックに既に絵札がたくさんある場合、リスクが高い
+    const faceCardsInTrick = currentTrick.cards.filter((tc) =>
+      isFaceCard(tc.card)
+    ).length
+
+    // 絵札が多いほどリスク大（取られる絵札が増える）
+    const faceCardMultiplier = faceCardsInTrick >= 2 ? 1.5 : 1.0
+
+    // 序盤・中盤ほどリスク回避すべき
+    let finalPenalty = baseRiskPenalty * faceCardMultiplier
+    if (gameProgress < 0.4) {
+      finalPenalty *= 1.3 // 序盤は特にリスク回避
+    } else if (gameProgress < 0.7) {
+      finalPenalty *= 1.1 // 中盤もリスク回避
+    }
+
+    // デバッグログ（5%の確率）
+    if (Math.random() < 0.05) {
+      console.log(
+        `[Same2Risk] ${card.suit} ${card.rank}: ${trickCardCount} cards in trick, ${faceCardsInTrick} face cards → penalty=${Math.round(finalPenalty)}`
+      )
+    }
+
+    return Math.round(finalPenalty)
   }
 
   return 0
