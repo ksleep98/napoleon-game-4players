@@ -11,6 +11,7 @@ import {
   exchangeCardsAction,
   passNapoleonAction,
   playCardAction,
+  redealCardsAction,
   setAdjutantAction,
 } from '@/app/actions/gameLogicActions'
 import { ACTION_TYPES } from '@/lib/constants'
@@ -401,6 +402,41 @@ export function useGameActions({
     })
   }, [state.gameState, gameId, dispatch])
 
+  const handleRedealCards = useCallback(() => {
+    if (!state.gameState || !gameId) return
+
+    const currentPlayerId = state.gameState.players[0]?.id // 任意のプレイヤーID
+    if (!currentPlayerId) return
+
+    startTransition(async () => {
+      try {
+        dispatch({ type: ACTION_TYPES.GAME.RESET_ERROR })
+
+        // Server Action経由で配り直し
+        const result = await redealCardsAction(gameId, currentPlayerId)
+
+        if (result.success && result.data) {
+          dispatch({
+            type: ACTION_TYPES.GAME.SET_GAME_STATE,
+            payload: { gameState: result.data },
+          })
+          console.log('Cards redealt - new game started')
+        } else {
+          throw new Error(result.error || 'Failed to redeal cards')
+        }
+      } catch (err) {
+        console.error('Failed to redeal cards:', err)
+        dispatch({
+          type: ACTION_TYPES.GAME.SET_ERROR,
+          payload: {
+            error:
+              err instanceof Error ? err.message : 'Failed to redeal cards',
+          },
+        })
+      }
+    })
+  }, [state.gameState, gameId, dispatch])
+
   return {
     actions: {
       initGame,
@@ -411,6 +447,7 @@ export function useGameActions({
       setAdjutant: handleSetAdjutant,
       exchangeCards: handleExchangeCards,
       closeTrickResult: handleCloseTrickResult,
+      redealCards: handleRedealCards,
     },
     isPending,
   }

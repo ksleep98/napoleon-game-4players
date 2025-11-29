@@ -3,7 +3,7 @@
  * MCTSのシミュレーションフェーズで使用
  */
 
-import { GAME_PHASES } from '@/lib/constants'
+import { countFaceCards, GAME_PHASES } from '@/lib/constants'
 import { determineWinnerWithSpecialRules } from '@/lib/napoleonCardRules'
 import type { Card, GameState, PlayedCard, Player, Suit } from '@/types/game'
 
@@ -143,7 +143,7 @@ function completeTrick(state: GameState): void {
  */
 function updateTrickScore(_state: GameState, _winnerId: string): void {
   // シミュレーションでは詳細なスコア管理は不要
-  // 勝敗判定はgetNapoleonTricksWon()で行う
+  // 勝敗判定はgetNapoleonFaceCardsWon()で行う
 }
 
 /**
@@ -158,46 +158,58 @@ export function isGameFinished(state: GameState): boolean {
   if (allHandsEmpty) return true
 
   // 早期終了条件（ナポレオンまたは連合軍が目標達成不可能）
-  const napoleonTricksWon = getNapoleonTricksWon(state)
-  const remainingTricks = 12 - state.tricks.length
+  // ただし、ゲーム開始直後（トリック数が0）の場合は早期終了しない
+  if (state.tricks.length > 0) {
+    const napoleonFaceCardsWon = getNapoleonFaceCardsWon(state)
+    const remainingTricks = 12 - state.tricks.length
 
-  // ナポレオンの目標トリック数
-  const targetTricks = state.napoleonDeclaration?.targetTricks || 12
+    // ナポレオンの目標絵札数
+    const targetFaceCards = state.napoleonDeclaration?.targetTricks || 12
 
-  // ナポレオンが目標達成不可能
-  if (napoleonTricksWon + remainingTricks < targetTricks) {
-    return true
-  }
+    // 残りトリックに絵札が最大5枚（10, J, Q, K, A）あると仮定
+    const maxPossibleFaceCards = remainingTricks * 5
 
-  // 連合軍の勝利確定（ナポレオンが目標未達成確定）
-  const allianceTricksWon = state.tricks.length - napoleonTricksWon
-  if (allianceTricksWon > 12 - targetTricks) {
-    return true
+    // ナポレオンが目標達成不可能（残り全部取っても届かない）
+    if (napoleonFaceCardsWon + maxPossibleFaceCards < targetFaceCards) {
+      return true
+    }
+
+    // 連合軍の勝利確定計算
+    // 全絵札数 = 20枚（10, J, Q, K, A が各スート5枚 x 4スート）
+    const maxNapoleonCanGet = napoleonFaceCardsWon + maxPossibleFaceCards
+
+    // 連合軍がすでに十分な絵札を獲得（ナポレオンが目標達成不可能）
+    if (maxNapoleonCanGet < targetFaceCards) {
+      return true
+    }
   }
 
   return false
 }
 
 /**
- * ナポレオンチームの獲得トリック数を取得
+ * ナポレオンチームの獲得絵札数を取得
  */
-function getNapoleonTricksWon(state: GameState): number {
+function getNapoleonFaceCardsWon(state: GameState): number {
   const napoleonPlayer = state.players.find((p) => p.isNapoleon)
   if (!napoleonPlayer) return 0
 
   const adjutantPlayer = state.players.find((p) => p.isAdjutant)
+  const napoleonTeamIds = [napoleonPlayer.id, adjutantPlayer?.id].filter(
+    Boolean
+  ) as string[]
 
-  let tricksWon = 0
-  for (const trick of state.tricks) {
-    if (
-      trick.winnerPlayerId === napoleonPlayer.id ||
-      (adjutantPlayer && trick.winnerPlayerId === adjutantPlayer.id)
-    ) {
-      tricksWon++
-    }
-  }
+  // ナポレオンチームが勝ったトリックの絵札をカウント
+  const faceCardsWon = state.tricks
+    .filter(
+      (trick) =>
+        trick.winnerPlayerId && napoleonTeamIds.includes(trick.winnerPlayerId)
+    )
+    .reduce((total, trick) => {
+      return total + countFaceCards(trick.cards.map((c) => c.card))
+    }, 0)
 
-  return tricksWon
+  return faceCardsWon
 }
 
 /**
@@ -218,14 +230,14 @@ export interface GameResult {
 }
 
 export function getGameResult(state: GameState): GameResult {
-  const napoleonTricksWon = getNapoleonTricksWon(state)
-  const targetTricks = state.napoleonDeclaration?.targetTricks || 12
-  const napoleonWon = napoleonTricksWon >= targetTricks
+  const napoleonFaceCardsWon = getNapoleonFaceCardsWon(state)
+  const targetFaceCards = state.napoleonDeclaration?.targetTricks || 12
+  const napoleonWon = napoleonFaceCardsWon >= targetFaceCards
 
   return {
     napoleonWon,
-    napoleonTricksWon,
-    targetTricks,
+    napoleonTricksWon: napoleonFaceCardsWon, // 互換性のため名前はそのまま
+    targetTricks: targetFaceCards,
   }
 }
 

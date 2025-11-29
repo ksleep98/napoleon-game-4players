@@ -75,6 +75,7 @@ interface GameContextValue {
     setAdjutant: (adjutantCard: Card) => void
     exchangeCards: (playerId: string, cardsToDiscard: Card[]) => void
     closeTrickResult: () => void
+    redealCards: () => void
   }
   utils: {
     getPlayableCards: (playerId: string) => string[]
