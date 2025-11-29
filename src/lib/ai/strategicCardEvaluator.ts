@@ -224,15 +224,13 @@ function selectFollowingCard(
         return faceCardPass
       }
 
-      // 3. ナポレオンが既に勝っている場合は弱い絵札を出す
+      // 3. ナポレオンが既に勝っている場合は絵札を渡す（マイティー除外）
       if (isNapoleonWinning(currentTrick, gameState)) {
-        const weakestFace = getWeakestFaceCard(playableCards, gameState)
-        const cardToPlay =
-          weakestFace || getWeakestCard(playableCards, gameState)
+        const cardToPlay = getFaceCardToPassToNapoleon(playableCards, gameState)
         if (Math.random() < 0.05) {
-          const cardType = weakestFace ? 'face card' : 'weakest'
+          const cardType = isFaceCard(cardToPlay) ? 'face card' : 'non-face'
           console.log(
-            `[Strategic] Adjutant: Napoleon winning → Playing weakest ${cardType}: ${cardToPlay.suit} ${cardToPlay.rank}`
+            `[Strategic] Adjutant: Napoleon winning → Passing ${cardType} to Napoleon (avoiding Mighty): ${cardToPlay.suit} ${cardToPlay.rank}`
           )
         }
         return cardToPlay
@@ -731,20 +729,6 @@ function isFaceCard(card: Card): boolean {
 }
 
 /**
- * 絵札の中で最も弱いカードを取得
- * 絵札がない場合はnullを返す
- */
-function getWeakestFaceCard(cards: Card[], gameState: GameState): Card | null {
-  const faceCards = cards.filter(isFaceCard)
-  if (faceCards.length === 0) return null
-
-  return faceCards.sort(
-    (a, b) =>
-      getCardStrengthSafe(a, gameState) - getCardStrengthSafe(b, gameState)
-  )[0]
-}
-
-/**
  * 非絵札の中で最も弱いカードを取得
  * 非絵札がない場合はnullを返す
  */
@@ -759,6 +743,53 @@ function getWeakestNonFaceCard(
     (a, b) =>
       getCardStrengthSafe(a, gameState) - getCardStrengthSafe(b, gameState)
   )[0]
+}
+
+/**
+ * ナポレオンに渡す絵札を取得（マイティー除外）
+ * 副官がナポレオンに得点を渡す際に、絵札を優先しつつマイティーを保護
+ */
+function getFaceCardToPassToNapoleon(
+  cards: Card[],
+  gameState: GameState
+): Card {
+  const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
+
+  // マイティーを除外した絵札を取得
+  const faceCardsExcludingMighty = cards.filter(
+    (card) => isFaceCard(card) && !checkIsMighty(card)
+  )
+
+  // 絵札（マイティー除外）がある場合は、最も弱い絵札を返す
+  if (faceCardsExcludingMighty.length > 0) {
+    return faceCardsExcludingMighty.sort(
+      (a, b) =>
+        getCardStrengthSafe(a, gameState) - getCardStrengthSafe(b, gameState)
+    )[0]
+  }
+
+  // 絵札がない場合は、特殊カード以外の最弱カードを返す
+  const nonSpecialCards = cards.filter(
+    (card) =>
+      !checkIsMighty(card) &&
+      !checkIsTrumpJack(card, trumpSuit) &&
+      !checkIsCounterJack(card, trumpSuit)
+  )
+
+  if (nonSpecialCards.length > 0) {
+    // 非絵札を優先
+    const weakestNonFace = getWeakestNonFaceCard(nonSpecialCards, gameState)
+    if (weakestNonFace) return weakestNonFace
+
+    // 非絵札がない場合は特殊カード以外のカード
+    return nonSpecialCards.sort(
+      (a, b) =>
+        getCardStrengthSafe(a, gameState) - getCardStrengthSafe(b, gameState)
+    )[0]
+  }
+
+  // すべて特殊カードの場合（稀なケース）は通常の最弱カードを返す
+  return getWeakestCard(cards, gameState)
 }
 
 function isNapoleonWinning(currentTrick: Trick, gameState: GameState): boolean {
