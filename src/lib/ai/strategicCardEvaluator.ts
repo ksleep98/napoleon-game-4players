@@ -224,13 +224,13 @@ function selectFollowingCard(
         return faceCardPass
       }
 
-      // 3. ナポレオンが既に勝っている場合は最弱カードを出す（特殊カード除外）
+      // 3. ナポレオンが既に勝っている場合は絵札を渡す（マイティー除外）
       if (isNapoleonWinning(currentTrick, gameState)) {
-        const cardToPlay = getWeakestNonSpecialCard(playableCards, gameState)
+        const cardToPlay = getFaceCardToPassToNapoleon(playableCards, gameState)
         if (Math.random() < 0.05) {
           const cardType = isFaceCard(cardToPlay) ? 'face card' : 'non-face'
           console.log(
-            `[Strategic] Adjutant: Napoleon winning → Playing weakest ${cardType} (avoiding specials): ${cardToPlay.suit} ${cardToPlay.rank}`
+            `[Strategic] Adjutant: Napoleon winning → Passing ${cardType} to Napoleon (avoiding Mighty): ${cardToPlay.suit} ${cardToPlay.rank}`
           )
         }
         return cardToPlay
@@ -746,13 +746,29 @@ function getWeakestNonFaceCard(
 }
 
 /**
- * 特殊カード（Mighty、Trump Jack、Counter Jack）を除いた最弱カードを取得
- * 副官がナポレオンを勝たせる際に、貴重なカードを保護するために使用
+ * ナポレオンに渡す絵札を取得（マイティー除外）
+ * 副官がナポレオンに得点を渡す際に、絵札を優先しつつマイティーを保護
  */
-function getWeakestNonSpecialCard(cards: Card[], gameState: GameState): Card {
+function getFaceCardToPassToNapoleon(
+  cards: Card[],
+  gameState: GameState
+): Card {
   const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
 
-  // 特殊カードを除外
+  // マイティーを除外した絵札を取得
+  const faceCardsExcludingMighty = cards.filter(
+    (card) => isFaceCard(card) && !checkIsMighty(card)
+  )
+
+  // 絵札（マイティー除外）がある場合は、最も弱い絵札を返す
+  if (faceCardsExcludingMighty.length > 0) {
+    return faceCardsExcludingMighty.sort(
+      (a, b) =>
+        getCardStrengthSafe(a, gameState) - getCardStrengthSafe(b, gameState)
+    )[0]
+  }
+
+  // 絵札がない場合は、特殊カード以外の最弱カードを返す
   const nonSpecialCards = cards.filter(
     (card) =>
       !checkIsMighty(card) &&
@@ -760,13 +776,12 @@ function getWeakestNonSpecialCard(cards: Card[], gameState: GameState): Card {
       !checkIsCounterJack(card, trumpSuit)
   )
 
-  // 特殊カード以外がある場合
   if (nonSpecialCards.length > 0) {
-    // まず非絵札を優先
+    // 非絵札を優先
     const weakestNonFace = getWeakestNonFaceCard(nonSpecialCards, gameState)
     if (weakestNonFace) return weakestNonFace
 
-    // 非絵札がない場合は特殊カード以外の絵札
+    // 非絵札がない場合は特殊カード以外のカード
     return nonSpecialCards.sort(
       (a, b) =>
         getCardStrengthSafe(a, gameState) - getCardStrengthSafe(b, gameState)
