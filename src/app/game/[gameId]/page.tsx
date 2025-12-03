@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useSearchParams } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AdjutantSelector } from '@/components/game/AdjutantSelector'
 import { AIDifficultyBadge } from '@/components/game/AIDifficultyBadge'
 import { Card } from '@/components/game/Card'
@@ -23,22 +23,37 @@ function GamePageContent() {
 
   const { gameState, loading, error, actions, utils } = useGame()
 
+  // actionsの参照を安定化
+  const actionsRef = useRef(actions)
+  actionsRef.current = actions
+
   // プレイヤーIDを設定（AIモードでは人間プレイヤー、通常モードでは最初のプレイヤー）
-  // プレイヤーIDの設定を最適化（プレイヤー構成が変わった時のみ実行）
-  useEffect(() => {
-    if (gameState && gameState.players.length > 0) {
-      const hasAI = gameState.players.some((p) => p.isAI)
-      if (hasAI) {
-        const humanPlayer = gameState.players.find((p) => !p.isAI)
-        if (humanPlayer && humanPlayer.id !== currentPlayerId) {
-          setCurrentPlayerId(humanPlayer.id)
-        }
-      } else if (!currentPlayerId) {
-        // 通常モードでは最初のプレイヤーを選択
-        setCurrentPlayerId(gameState.players[0].id)
-      }
+  // プレイヤー構成の変化のみを監視（プレイヤー数とAIフラグの変化）
+  const playerConfig = useMemo(() => {
+    if (!gameState?.players || gameState.players.length === 0) return null
+
+    const hasAI = gameState.players.some((p) => p.isAI)
+    const humanPlayer = hasAI ? gameState.players.find((p) => !p.isAI) : null
+    const firstPlayerId = gameState.players[0]?.id
+
+    return {
+      hasAI,
+      humanPlayerId: humanPlayer?.id || null,
+      firstPlayerId,
     }
-  }, [gameState, currentPlayerId])
+  }, [gameState?.players])
+
+  useEffect(() => {
+    if (!playerConfig) return
+
+    if (playerConfig.hasAI && playerConfig.humanPlayerId) {
+      if (playerConfig.humanPlayerId !== currentPlayerId) {
+        setCurrentPlayerId(playerConfig.humanPlayerId)
+      }
+    } else if (!currentPlayerId && playerConfig.firstPlayerId) {
+      setCurrentPlayerId(playerConfig.firstPlayerId)
+    }
+  }, [playerConfig, currentPlayerId])
 
   // 配り直しの自動検出と実行
   useEffect(() => {
@@ -47,12 +62,12 @@ function GamePageContent() {
 
       // 1.5秒後に配り直しを実行（ユーザーにメッセージを表示するため）
       const timer = setTimeout(() => {
-        actions.redealCards()
+        actionsRef.current.redealCards()
       }, 1500)
 
       return () => clearTimeout(timer)
     }
-  }, [gameState?.needsRedeal, actions])
+  }, [gameState?.needsRedeal])
 
   // playableCardsの計算をメモ化 (early returnより前に配置)
   const playableCards = useMemo(() => {

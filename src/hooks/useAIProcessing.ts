@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { processAITurnAction } from '@/app/actions/aiStrategyActions'
 import { GAME_PHASES } from '@/lib/constants'
 import { getCurrentPlayer } from '@/lib/gameLogic'
@@ -20,6 +20,10 @@ export function useAIProcessing({
   gameId,
   onGameStateUpdate,
 }: UseAIProcessingProps) {
+  // コールバック関数の参照を安定化
+  const onGameStateUpdateRef = useRef(onGameStateUpdate)
+  onGameStateUpdateRef.current = onGameStateUpdate
+
   useEffect(() => {
     if (!gameState || !isAI) return
 
@@ -45,7 +49,7 @@ export function useAIProcessing({
           )
 
           if (result.success && result.data) {
-            onGameStateUpdate(result.data)
+            onGameStateUpdateRef.current(result.data)
             console.log('AI Napoleon processing completed successfully')
           } else {
             console.error('AI Napoleon processing failed:', result.error)
@@ -64,7 +68,7 @@ export function useAIProcessing({
             )
 
             if (result.success && result.data) {
-              onGameStateUpdate(result.data)
+              onGameStateUpdateRef.current(result.data)
               console.log('AI Adjutant processing completed successfully')
             } else {
               console.error('AI Adjutant processing failed:', result.error)
@@ -84,7 +88,7 @@ export function useAIProcessing({
             )
 
             if (result.success && result.data) {
-              onGameStateUpdate(result.data)
+              onGameStateUpdateRef.current(result.data)
               console.log('AI Exchange processing completed successfully')
             } else {
               console.error('AI Exchange processing failed:', result.error)
@@ -107,7 +111,7 @@ export function useAIProcessing({
             )
 
             if (result.success && result.data) {
-              onGameStateUpdate(result.data)
+              onGameStateUpdateRef.current(result.data)
               console.log('AI Playing processing completed successfully')
             } else {
               console.error('AI Playing processing failed:', result.error)
@@ -125,5 +129,5 @@ export function useAIProcessing({
 
     const timer = setTimeout(processAI, 1500)
     return () => clearTimeout(timer)
-  }, [gameState, isAI, gameId, onGameStateUpdate])
+  }, [gameState, isAI, gameId])
 }
