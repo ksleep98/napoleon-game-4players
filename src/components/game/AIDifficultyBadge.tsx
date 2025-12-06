@@ -43,6 +43,11 @@ const DIFFICULTY_INFO: Record<AIDifficulty, DifficultyInfo> = {
 export function AIDifficultyBadge() {
   const [showDetails, setShowDetails] = useState(false)
 
+  // 本番環境では非表示
+  if (process.env.NEXT_PUBLIC_APP_ENV === 'production') {
+    return null
+  }
+
   // 環境変数から難易度を取得（クライアント側）
   const difficulty: AIDifficulty =
     (process.env.NEXT_PUBLIC_AI_DIFFICULTY as AIDifficulty) || 'normal'
