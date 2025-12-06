@@ -21,6 +21,10 @@ import {
 import { allianceAIStrategy } from './alliance'
 import { getPlayableCards as getPlayableCardsFromSimulator } from './gameSimulator'
 import { napoleonAIStrategy } from './napoleon'
+import {
+  NAPOLEON_MCTS_PRESETS,
+  napoleonAIStrategyWithMCTS,
+} from './napoleonMCTS'
 
 // ナポレオン決定フェーズの AI 処理（改善版）
 export async function processNapoleonPhase(
@@ -56,7 +60,37 @@ export async function processNapoleonPhase(
     return updatedGameState
   }
 
-  const strategy = napoleonAIStrategy(updatedGameState, currentPlayer.id)
+  // AI難易度設定に基づいて戦略を選択
+  const difficultyLevel: AIDifficultyLevel =
+    (process.env.NEXT_PUBLIC_AI_DIFFICULTY as AIDifficultyLevel) || 'normal'
+
+  let strategy: {
+    shouldDeclare: boolean
+    declaration?: import('@/types/game').NapoleonDeclaration
+    adjutantCard?: Card
+  }
+
+  // Easy: ヒューリスティック、Normal/Hard: MCTS
+  if (difficultyLevel === 'easy') {
+    console.log('Using heuristic Napoleon strategy (Easy)')
+    strategy = napoleonAIStrategy(updatedGameState, currentPlayer.id)
+  } else {
+    console.log(`Using MCTS Napoleon strategy (${difficultyLevel})`)
+    const mctsConfig =
+      difficultyLevel === 'hard'
+        ? NAPOLEON_MCTS_PRESETS.normal
+        : NAPOLEON_MCTS_PRESETS.fast
+    try {
+      strategy = napoleonAIStrategyWithMCTS(
+        updatedGameState,
+        currentPlayer.id,
+        mctsConfig
+      )
+    } catch (error) {
+      console.error('Napoleon MCTS failed, falling back to heuristic:', error)
+      strategy = napoleonAIStrategy(updatedGameState, currentPlayer.id)
+    }
+  }
 
   if (strategy.shouldDeclare && strategy.declaration) {
     // ナポレオンを宣言
@@ -236,7 +270,7 @@ async function selectAICard(
 
   // AI難易度を取得（環境変数またはデフォルト）
   const difficultyLevel: AIDifficultyLevel =
-    (process.env.AI_DIFFICULTY as AIDifficultyLevel) || 'normal'
+    (process.env.NEXT_PUBLIC_AI_DIFFICULTY as AIDifficultyLevel) || 'normal'
 
   // ハイブリッド戦略を使用
   try {

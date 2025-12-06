@@ -1,8 +1,9 @@
 'use client'
 
 import { useParams, useSearchParams } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AdjutantSelector } from '@/components/game/AdjutantSelector'
+import { AIDifficultyBadge } from '@/components/game/AIDifficultyBadge'
 import { Card } from '@/components/game/Card'
 import { CardExchangeSelector } from '@/components/game/CardExchangeSelector'
 import { GameBoard } from '@/components/game/GameBoard'
@@ -22,22 +23,51 @@ function GamePageContent() {
 
   const { gameState, loading, error, actions, utils } = useGame()
 
+  // actionsの参照を安定化
+  const actionsRef = useRef(actions)
+  actionsRef.current = actions
+
   // プレイヤーIDを設定（AIモードでは人間プレイヤー、通常モードでは最初のプレイヤー）
-  // プレイヤーIDの設定を最適化（プレイヤー構成が変わった時のみ実行）
-  useEffect(() => {
-    if (gameState && gameState.players.length > 0) {
-      const hasAI = gameState.players.some((p) => p.isAI)
-      if (hasAI) {
-        const humanPlayer = gameState.players.find((p) => !p.isAI)
-        if (humanPlayer && humanPlayer.id !== currentPlayerId) {
-          setCurrentPlayerId(humanPlayer.id)
-        }
-      } else if (!currentPlayerId) {
-        // 通常モードでは最初のプレイヤーを選択
-        setCurrentPlayerId(gameState.players[0].id)
-      }
+  // プレイヤー構成の変化のみを監視（プレイヤー数とAIフラグの変化）
+  const playerConfig = useMemo(() => {
+    if (!gameState?.players || gameState.players.length === 0) return null
+
+    const hasAI = gameState.players.some((p) => p.isAI)
+    const humanPlayer = hasAI ? gameState.players.find((p) => !p.isAI) : null
+    const firstPlayerId = gameState.players[0]?.id
+
+    return {
+      hasAI,
+      humanPlayerId: humanPlayer?.id || null,
+      firstPlayerId,
     }
-  }, [gameState, currentPlayerId])
+  }, [gameState?.players])
+
+  useEffect(() => {
+    if (!playerConfig) return
+
+    if (playerConfig.hasAI && playerConfig.humanPlayerId) {
+      if (playerConfig.humanPlayerId !== currentPlayerId) {
+        setCurrentPlayerId(playerConfig.humanPlayerId)
+      }
+    } else if (!currentPlayerId && playerConfig.firstPlayerId) {
+      setCurrentPlayerId(playerConfig.firstPlayerId)
+    }
+  }, [playerConfig, currentPlayerId])
+
+  // 配り直しの自動検出と実行
+  useEffect(() => {
+    if (gameState?.needsRedeal) {
+      console.log('All players passed - triggering automatic redeal')
+
+      // 1.5秒後に配り直しを実行（ユーザーにメッセージを表示するため）
+      const timer = setTimeout(() => {
+        actionsRef.current.redealCards()
+      }, 1500)
+
+      return () => clearTimeout(timer)
+    }
+  }, [gameState?.needsRedeal])
 
   // playableCardsの計算をメモ化 (early returnより前に配置)
   const playableCards = useMemo(() => {
@@ -46,12 +76,16 @@ function GamePageContent() {
       : []
   }, [currentPlayerId, utils, gameState])
 
-  if (loading) {
+  if (loading || gameState?.needsRedeal) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-lg text-gray-600">Loading game...</p>
+          <p className="text-lg text-gray-600">
+            {gameState?.needsRedeal
+              ? '全員がパスしました。カードを配り直しています...'
+              : 'Loading game...'}
+          </p>
         </div>
       </div>
     )
@@ -248,17 +282,22 @@ function GamePageContent() {
       <div className="max-w-7xl mx-auto px-2 md:px-4">
         <div className="flex justify-between items-center mb-2 md:mb-6 py-1">
           <h1 className="text-lg md:text-2xl font-bold">Napoleon Game</h1>
-          {gameState?.players.some((p) => p.isAI) && (
-            <button
-              type="button"
-              onClick={() => {
-                window.location.href = '/'
-              }}
-              className="px-2 py-1 md:px-4 md:py-2 text-sm md:text-base bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              ← Home
-            </button>
-          )}
+          <div className="flex items-center gap-2 md:gap-4">
+            {/* AI難易度バッジ */}
+            {gameState?.players.some((p) => p.isAI) && <AIDifficultyBadge />}
+            {/* Homeボタン */}
+            {gameState?.players.some((p) => p.isAI) && (
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href = '/'
+                }}
+                className="px-2 py-1 md:px-4 md:py-2 text-sm md:text-base bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                ← Home
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-2 md:gap-6">
