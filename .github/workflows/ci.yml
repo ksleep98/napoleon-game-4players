@@ -139,10 +139,11 @@ jobs:
 
   e2e-tests:
     runs-on: ubuntu-latest
-    # Run E2E tests on push to main/develop or PRs targeting main branch
+    # Run E2E tests on push to main/develop or PRs to develop branch
+    # Note: PRs to main run E2E tests in Vercel Preview workflow instead
     if: |
       github.event_name == 'push' ||
-      (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main')
+      (github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'main')
 
     steps:
       - name: Checkout code
