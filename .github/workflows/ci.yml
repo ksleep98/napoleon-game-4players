@@ -139,10 +139,10 @@ jobs:
 
   e2e-tests:
     runs-on: ubuntu-latest
-    # Only run E2E tests on push to main/develop or specific PR labels
+    # Run E2E tests on push to main/develop or PRs targeting main branch
     if: |
       github.event_name == 'push' ||
-      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'e2e-test'))
+      (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main')
 
     steps:
       - name: Checkout code
