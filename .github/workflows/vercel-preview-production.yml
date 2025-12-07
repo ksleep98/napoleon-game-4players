@@ -133,8 +133,8 @@ jobs:
               console.log(`Created new comment on PR #${prNumber}`);
             }
 
-      - name: Run E2E tests on Preview
-        run: pnpm test:e2e:production
+      - name: Run comprehensive game flow E2E test on Preview
+        run: pnpm test:e2e:production:comprehensive
         continue-on-error: true
         env:
           PLAYWRIGHT_BASE_URL: ${{ steps.deploy.outputs.deployment_url }}

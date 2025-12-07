@@ -35,6 +35,7 @@
     "test:e2e:report": "node scripts/generate-e2e-report.js",
     "test:e2e:html": "playwright show-report",
     "test:e2e:production": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --config=playwright-production.config.ts --reporter=line",
+    "test:e2e:production:comprehensive": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --config=playwright-production.config.ts --grep 'should complete a full game flow against AI' --reporter=line",
     "test:e2e:production:full": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --config=playwright-production.config.ts --reporter=html",
     "test:e2e:production:headed": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --config=playwright-production.config.ts --headed",
     "test:e2e:production:ui": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --config=playwright-production.config.ts --ui",
