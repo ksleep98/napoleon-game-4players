@@ -40,7 +40,7 @@ jobs:
           # Check if there's already an open PR from develop to main
           existing_pr=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
             "https://api.github.com/repos/${{ github.repository }}/pulls?base=main&head=${{ github.repository_owner }}:develop&state=open" \
-            | jq -r '.[0].number // empty')
+            | jq -r 'if type == "array" then .[0].number // empty else empty end')
 
           if [ -n "$existing_pr" ]; then
             echo "pr_exists=true" >> $GITHUB_OUTPUT
