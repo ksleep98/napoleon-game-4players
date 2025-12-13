@@ -139,10 +139,11 @@ jobs:
 
   e2e-tests:
     runs-on: ubuntu-latest
-    # Only run E2E tests on push to main/develop or specific PR labels
+    # Run E2E tests on push to main/develop or PRs to develop branch
+    # Note: PRs to main run E2E tests in Vercel Preview workflow instead
     if: |
       github.event_name == 'push' ||
-      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'e2e-test'))
+      (github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'main')
 
     steps:
       - name: Checkout code
@@ -174,7 +175,7 @@ jobs:
           NEXT_TELEMETRY_DISABLED: "1"
         run: pnpm build
 
-      - name: Run E2E tests with server auto-start
+      - name: Run comprehensive game flow E2E test
         env:
           NEXT_PUBLIC_SUPABASE_URL: "https://mock.supabase.co"
           NEXT_PUBLIC_SUPABASE_ANON_KEY: "mock_anon_key"
@@ -184,13 +185,12 @@ jobs:
           # Playwright will start dev server automatically
           PORT: "3000"
           NEXT_TELEMETRY_DISABLED: "1"
-          # Skip E2E tests temporarily until Vercel development environment is ready
-          SKIP_E2E_TESTS: "true"
         run: |
-          echo "🚀 Starting E2E tests with automatic server startup..."
+          echo "🚀 Running comprehensive game flow E2E test..."
+          echo "🎮 Test: Napoleon selection → Card exchange → Playing → Result"
           echo "⏳ Playwright webServer will start dev server automatically"
-          echo "🔧 Using CI-optimized configuration with 3-minute timeout"
-          pnpm test:e2e:ci
+          echo "📝 This single test validates the entire game flow end-to-end"
+          pnpm test:e2e:ci:comprehensive
 
       - name: Upload test artifacts
         uses: actions/upload-artifact@v4

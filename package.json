@@ -24,6 +24,7 @@
     "test:e2e:progress": "node tests/setup-test-directories.js && playwright test --reporter=line",
     "test:e2e:detailed": "node tests/setup-test-directories.js && playwright test --reporter=html --headed --screenshot=on --video=on",
     "test:e2e:ci": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} playwright test --config=playwright-ci.config.ts --max-failures=1",
+    "test:e2e:ci:comprehensive": "node tests/setup-test-directories.js && playwright test --config=playwright-ci.config.ts --grep 'should complete a full game flow against AI' --reporter=line",
     "test:e2e:ci:full": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} playwright test --config=playwright-ci.config.ts --reporter=html",
     "test:e2e:ci:local": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --config=playwright-ci.config.ts --reporter=line",
     "test:e2e:develop": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} playwright test --config=playwright-develop.config.ts --reporter=line",
@@ -34,6 +35,7 @@
     "test:e2e:report": "node scripts/generate-e2e-report.js",
     "test:e2e:html": "playwright show-report",
     "test:e2e:production": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --config=playwright-production.config.ts --reporter=line",
+    "test:e2e:production:comprehensive": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --config=playwright-production.config.ts --grep 'should complete a full game flow against AI' --reporter=line",
     "test:e2e:production:full": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --config=playwright-production.config.ts --reporter=html",
     "test:e2e:production:headed": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --config=playwright-production.config.ts --headed",
     "test:e2e:production:ui": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --config=playwright-production.config.ts --ui",
@@ -57,9 +59,9 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.56.0",
     "crypto-js": "^4.2.0",
-    "next": "15.4.8",
-    "react": "^19.1.2",
-    "react-dom": "^19.1.2"
+    "next": "15.4.10",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.2",
