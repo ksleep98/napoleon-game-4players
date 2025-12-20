@@ -39,15 +39,12 @@ export function useGameInitialization({
     if (initializationAttempted.current === gameId) return
 
     if (gameId && isAI) {
-      console.log('Creating new AI game:', gameId)
       initializationAttempted.current = gameId
       initGameRef.current(['You'])
     } else if (gameId && playerNames && playerNames.length === 4) {
-      console.log('Creating new game for Quick Start:', gameId, playerNames)
       initializationAttempted.current = gameId
       initGameRef.current(playerNames)
     } else if (gameId && !playerNames) {
-      console.log('Loading existing game:', gameId)
       initializationAttempted.current = gameId
       loadGameRef.current(gameId)
     }

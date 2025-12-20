@@ -87,7 +87,6 @@ export function selectAICard(
       return selectWithHybrid(playableCards, gameState, player, config)
 
     default:
-      console.warn(`Unknown strategy: ${config.strategy}, using heuristic`)
       return selectWithHeuristic(playableCards, gameState, player)
   }
 }
@@ -100,7 +99,6 @@ function selectWithHeuristic(
   gameState: GameState,
   player: Player
 ): Card | null {
-  console.log('Using heuristic strategy')
   return selectBestStrategicCard(playableCards, gameState, player)
 }
 
@@ -113,8 +111,6 @@ function selectWithMCTS(
   player: Player,
   config: AIStrategyConfig
 ): Card {
-  console.log('Using MCTS strategy')
-
   const mctsConfig = config.mctsConfig || MCTS_PRESETS.normal
 
   return selectCardWithDeterminization(
@@ -138,29 +134,21 @@ function selectWithHybrid(
   const gameProgress = calculateGameProgress(gameState)
   const handSize = player.hand.length
 
-  console.log(
-    `Hybrid strategy: progress=${(gameProgress * 100).toFixed(1)}%, handSize=${handSize}`
-  )
-
   // 序盤（0-30%）: ヒューリスティック（高速）
   if (gameProgress < 0.3) {
-    console.log('  → Using heuristic (early game)')
     return selectWithHeuristic(playableCards, gameState, player)
   }
 
   // 中盤（30-70%）: 手札が多い場合はヒューリスティック、少ない場合はMCTS
   if (gameProgress < 0.7) {
     if (handSize > 6) {
-      console.log('  → Using heuristic (mid game, large hand)')
       return selectWithHeuristic(playableCards, gameState, player)
     } else {
-      console.log('  → Using MCTS (mid game, small hand)')
       return selectWithMCTS(playableCards, gameState, player, config)
     }
   }
 
   // 終盤（70-100%）: MCTS（高精度）
-  console.log('  → Using MCTS (end game)')
   return selectWithMCTS(playableCards, gameState, player, config)
 }
 

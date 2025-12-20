@@ -155,17 +155,6 @@ function selectFollowingCard(
   // 既に出ているカード全てを考慮して、勝てるか判定
   const canWinTrick = canWinCurrentTrick(playableCards, currentTrick, gameState)
 
-  // デバッグ：トリックの状況を確認（5%の確率でログ）
-  if (Math.random() < 0.05 && currentTrick.cards.length > 0) {
-    const trickCards = currentTrick.cards
-      .map((c) => `${c.card.suit} ${c.card.rank}`)
-      .join(', ')
-    const bestCard = getBestTrickCard(currentTrick, gameState)
-    console.log(
-      `[Strategic] Trick: [${trickCards}], Best: ${bestCard.card.suit} ${bestCard.card.rank}, CanWin: ${canWinTrick}, Player: ${player.name}`
-    )
-  }
-
   // 勝てない場合は最弱カードを出す（役割に応じて戦略を変える）
   if (!canWinTrick) {
     let weakest: Card
@@ -179,13 +168,6 @@ function selectFollowingCard(
       weakest = weakestNonFace || getWeakestCard(playableCards, gameState)
     }
 
-    // デバッグ：弱いカード選択（5%の確率でログ）
-    if (Math.random() < 0.05) {
-      const cardType = weakest && isFaceCard(weakest) ? '(face)' : '(non-face)'
-      console.log(
-        `[Strategic] Can't win → Playing weakest ${cardType}: ${weakest.suit} ${weakest.rank}`
-      )
-    }
     return weakest
   }
 
@@ -200,11 +182,6 @@ function selectFollowingCard(
         currentTrick
       )
       if (adjutantCardReveal) {
-        if (Math.random() < 0.1) {
-          console.log(
-            `[Strategic] Adjutant: Revealing adjutant card: ${adjutantCardReveal.suit} ${adjutantCardReveal.rank}`
-          )
-        }
         return adjutantCardReveal
       }
 
@@ -216,23 +193,12 @@ function selectFollowingCard(
         canWinTrick
       )
       if (faceCardPass) {
-        if (Math.random() < 0.1) {
-          console.log(
-            `[Strategic] Adjutant: Passing face card to Napoleon: ${faceCardPass.suit} ${faceCardPass.rank}`
-          )
-        }
         return faceCardPass
       }
 
       // 3. ナポレオンが既に勝っている場合は絵札を渡す（マイティー除外）
       if (isNapoleonWinning(currentTrick, gameState)) {
         const cardToPlay = getFaceCardToPassToNapoleon(playableCards, gameState)
-        if (Math.random() < 0.05) {
-          const cardType = isFaceCard(cardToPlay) ? 'face card' : 'non-face'
-          console.log(
-            `[Strategic] Adjutant: Napoleon winning → Passing ${cardType} to Napoleon (avoiding Mighty): ${cardToPlay.suit} ${cardToPlay.rank}`
-          )
-        }
         return cardToPlay
       }
     }
@@ -390,11 +356,6 @@ function evaluateSame2Potential(card: Card, gameState: GameState): number {
         penalty = -200 // 終盤は捨てても良い
       }
 
-      if (shouldLog) {
-        console.log(
-          `[Same2] ${card.suit} 2: Mighty/Jack in trick (pos=${trickPosition}), gameProgress=${(gameProgress * 100).toFixed(0)}% → penalty=${penalty}`
-        )
-      }
       return penalty
     }
 
@@ -409,11 +370,6 @@ function evaluateSame2Potential(card: Card, gameState: GameState): number {
       penalty = -100 // 終盤は積極的に捨てる
     }
 
-    if (shouldLog) {
-      console.log(
-        `[Same2] ${card.suit} 2: Mighty/Jack in trick (pos=${trickPosition}, late), gameProgress=${(gameProgress * 100).toFixed(0)}% → penalty=${penalty}`
-      )
-    }
     return penalty
   }
 
@@ -609,13 +565,6 @@ function evaluateSame2RiskForFaceCard(
       finalPenalty *= 1.3 // 序盤は特にリスク回避
     } else if (gameProgress < 0.7) {
       finalPenalty *= 1.1 // 中盤もリスク回避
-    }
-
-    // デバッグログ（5%の確率）
-    if (Math.random() < 0.05) {
-      console.log(
-        `[Same2Risk] ${card.suit} ${card.rank}: ${trickCardCount} cards in trick, ${faceCardsInTrick} face cards → penalty=${Math.round(finalPenalty)}`
-      )
     }
 
     return Math.round(finalPenalty)
