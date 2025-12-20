@@ -58,7 +58,6 @@ export function useGameActions({
           // Server Action経由でセキュアなゲーム初期化
           // 一意のプレイヤーIDを生成（実際のセッション管理で使用）
           const playerId = `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-          console.log('Generated player ID for game initialization:', playerId)
 
           let result: Awaited<
             ReturnType<
@@ -86,20 +85,9 @@ export function useGameActions({
             try {
               const actualPlayerId = gameState.players[0]?.id || playerId
               await setPlayerSession(actualPlayerId)
-              console.log(
-                'Player session set from:',
-                playerId,
-                'to:',
-                actualPlayerId
-              )
             } catch (sessionError) {
               console.warn('Player session setup failed:', sessionError)
             }
-
-            console.log(
-              'Game initialized successfully via Server Action:',
-              newGameId
-            )
           } else {
             throw new Error(result.error || 'Failed to initialize game')
           }
@@ -146,9 +134,7 @@ export function useGameActions({
               type: ACTION_TYPES.GAME.SET_GAME_STATE,
               payload: { gameState: loadedGame },
             })
-            console.log('Game loaded successfully:', id)
           } else {
-            console.warn('Game not found with provided ID:', id)
             dispatch({
               type: ACTION_TYPES.GAME.SET_ERROR,
               payload: { error: 'Game not found' },

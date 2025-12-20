@@ -89,7 +89,6 @@ export function selectNapoleonDeclarationWithMCTS(
     for (const suit of availableSuits) {
       // 時間制限チェック
       if (Date.now() - startTime > config.timeLimit) {
-        console.log('Napoleon MCTS: Time limit reached')
         break
       }
 
@@ -113,10 +112,6 @@ export function selectNapoleonDeclarationWithMCTS(
         winRate,
         simulations: config.simulationsPerOption,
       })
-
-      console.log(
-        `Napoleon MCTS: ${tricks} tricks, ${suit} → ${(winRate * 100).toFixed(1)}% win rate`
-      )
     }
 
     if (Date.now() - startTime > config.timeLimit) break
@@ -129,10 +124,6 @@ export function selectNapoleonDeclarationWithMCTS(
 
   const bestOption = options.reduce((best, option) =>
     option.winRate > best.winRate ? option : best
-  )
-
-  console.log(
-    `Napoleon MCTS: Best option → ${bestOption.targetTricks} tricks, ${bestOption.suit} (${(bestOption.winRate * 100).toFixed(1)}% win rate)`
   )
 
   // 勝率が30%以上なら宣言
@@ -216,15 +207,6 @@ function simulateDeclarationGame(
   state.phase = GAME_PHASES.PLAYING
   state.currentPlayerIndex = 0
 
-  // デバッグ：初期状態を確認（最初のシミュレーションのみ）
-  if (Math.random() < 0.01) {
-    const handSizes = state.players.map((p) => p.hand.length)
-    const totalCards = handSizes.reduce((sum, size) => sum + size, 0)
-    console.log(
-      `MCTS Simulation Start: handSizes=${handSizes.join(',')}, totalCards=${totalCards}, isFinished=${isGameFinished(state)}, tricks=${state.tricks.length}`
-    )
-  }
-
   // ゲーム終了までシミュレート
   const maxIterations = 100
   let iterations = 0
@@ -234,9 +216,6 @@ function simulateDeclarationGame(
     const playableCards = getPlayableCards(state, currentPlayer.id)
 
     if (playableCards.length === 0) {
-      console.warn(
-        `Napoleon MCTS: No playable cards - iteration=${iterations}, currentPlayer=${currentPlayer.name}, handSize=${currentPlayer.hand.length}, tricks=${state.tricks.length}`
-      )
       break
     }
 
@@ -247,33 +226,10 @@ function simulateDeclarationGame(
     state = simulateCardPlay(state, currentPlayer.id, selectedCard)
 
     iterations++
-
-    // デバッグ: 途中経過を確認（ほとんど表示しない）
-    if (iterations % 12 === 0 && Math.random() < 0.01) {
-      console.log(
-        `MCTS Progress: iteration=${iterations}, tricks=${state.tricks.length}, isFinished=${isGameFinished(state)}`
-      )
-    }
-  }
-
-  // デバッグ情報
-  const finished = isGameFinished(state)
-  if (!finished || iterations >= maxIterations) {
-    console.warn(
-      `Napoleon MCTS: Simulation issue - iterations=${iterations}, finished=${finished}, tricks=${state.tricks.length}`
-    )
   }
 
   // ゲーム結果を取得
   const result = getGameResult(state)
-
-  // 詳細ログ（最初のシミュレーションのみ）
-  if (Math.random() < 0.05) {
-    // 5%の確率でログ
-    console.log(
-      `MCTS Debug: napoleonWon=${result.napoleonWon}, napoleonTricks=${result.napoleonTricksWon}, target=${targetTricks}, iterations=${iterations}`
-    )
-  }
 
   // ナポレオンが勝ったかどうか
   return result.napoleonWon

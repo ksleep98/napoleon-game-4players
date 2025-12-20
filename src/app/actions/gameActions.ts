@@ -101,19 +101,10 @@ export async function saveGameStateAction(
     } | null = null
 
     try {
-      console.log('Attempting UPSERT for game:', gameData.id)
       // UPSERTを使用して存在チェックとINSERT/UPDATEを一度に実行
       saveResult = await clientForOperation.from('games').upsert(gameData, {
         onConflict: 'id',
       })
-
-      console.log(
-        'UPSERT operation result:',
-        saveResult.error ? 'failed' : 'success'
-      )
-      if (saveResult.error) {
-        console.error('UPSERT operation error:', saveResult.error)
-      }
 
       // 401エラーまたはRLSエラーの場合はREST APIフォールバック
       if (
@@ -144,8 +135,6 @@ export async function saveGameStateAction(
           'MISSING_ENV_VARS'
         )
       }
-
-      console.log('UPSERT failed, falling back to REST API')
       const restResult = await saveGameStateViaRestAPI(
         gameData,
         envServiceRoleKey,
@@ -293,12 +282,6 @@ export async function loadGameStateAction(
     }
 
     // ゲーム状態をSupabaseから読み込み
-    console.log(
-      'Loading game state with gameId:',
-      gameId,
-      'playerId:',
-      playerId
-    )
     const { data, error } = await supabaseAdmin
       .from('games')
       .select('*')
@@ -306,9 +289,7 @@ export async function loadGameStateAction(
       .single()
 
     if (error) {
-      console.error('Database error loading game:', error)
       if (error.code === 'PGRST116') {
-        console.error('Game not found in database for gameId:', gameId)
         return { success: false, error: 'Game not found' }
       }
       console.error('Database error:', error)

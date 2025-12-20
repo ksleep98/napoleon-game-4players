@@ -39,10 +39,6 @@ export function useAIProcessing({
             return
           }
 
-          console.log(
-            `AI processing Napoleon phase for player: ${nextPlayer.name} with gameId: ${actualGameId}`
-          )
-
           const result = await processAITurnAction(
             actualGameId,
             gameState.players[0]?.id || 'player_0'
@@ -50,7 +46,6 @@ export function useAIProcessing({
 
           if (result.success && result.data) {
             onGameStateUpdateRef.current(result.data)
-            console.log('AI Napoleon processing completed successfully')
           } else {
             console.error('AI Napoleon processing failed:', result.error)
           }
@@ -58,10 +53,6 @@ export function useAIProcessing({
           // 副官フェーズでのAI処理
           const napoleonPlayer = gameState.players.find((p) => p.isNapoleon)
           if (napoleonPlayer?.isAI) {
-            console.log(
-              `AI processing Adjutant phase for Napoleon: ${napoleonPlayer.name} with gameId: ${actualGameId}`
-            )
-
             const result = await processAITurnAction(
               actualGameId,
               gameState.players[0]?.id || 'player_0'
@@ -69,7 +60,6 @@ export function useAIProcessing({
 
             if (result.success && result.data) {
               onGameStateUpdateRef.current(result.data)
-              console.log('AI Adjutant processing completed successfully')
             } else {
               console.error('AI Adjutant processing failed:', result.error)
             }
@@ -78,10 +68,6 @@ export function useAIProcessing({
           // カード交換フェーズでのAI処理
           const napoleonPlayer = gameState.players.find((p) => p.isNapoleon)
           if (napoleonPlayer?.isAI) {
-            console.log(
-              `AI processing Exchange phase for Napoleon: ${napoleonPlayer.name} with gameId: ${actualGameId}`
-            )
-
             const result = await processAITurnAction(
               actualGameId,
               gameState.players[0]?.id || 'player_0'
@@ -89,7 +75,6 @@ export function useAIProcessing({
 
             if (result.success && result.data) {
               onGameStateUpdateRef.current(result.data)
-              console.log('AI Exchange processing completed successfully')
             } else {
               console.error('AI Exchange processing failed:', result.error)
             }
@@ -101,10 +86,6 @@ export function useAIProcessing({
 
           const currentPlayer = getCurrentPlayer(gameState)
           if (currentPlayer?.isAI) {
-            console.log(
-              `AI processing Playing phase for player: ${currentPlayer.name} with gameId: ${actualGameId}`
-            )
-
             const result = await processAITurnAction(
               actualGameId,
               gameState.players[0]?.id || 'player_0'
@@ -112,7 +93,6 @@ export function useAIProcessing({
 
             if (result.success && result.data) {
               onGameStateUpdateRef.current(result.data)
-              console.log('AI Playing processing completed successfully')
             } else {
               console.error('AI Playing processing failed:', result.error)
             }

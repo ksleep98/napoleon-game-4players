@@ -106,11 +106,6 @@ export function monteCarloTreeSearch(
 
   // MCTSは現在のプレイヤーに対してのみ実行される
   const currentPlayer = gameState.players[gameState.currentPlayerIndex]
-  if (currentPlayer.id !== player.id) {
-    console.warn(
-      `MCTS called for non-current player. Expected: ${currentPlayer.id}, Got: ${player.id}`
-    )
-  }
 
   // ゲーム状態から現在のプレイヤーのプレイ可能なカードを取得
   // determinizationで手札が変更されている可能性があるため
@@ -151,33 +146,12 @@ export function monteCarloTreeSearch(
     simulationCount++
   }
 
-  const elapsedTime = Date.now() - startTime
-  console.log(
-    `MCTS completed: ${simulationCount} simulations in ${elapsedTime}ms`
-  )
-
   // 最も訪問回数が多い子ノードのアクションを選択
   if (rootNode.children.length === 0) {
-    console.warn('No children nodes, falling back to strategic selection')
     return (
       selectBestStrategicCard(playableCards, gameState, player) ||
       playableCards[0]
     )
-  }
-
-  // すべてのカード選択肢の統計をログ出力（0%が複数ある場合の理解のため）
-  if (Math.random() < 0.1) {
-    // 10%の確率で詳細ログ
-    console.log(`MCTS card options (${rootNode.children.length} cards):`)
-    rootNode.children
-      .sort((a, b) => b.visits - a.visits)
-      .forEach((child) => {
-        const card = child.playedCard
-        const winRate = child.visits > 0 ? (child.wins / child.visits) * 100 : 0
-        console.log(
-          `  ${card?.suit} ${card?.rank}: visits=${child.visits}, winRate=${winRate.toFixed(1)}%`
-        )
-      })
   }
 
   // MCTSの候補カードを訪問回数順に取得
@@ -187,9 +161,6 @@ export function monteCarloTreeSearch(
     .filter((card): card is Card => card !== null)
 
   if (candidateCards.length === 0) {
-    console.warn(
-      'No candidate cards found, falling back to first playable card'
-    )
     return playableCards[0]
   }
 
@@ -203,25 +174,7 @@ export function monteCarloTreeSearch(
 
   if (!selectedCard) {
     // 戦略的選択が失敗した場合は、最も訪問回数が多いカードを使用
-    const fallbackCard = candidateCards[0]
-    console.warn(
-      `Strategic selection failed, using most visited card: ${fallbackCard.suit} ${fallbackCard.rank}`
-    )
-    return fallbackCard
-  }
-
-  // 選択されたカードの統計情報を取得
-  const selectedChild = sortedChildren.find(
-    (child) => child.playedCard?.id === selectedCard.id
-  )
-  if (selectedChild) {
-    console.log(
-      `Selected card: ${selectedCard.suit} ${selectedCard.rank} (visits: ${selectedChild.visits}, win rate: ${((selectedChild.wins / selectedChild.visits) * 100).toFixed(1)}%)`
-    )
-  } else {
-    console.log(
-      `Selected card: ${selectedCard.suit} ${selectedCard.rank} (strategic override)`
-    )
+    return candidateCards[0]
   }
 
   return selectedCard
@@ -333,7 +286,6 @@ function simulateGame(
     const playableCards = getPlayableCards(state, currentPlayer.id)
 
     if (playableCards.length === 0) {
-      console.warn('No playable cards in simulation, breaking')
       break
     }
 
@@ -484,10 +436,6 @@ export function selectCardWithDeterminization(
       bestCard = card
     }
   }
-
-  console.log(
-    `Determinization: ${bestCard.suit} ${bestCard.rank} won with ${maxVotes}/${config.determinizationCount} votes`
-  )
 
   return bestCard
 }

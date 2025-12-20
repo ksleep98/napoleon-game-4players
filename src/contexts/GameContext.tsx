@@ -110,13 +110,6 @@ export function GameProvider({
   // ゲーム初期化後は実際のゲームIDを使用、そうでなければURLのゲームIDを使用
   const actualGameId = state.gameState?.id || gameId
 
-  console.log(
-    'GameProvider - URL gameId:',
-    gameId,
-    'Actual gameId:',
-    actualGameId
-  )
-
   // Use the optimized actions hook with React 19 transitions
   const { actions, isPending } = useGameActions({
     state,
