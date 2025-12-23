@@ -86,18 +86,23 @@ AS $$
 $$;
 
 -- パフォーマンス監視用のビュー（簡潔版）
-CREATE OR REPLACE VIEW perf_stats AS
-SELECT
-  'rooms' as type,
-  COUNT(*) as total,
-  COUNT(*) FILTER (WHERE status = 'waiting' AND player_count < max_players) as available
-FROM game_rooms
-UNION ALL
-SELECT
-  'players' as type,
-  COUNT(*) as total,
-  COUNT(*) FILTER (WHERE connected = true) as available
-FROM players;
+-- NOTE: このビューは削除されました（2025-12-13）
+-- 理由: SECURITY DEFINER セキュリティアラート対応 & 未使用のため
+-- 必要な場合は SECURITY INVOKER で再作成すること
+--
+-- CREATE OR REPLACE VIEW perf_stats
+-- WITH (security_invoker = true) AS
+-- SELECT
+--   'rooms' as type,
+--   COUNT(*) as total,
+--   COUNT(*) FILTER (WHERE status = 'waiting' AND player_count < max_players) as available
+-- FROM game_rooms
+-- UNION ALL
+-- SELECT
+--   'players' as type,
+--   COUNT(*) as total,
+--   COUNT(*) FILTER (WHERE connected = true) as available
+-- FROM players;
 
 -- 使用例:
 -- SELECT * FROM get_available_rooms(10);

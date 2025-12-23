@@ -48,13 +48,8 @@ export async function processNapoleonPhase(
     return updatedGameState
   }
 
-  console.log(`Processing Napoleon phase for AI player: ${currentPlayer.name}`)
-
   // そのプレイヤーが実際に宣言可能かチェック
   if (!canDeclareNapoleon(updatedGameState, currentPlayer.id)) {
-    console.log(
-      `AI Player ${currentPlayer.name} cannot declare Napoleon (already passed)`
-    )
     // 次のプレイヤーに進む
     updatedGameState = advanceNapoleonPhase(updatedGameState)
     return updatedGameState
@@ -72,10 +67,8 @@ export async function processNapoleonPhase(
 
   // Easy: ヒューリスティック、Normal/Hard: MCTS
   if (difficultyLevel === 'easy') {
-    console.log('Using heuristic Napoleon strategy (Easy)')
     strategy = napoleonAIStrategy(updatedGameState, currentPlayer.id)
   } else {
-    console.log(`Using MCTS Napoleon strategy (${difficultyLevel})`)
     const mctsConfig =
       difficultyLevel === 'hard'
         ? NAPOLEON_MCTS_PRESETS.normal
@@ -95,16 +88,12 @@ export async function processNapoleonPhase(
   if (strategy.shouldDeclare && strategy.declaration) {
     // ナポレオンを宣言
     updatedGameState = declareNapoleon(updatedGameState, strategy.declaration)
-    console.log(
-      `AI Player ${currentPlayer.name} declares Napoleon: ${strategy.declaration.targetTricks} face cards with ${strategy.declaration.suit}!`
-    )
   } else {
     // パス
     updatedGameState = passNapoleonDeclaration(
       updatedGameState,
       currentPlayer.id
     )
-    console.log(`AI Player ${currentPlayer.name} passes Napoleon declaration`)
   }
 
   return updatedGameState
@@ -132,16 +121,6 @@ export async function processAdjutantPhase(
 
   const adjutantCard = updatedGameState.napoleonDeclaration.adjutantCard
   updatedGameState = setAdjutant(updatedGameState, adjutantCard)
-
-  // 副官が決まったログ出力
-  const adjutantPlayer = updatedGameState.players.find((p) => p.isAdjutant)
-  if (adjutantPlayer) {
-    console.log(
-      `${adjutantPlayer.name} becomes adjutant with ${adjutantCard.suit}-${adjutantCard.rank}`
-    )
-  } else {
-    console.log('No adjutant found - card is in hidden cards')
-  }
 
   return updatedGameState
 }
@@ -172,7 +151,6 @@ export async function processCardExchangePhase(
     napoleonPlayer.id,
     cardsToDiscard
   )
-  console.log(`AI Napoleon ${napoleonPlayer.name} exchanges 4 cards`)
 
   return updatedGameState
 }
@@ -206,8 +184,7 @@ export async function processAlliancePhase(
     const player = updatedGameState.players[i]
 
     if (player.isAI && !player.isNapoleon && !player.isAdjutant) {
-      const strategy = allianceAIStrategy(updatedGameState, player.id)
-      console.log(`AI Player ${player.name}: ${strategy.reasoning}`)
+      allianceAIStrategy(updatedGameState, player.id)
     }
   }
 
@@ -235,9 +212,6 @@ export async function processAIPlayingPhase(
 
   if (cardToPlay) {
     updatedState = playCard(updatedState, currentPlayer.id, cardToPlay.id)
-    console.log(
-      `AI ${currentPlayer.name} plays ${cardToPlay.suit}-${cardToPlay.rank}`
-    )
   }
 
   return updatedState
@@ -256,7 +230,6 @@ async function selectAICard(
 
   if (!currentPlayer) {
     // フォールバック：従来のランダム選択
-    console.warn('AI player not found, using fallback selection')
     return selectFallbackCard(hand, gameState)
   }
 
@@ -264,7 +237,6 @@ async function selectAICard(
   const playableCards = getPlayableCards(hand, gameState)
 
   if (playableCards.length === 0) {
-    console.warn('No playable cards found, using first card')
     return hand[0]
   }
 
@@ -282,19 +254,10 @@ async function selectAICard(
     )
 
     if (selectedCard) {
-      const cardInfo = `${selectedCard.suit}-${selectedCard.rank}`
-      const strategyType = currentPlayer.isNapoleon
-        ? 'Napoleon'
-        : currentPlayer.isAdjutant
-          ? 'Adjutant'
-          : 'Alliance'
-      console.log(
-        `AI ${currentPlayer.name} (${strategyType}, ${strategyConfig.strategy}) plays ${cardInfo}`
-      )
       return selectedCard
     }
   } catch (error) {
-    console.warn('Hybrid AI strategy failed, using fallback:', error)
+    // Fallback to simple selection
   }
 
   // フォールバック：従来のロジック
