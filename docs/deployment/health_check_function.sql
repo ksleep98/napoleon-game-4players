@@ -14,7 +14,9 @@ BEGIN
   -- データベース接続が確立されていれば成功
   RETURN 'OK';
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp;
 
 -- 公開アクセスを許可（RLS関係なくアクセス可能）
 GRANT EXECUTE ON FUNCTION health_check() TO anon;
