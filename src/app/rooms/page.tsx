@@ -41,7 +41,14 @@ export default function RoomsPage() {
 
     try {
       setError(null)
-      const playerId = generatePlayerId()
+      // 既存のplayerIdを再利用（ホストが退出→再参加した場合に重要）
+      let playerId = localStorage.getItem('playerId')
+      const isNewPlayer = !playerId
+
+      if (!playerId) {
+        playerId = generatePlayerId()
+      }
+
       const roomId = generateGameId()
 
       // ルーム作成（playerCount: 0 で初期化）
@@ -54,8 +61,10 @@ export default function RoomsPage() {
         hostPlayerId: playerId,
       })
 
-      // プレイヤー作成
-      await createPlayer(playerId, playerName.trim())
+      // 新規プレイヤーの場合のみプレイヤー作成
+      if (isNewPlayer) {
+        await createPlayer(playerId, playerName.trim())
+      }
 
       // ホストプレイヤーをルームに参加（これで player_count が 0 → 1 になる）
       await joinGameRoom(roomId, playerId)
@@ -79,10 +88,18 @@ export default function RoomsPage() {
 
     try {
       setError(null)
-      const playerId = generatePlayerId()
+      // 既存のplayerIdを再利用（退出→再参加した場合に重要）
+      let playerId = localStorage.getItem('playerId')
+      const isNewPlayer = !playerId
 
-      // プレイヤー作成
-      await createPlayer(playerId, playerName.trim())
+      if (!playerId) {
+        playerId = generatePlayerId()
+      }
+
+      // 新規プレイヤーの場合のみプレイヤー作成
+      if (isNewPlayer) {
+        await createPlayer(playerId, playerName.trim())
+      }
 
       // ルームに参加
       await joinGameRoom(roomId, playerId)
