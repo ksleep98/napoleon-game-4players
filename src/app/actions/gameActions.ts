@@ -959,6 +959,83 @@ export async function leaveGameRoomAction(
 }
 
 /**
+ * セキュアなゲームルーム削除アクション
+ * ホストのみが自分のルームを削除可能
+ */
+export async function deleteGameRoomAction(
+  roomId: string,
+  hostPlayerId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // 入力検証
+    if (!validateGameId(roomId)) {
+      throw new GameActionError('Invalid room ID', 'INVALID_ROOM_ID')
+    }
+
+    if (!validatePlayerId(hostPlayerId)) {
+      throw new GameActionError('Invalid player ID', 'INVALID_PLAYER_ID')
+    }
+
+    // レート制限チェック
+    if (!checkRateLimit(`delete_room_${hostPlayerId}`, 5, 60000)) {
+      throw new GameActionError('Rate limit exceeded', 'RATE_LIMIT_EXCEEDED')
+    }
+
+    // ルームの存在確認とホスト権限チェック
+    const { data: roomData, error: roomError } = await supabaseAdmin
+      .from('game_rooms')
+      .select('host_player_id, status')
+      .eq('id', roomId)
+      .single()
+
+    if (roomError || !roomData) {
+      throw new GameActionError('Room not found', 'ROOM_NOT_FOUND')
+    }
+
+    // ホスト確認
+    if (roomData.host_player_id !== hostPlayerId) {
+      throw new GameActionError(
+        'Only the host can delete the room',
+        'UNAUTHORIZED'
+      )
+    }
+
+    // プレイヤーをルームから削除（カスケード削除の前に明示的にクリア）
+    await supabaseAdmin
+      .from('players')
+      .update({ room_id: null, connected: false })
+      .eq('room_id', roomId)
+
+    // ルームを削除
+    const { error: deleteError } = await supabaseAdmin
+      .from('game_rooms')
+      .delete()
+      .eq('id', roomId)
+
+    if (deleteError) {
+      throw new GameActionError(
+        `Failed to delete room: ${deleteError.message}`,
+        'DATABASE_ERROR'
+      )
+    }
+
+    // キャッシュ無効化
+    revalidatePath('/rooms')
+
+    return { success: true }
+  } catch (error) {
+    console.error('Room deletion error:', error)
+    return {
+      success: false,
+      error:
+        error instanceof GameActionError
+          ? error.message
+          : 'Unknown error occurred',
+    }
+  }
+}
+
+/**
  * セキュアなゲームルーム詳細取得アクション
  */
 export async function getRoomDetailsAction(
