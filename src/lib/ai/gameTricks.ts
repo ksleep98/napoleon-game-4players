@@ -256,7 +256,7 @@ async function selectAICard(
     if (selectedCard) {
       return selectedCard
     }
-  } catch (error) {
+  } catch (_error) {
     // Fallback to simple selection
   }
 

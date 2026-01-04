@@ -307,7 +307,7 @@ function evaluateSame2Potential(card: Card, gameState: GameState): number {
   const currentTrick = gameState.currentTrick
 
   // デバッグ用フラグ（5%の確率でログ出力）
-  const shouldLog = Math.random() < 0.05
+  const _shouldLog = Math.random() < 0.05
 
   // トリックが空の場合（リード時）
   if (currentTrick.cards.length === 0) {

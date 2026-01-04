@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
+import { deleteGameRoomAction } from '@/app/actions/gameActions'
 import {
   createGameRoom,
   createPlayer,
@@ -19,6 +20,10 @@ export default function RoomsPage() {
   const [playerName, setPlayerName] = useState('')
   const [showCreateRoom, setShowCreateRoom] = useState(false)
   const [newRoomName, setNewRoomName] = useState('')
+  const [deletingRoomId, setDeletingRoomId] = useState<string | null>(null)
+  const [confirmDeleteRoomId, setConfirmDeleteRoomId] = useState<string | null>(
+    null
+  )
   const router = useRouter()
 
   const loadRooms = useCallback(async () => {
@@ -41,23 +46,32 @@ export default function RoomsPage() {
 
     try {
       setError(null)
-      const playerId = generatePlayerId()
+      // 既存のplayerIdを再利用（ホストが退出→再参加した場合に重要）
+      let playerId = localStorage.getItem('playerId')
+      const isNewPlayer = !playerId
+
+      if (!playerId) {
+        playerId = generatePlayerId()
+      }
+
       const roomId = generateGameId()
 
-      // プレイヤー作成
-      await createPlayer(playerId, playerName.trim())
-
-      // ルーム作成
+      // ルーム作成（playerCount: 0 で初期化）
       await createGameRoom({
         id: roomId,
         name: newRoomName.trim(),
-        playerCount: 1,
+        playerCount: 0,
         maxPlayers: 4,
         status: 'waiting',
         hostPlayerId: playerId,
       })
 
-      // ルームに参加
+      // 新規プレイヤーの場合のみプレイヤー作成
+      if (isNewPlayer) {
+        await createPlayer(playerId, playerName.trim())
+      }
+
+      // ホストプレイヤーをルームに参加（これで player_count が 0 → 1 になる）
       await joinGameRoom(roomId, playerId)
 
       // プレイヤーIDをローカルストレージに保存
@@ -79,10 +93,18 @@ export default function RoomsPage() {
 
     try {
       setError(null)
-      const playerId = generatePlayerId()
+      // 既存のplayerIdを再利用（退出→再参加した場合に重要）
+      let playerId = localStorage.getItem('playerId')
+      const isNewPlayer = !playerId
 
-      // プレイヤー作成
-      await createPlayer(playerId, playerName.trim())
+      if (!playerId) {
+        playerId = generatePlayerId()
+      }
+
+      // 新規プレイヤーの場合のみプレイヤー作成
+      if (isNewPlayer) {
+        await createPlayer(playerId, playerName.trim())
+      }
 
       // ルームに参加
       await joinGameRoom(roomId, playerId)
@@ -95,6 +117,33 @@ export default function RoomsPage() {
       router.push(`/rooms/${roomId}/waiting`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to join room')
+    }
+  }
+
+  const handleDeleteRoom = async (roomId: string) => {
+    const playerId = localStorage.getItem('playerId')
+    if (!playerId) {
+      setError('Player ID not found. Please refresh the page.')
+      return
+    }
+
+    try {
+      setError(null)
+      setDeletingRoomId(roomId)
+
+      const result = await deleteGameRoomAction(roomId, playerId)
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete room')
+      }
+
+      // ルーム一覧を再読み込み
+      await loadRooms()
+      setConfirmDeleteRoomId(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete room')
+    } finally {
+      setDeletingRoomId(null)
     }
   }
 
@@ -249,42 +298,101 @@ export default function RoomsPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {rooms.map((room) => (
-                <div
-                  key={room.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50"
-                >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h3 className="font-semibold text-lg">{room.name}</h3>
-                      <div className="text-sm text-gray-600 space-x-4">
-                        <span>
-                          Players: {room.playerCount}/{room.maxPlayers}
-                        </span>
-                        <span>Status: {room.status}</span>
-                        <span>
-                          Created: {room.createdAt.toLocaleDateString()}
-                        </span>
+              {rooms.map((room) => {
+                const currentPlayerId = localStorage.getItem('playerId')
+                const isHost = currentPlayerId === room.hostPlayerId
+                return (
+                  <div
+                    key={room.id}
+                    className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50"
+                  >
+                    <div className="flex justify-between items-center">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-lg">{room.name}</h3>
+                          {isHost && (
+                            <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-medium">
+                              Host
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-sm text-gray-600 space-x-4">
+                          <span>
+                            Players: {room.playerCount}/{room.maxPlayers}
+                          </span>
+                          <span>Status: {room.status}</span>
+                          <span>
+                            Created: {room.createdAt.toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleJoinRoom(room.id)}
+                          disabled={
+                            !playerName.trim() ||
+                            room.playerCount >= room.maxPlayers ||
+                            room.status !== 'waiting'
+                          }
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold rounded-lg transition-colors"
+                        >
+                          {room.playerCount >= room.maxPlayers
+                            ? 'Full'
+                            : 'Join'}
+                        </button>
+                        {isHost && (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteRoomId(room.id)}
+                            disabled={deletingRoomId === room.id}
+                            className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-semibold rounded-lg transition-colors"
+                            title="Delete room"
+                          >
+                            {deletingRoomId === room.id ? '...' : 'Delete'}
+                          </button>
+                        )}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleJoinRoom(room.id)}
-                      disabled={
-                        !playerName.trim() ||
-                        room.playerCount >= room.maxPlayers ||
-                        room.status !== 'waiting'
-                      }
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold rounded-lg transition-colors"
-                    >
-                      {room.playerCount >= room.maxPlayers ? 'Full' : 'Join'}
-                    </button>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
+
+        {/* 削除確認ダイアログ */}
+        {confirmDeleteRoomId && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">
+              <h3 className="text-xl font-bold mb-4">Delete Room</h3>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete this room? This action cannot be
+                undone.
+              </p>
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  onClick={() => handleDeleteRoom(confirmDeleteRoomId)}
+                  disabled={deletingRoomId === confirmDeleteRoomId}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-semibold rounded-lg transition-colors"
+                >
+                  {deletingRoomId === confirmDeleteRoomId
+                    ? 'Deleting...'
+                    : 'Delete'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteRoomId(null)}
+                  disabled={deletingRoomId === confirmDeleteRoomId}
+                  className="flex-1 px-4 py-2 bg-gray-300 hover:bg-gray-400 disabled:bg-gray-200 text-gray-800 font-semibold rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="text-center mt-8">
           <button
