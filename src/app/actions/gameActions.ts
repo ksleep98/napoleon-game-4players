@@ -993,6 +993,7 @@ export async function getRoomDetailsAction(
       status: data.status as 'waiting' | 'playing' | 'finished',
       hostPlayerId: data.host_player_id,
       createdAt: new Date(data.created_at),
+      gameId: data.game_id || undefined,
     }
 
     return { success: true, room }
