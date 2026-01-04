@@ -44,20 +44,20 @@ export default function RoomsPage() {
       const playerId = generatePlayerId()
       const roomId = generateGameId()
 
-      // プレイヤー作成
-      await createPlayer(playerId, playerName.trim())
-
-      // ルーム作成
+      // ルーム作成（playerCount: 0 で初期化）
       await createGameRoom({
         id: roomId,
         name: newRoomName.trim(),
-        playerCount: 1,
+        playerCount: 0,
         maxPlayers: 4,
         status: 'waiting',
         hostPlayerId: playerId,
       })
 
-      // ルームに参加
+      // プレイヤー作成
+      await createPlayer(playerId, playerName.trim())
+
+      // ホストプレイヤーをルームに参加（これで player_count が 0 → 1 になる）
       await joinGameRoom(roomId, playerId)
 
       // プレイヤーIDをローカルストレージに保存

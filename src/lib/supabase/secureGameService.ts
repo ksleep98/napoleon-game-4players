@@ -270,7 +270,8 @@ export async function createPlayer(id: string, name: string): Promise<void> {
 export async function secureGameRoomCreate(
   room: Omit<GameRoom, 'createdAt'>
 ): Promise<GameRoom> {
-  const playerId = getPlayerId()
+  // ルーム作成時はホストプレイヤーIDを使用（まだストレージに保存されていない可能性があるため）
+  const playerId = room.hostPlayerId
   const result = await createGameRoomAction(room, playerId)
 
   if (!result.success) {
@@ -287,8 +288,9 @@ export async function secureGameRoomCreate(
  * セキュアなゲームルーム一覧取得
  */
 export async function secureGameRoomsGet(): Promise<GameRoom[]> {
-  const playerId = getPlayerId()
-  const result = await getGameRoomsAction(playerId)
+  // プレイヤーIDは任意（ルーム一覧取得には不要）
+  const playerId = getSecurePlayerId()
+  const result = await getGameRoomsAction(playerId || undefined)
 
   if (!result.success) {
     throw new Error(result.error || 'Failed to get game rooms')
