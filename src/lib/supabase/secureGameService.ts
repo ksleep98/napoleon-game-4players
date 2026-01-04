@@ -26,7 +26,15 @@ function getPlayerId(gameState?: GameState): string {
     return playerId
   }
 
-  // フォールバック: ゲーム状態から取得を試行
+  // フォールバック1: localStorageから取得（マルチプレイヤールーム用）
+  if (typeof window !== 'undefined') {
+    const localPlayerId = localStorage.getItem('playerId')
+    if (localPlayerId) {
+      return localPlayerId
+    }
+  }
+
+  // フォールバック2: ゲーム状態から取得を試行
   if (gameState && gameState.players.length > 0) {
     return gameState.players[0].id
   }
