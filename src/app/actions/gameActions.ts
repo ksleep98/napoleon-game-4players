@@ -993,6 +993,7 @@ export async function getRoomDetailsAction(
       status: data.status as 'waiting' | 'playing' | 'finished',
       hostPlayerId: data.host_player_id,
       createdAt: new Date(data.created_at),
+      gameId: data.game_id || undefined,
     }
 
     return { success: true, room }
@@ -1077,18 +1078,30 @@ export async function startGameFromRoomAction(
       )
     }
 
-    // プレイヤー名リスト作成
+    // プレイヤー名リストとIDリストを作成
     const playerNames = playersData.map((p) => p.name)
+    const playerIds = playersData.map((p) => p.id)
 
-    // ゲームを初期化（既存の initializeGameAction を使用）
-    // Note: This will need to be updated in Step 3 to accept roomId parameter
-    // For now, we'll import it
+    // ゲームを初期化（マルチプレイヤー対応）
+    // 既存のプレイヤーIDを使用してゲームを初期化
+    console.log('🎮 Initializing game for room:', roomId)
+    console.log('Players:', playerNames)
+    console.log('Player IDs:', playerIds)
+    console.log('Host Player ID:', hostPlayerId)
+
     const { initializeGameAction } = await import('./gameInitActions')
     const gameResult = await initializeGameAction(
       playerNames,
-      hostPlayerId
-      // TODO: Add roomId parameter in Step 3
+      hostPlayerId,
+      playerIds, // 既存のプレイヤーIDを渡す
+      roomId // ルームIDも渡す
     )
+
+    console.log('Game initialization result:', {
+      success: gameResult.success,
+      gameId: gameResult.data?.gameId,
+      error: gameResult.error,
+    })
 
     if (!gameResult.success || !gameResult.data?.gameId) {
       throw new GameActionError(
@@ -1098,6 +1111,7 @@ export async function startGameFromRoomAction(
     }
 
     const gameId = gameResult.data.gameId
+    console.log('✅ Game created with ID:', gameId)
 
     // ルームの状態を 'playing' に更新し、game_id を設定
     const { error: updateError } = await supabaseAdmin

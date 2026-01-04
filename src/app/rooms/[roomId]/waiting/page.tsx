@@ -94,9 +94,10 @@ export default function WaitingRoomPage({ params }: WaitingRoomPageProps) {
 
         // Auto-navigate to game when status changes to playing
         if (updatedRoom.status === GAME_ROOM_STATUS.PLAYING) {
-          // Note: Room should have game_id field set when game starts
-          // For now, we'll construct the game URL based on room ID
-          router.push(`/game/${roomId}?multiplayer=true`)
+          // Use game_id from room if available, otherwise fall back to room ID
+          const gameId = updatedRoom.gameId || roomId
+          console.log('🎮 Navigating to game:', gameId, 'from room:', roomId)
+          router.push(`/game/${gameId}?multiplayer=true`)
         }
       },
       onPlayerJoin: (player) => {
