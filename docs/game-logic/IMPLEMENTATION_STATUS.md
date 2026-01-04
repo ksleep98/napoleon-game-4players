@@ -24,6 +24,7 @@
 - ✅ 404/PGRST202エラー解消
 - ✅ Quick Start機能実装
 - ✅ プレイヤーID自動同期機能
+- ✅ `docs/database/room_player_count_functions.sql` - PostgreSQL関数（プレイヤー数管理）
 
 ### 🎮 UI Components
 
@@ -43,11 +44,58 @@
 - ✅ `src/utils/aiPlayerUtils.ts` - AI プレイヤー管理
 - ✅ `src/lib/napoleonRules.ts` - ナポレオンルール詳細実装
 
+### 🏢 Multiplayer Room System (2025-01-04)
+
+- ✅ **ルーム管理機能**
+  - ✅ ルーム作成（ホストプレイヤー設定）
+  - ✅ ルーム一覧表示（リアルタイム更新）
+  - ✅ プレイヤー参加・セッション管理
+  - ✅ プレイヤー数追跡（0-4人）
+
+- ✅ **データベース関数（PostgreSQL）**
+  - ✅ `increment_player_count(TEXT)` - プレイヤー数を安全に増やす
+  - ✅ `decrement_player_count(TEXT)` - プレイヤー数を安全に減らす
+  - ✅ `SECURITY DEFINER` + `search_path` 設定でセキュリティ強化
+
+- ✅ **Server Actions 拡張**
+  - ✅ `getGameRoomsAction` - playerId任意化（未認証でもルーム一覧取得可能）
+  - ✅ `joinGameRoomAction` - エラーハンドリング強化（silent → throw）
+  - ✅ `getRoomDetailsAction` - 待機ルーム用データ取得
+  - ✅ `createGameRoomAction` - ルーム作成（playerCount: 0で初期化）
+
+- ✅ **セキュアサービスレイヤー修正**
+  - ✅ `secureGameRoomCreate` - hostPlayerIdを使用（セッションストレージ依存解消）
+  - ✅ `secureGameRoomsGet` - オプショナルplayerId対応
+  - ✅ `subscribeToGameRoom` - リアルタイムルーム更新監視
+
+- ✅ **クライアントコンポーネント**
+  - ✅ `/rooms` ページ - ルーム作成・一覧表示UI
+  - ✅ `/rooms/[roomId]/waiting` ページ - 待機ルームUI
+    - ✅ リアルタイムプレイヤー参加・退出監視
+    - ✅ ホストバッジ表示
+    - ✅ 接続状態インジケーター
+    - ✅ Start Gameボタン（4人揃った時に有効化）
+    - ✅ プレイヤースロット表示（1-4）
+
+- ✅ **修正・改善内容**
+  - ✅ プレイヤー数二重カウント問題解決（playerCount: 0で初期化 → joinで+1）
+  - ✅ プレイヤーセッションエラー解消（ルーム作成時のhostPlayerID使用）
+  - ✅ PostgreSQL関数呼び出しエラー修正（TEXT vs UUID型の競合解消）
+  - ✅ React key prop警告修正（player.id または slot-based fallback使用）
+  - ✅ AI関連のlint自動修正（未使用変数 → `_variable`）
+
+- ⚠️ **既知の制限事項**
+  - ❌ ゲーム初期化機能（未実装）
+    - エラー: "Failed to initialize game: Failed to save game state"
+    - Start Gameボタンクリック時に発生
+    - 次のPRで対応予定
+
 ### 📱 Pages & Hooks
 
 - ✅ `src/hooks/useGameState.ts` - ゲーム状態管理カスタムフック
 - ✅ `src/app/page.tsx` - ホームページ（ランディングページ）
-- ✅ `src/app/rooms/page.tsx` - ゲームルーム一覧
+- ✅ `src/app/rooms/page.tsx` - ゲームルーム一覧・作成UI
+- ✅ `src/app/rooms/[roomId]/waiting/page.tsx` - 待機ルーム（4人集まるまで待つUI）
 - ✅ `src/app/game/[gameId]/page.tsx` - ゲームプレイページ
 
 ## 実装済みゲーム仕様
@@ -287,5 +335,7 @@
 
 - E2Eテストの整備
 - 本番環境デプロイ・RLS完全適用
-- マルチプレイヤー対応
+- マルチプレイヤー対応（部分実装済み）
+  - ✅ ルーム管理システム実装完了
+  - ⏳ ゲーム初期化・実プレイ機能（次のPRで対応予定）
 - モバイル対応最適化
