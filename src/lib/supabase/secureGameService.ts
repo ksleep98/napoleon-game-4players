@@ -412,6 +412,7 @@ export function subscribeToGameRoom(
               status: newData.status as 'waiting' | 'playing' | 'finished',
               hostPlayerId: newData.host_player_id as string,
               createdAt: new Date(newData.created_at as string),
+              gameId: (newData.game_id as string | null) || undefined,
             }
             callbacks.onRoomUpdate(room)
           }
