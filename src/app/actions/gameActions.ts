@@ -1077,17 +1077,18 @@ export async function startGameFromRoomAction(
       )
     }
 
-    // プレイヤー名リスト作成
+    // プレイヤー名リストとIDリストを作成
     const playerNames = playersData.map((p) => p.name)
+    const playerIds = playersData.map((p) => p.id)
 
-    // ゲームを初期化（既存の initializeGameAction を使用）
-    // Note: This will need to be updated in Step 3 to accept roomId parameter
-    // For now, we'll import it
+    // ゲームを初期化（マルチプレイヤー対応）
+    // 既存のプレイヤーIDを使用してゲームを初期化
     const { initializeGameAction } = await import('./gameInitActions')
     const gameResult = await initializeGameAction(
       playerNames,
-      hostPlayerId
-      // TODO: Add roomId parameter in Step 3
+      hostPlayerId,
+      playerIds, // 既存のプレイヤーIDを渡す
+      roomId // ルームIDも渡す
     )
 
     if (!gameResult.success || !gameResult.data?.gameId) {
