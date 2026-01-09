@@ -105,7 +105,7 @@ export function monteCarloTreeSearch(
   }
 
   // MCTSは現在のプレイヤーに対してのみ実行される
-  const currentPlayer = gameState.players[gameState.currentPlayerIndex]
+  const _currentPlayer = gameState.players[gameState.currentPlayerIndex]
 
   // ゲーム状態から現在のプレイヤーのプレイ可能なカードを取得
   // determinizationで手札が変更されている可能性があるため

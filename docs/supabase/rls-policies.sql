@@ -17,7 +17,8 @@ EXCEPTION
   WHEN OTHERS THEN
     RETURN NULL;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, pg_temp;
 
 -- 新しいAPI Keys形式でのService Role認証を確認する関数
 CREATE OR REPLACE FUNCTION is_service_role_authenticated()
@@ -68,7 +69,8 @@ BEGIN
 
   RETURN false;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, pg_temp;
 
 -- set_config関数をクリーンアップして再作成（RLS用）
 DROP FUNCTION IF EXISTS public.set_config(text,text,boolean);
@@ -161,7 +163,8 @@ BEGIN
 
   RETURN player_found;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, pg_temp;
 
 CREATE POLICY "Players can access their games" ON games
 FOR ALL USING (debug_rls_check(state));
@@ -194,7 +197,8 @@ FOR ALL USING (
 -- ゲーム結果テーブルのRLSポリシー
 -- プレイヤーは自分が参加したゲームの結果のみ閲覧可能
 DROP POLICY IF EXISTS "Players can view their game results" ON game_results;
-CREATE POLICY "Players can view their game results" ON game_results
+DROP POLICY IF EXISTS "game_results_select_policy" ON game_results;
+CREATE POLICY "game_results_select_policy" ON game_results
 FOR SELECT USING (
   is_service_role_authenticated() -- Service Roleは常に許可
   OR (
@@ -204,15 +208,31 @@ FOR SELECT USING (
       WHERE score->>'playerId' = get_current_player_id()
     )
     OR napoleon_player_id = get_current_player_id()
-    OR adjutant_player_id = get_current_player_id()
+    OR (adjutant_player_id IS NOT NULL AND adjutant_player_id = get_current_player_id())
     OR get_current_player_id() IS NULL -- 開発環境では制限を緩和
   )
 );
 
--- ゲーム結果の挿入は制限なし（サーバーアクション経由）
+-- ゲーム結果の挿入はService Roleのみ（サーバーアクション経由）
 DROP POLICY IF EXISTS "Authenticated users can insert game results" ON game_results;
-CREATE POLICY "Authenticated users can insert game results" ON game_results
-FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "game_results_insert_policy" ON game_results;
+CREATE POLICY "game_results_insert_policy" ON game_results
+FOR INSERT WITH CHECK (
+  is_service_role_authenticated()
+);
+
+-- ゲーム結果の更新・削除はService Roleのみ
+DROP POLICY IF EXISTS "game_results_update_policy" ON game_results;
+CREATE POLICY "game_results_update_policy" ON game_results
+FOR UPDATE USING (
+  is_service_role_authenticated()
+);
+
+DROP POLICY IF EXISTS "game_results_delete_policy" ON game_results;
+CREATE POLICY "game_results_delete_policy" ON game_results
+FOR DELETE USING (
+  is_service_role_authenticated()
+);
 
 -- プレイヤー数増加のための関数（ルーム参加時に使用）
 CREATE OR REPLACE FUNCTION increment_player_count(room_id UUID)
@@ -223,4 +243,5 @@ BEGIN
       updated_at = NOW()
   WHERE id = room_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, pg_temp;

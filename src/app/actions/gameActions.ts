@@ -450,16 +450,16 @@ export async function createGameRoomAction(
  * セキュアなゲームルーム一覧取得アクション
  */
 export async function getGameRoomsAction(
-  playerId: string
+  playerId?: string
 ): Promise<{ success: boolean; gameRooms?: GameRoom[]; error?: string }> {
   try {
-    // 入力検証
-    if (!validatePlayerId(playerId)) {
+    // 入力検証（プレイヤーIDがある場合のみ）
+    if (playerId && !validatePlayerId(playerId)) {
       throw new GameActionError('Invalid player ID', 'INVALID_PLAYER_ID')
     }
 
-    // レート制限チェック
-    if (!checkRateLimit(`get_rooms_${playerId}`, 60, 60000)) {
+    // レート制限チェック（プレイヤーIDがある場合のみ）
+    if (playerId && !checkRateLimit(`get_rooms_${playerId}`, 60, 60000)) {
       throw new GameActionError('Rate limit exceeded', 'RATE_LIMIT_EXCEEDED')
     }
 
@@ -570,7 +570,10 @@ export async function joinGameRoomAction(
 
     if (roomUpdateError) {
       console.error('Failed to update room player count:', roomUpdateError)
-      // プレイヤー追加は成功したのでエラーにしない（整合性は後で修正される）
+      throw new GameActionError(
+        `Failed to update room player count: ${roomUpdateError.message}`,
+        'ROOM_UPDATE_ERROR'
+      )
     }
 
     // キャッシュ無効化
@@ -879,6 +882,335 @@ export async function createPlayerAction(
     return { success: true }
   } catch (error) {
     console.error('Player creation error:', error)
+    return {
+      success: false,
+      error:
+        error instanceof GameActionError
+          ? error.message
+          : 'Unknown error occurred',
+    }
+  }
+}
+
+/**
+ * セキュアなゲームルーム退出アクション
+ */
+export async function leaveGameRoomAction(
+  roomId: string,
+  playerId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // 入力検証
+    if (!validateGameId(roomId)) {
+      throw new GameActionError('Invalid room ID', 'INVALID_ROOM_ID')
+    }
+
+    if (!validatePlayerId(playerId)) {
+      throw new GameActionError('Invalid player ID', 'INVALID_PLAYER_ID')
+    }
+
+    // レート制限チェック
+    if (!checkRateLimit(`leave_room_${playerId}`, 10, 60000)) {
+      throw new GameActionError('Rate limit exceeded', 'RATE_LIMIT_EXCEEDED')
+    }
+
+    // プレイヤーをルームから削除
+    const { error: playerError } = await supabaseAdmin
+      .from('players')
+      .update({ room_id: null, connected: false })
+      .eq('id', playerId)
+      .eq('room_id', roomId)
+
+    if (playerError) {
+      throw new GameActionError(
+        `Failed to leave game room: ${playerError.message}`,
+        'DATABASE_ERROR'
+      )
+    }
+
+    // ルームのプレイヤー数を減少
+    const { error: roomUpdateError } = await supabaseAdmin.rpc(
+      'decrement_player_count',
+      {
+        room_id: roomId,
+      }
+    )
+
+    if (roomUpdateError) {
+      console.error('Failed to update room player count:', roomUpdateError)
+      // プレイヤー削除は成功したのでエラーにしない
+    }
+
+    // キャッシュ無効化
+    revalidatePath('/rooms')
+    revalidatePath(`/rooms/${roomId}`)
+
+    return { success: true }
+  } catch (error) {
+    console.error('Room leave error:', error)
+    return {
+      success: false,
+      error:
+        error instanceof GameActionError
+          ? error.message
+          : 'Unknown error occurred',
+    }
+  }
+}
+
+/**
+ * セキュアなゲームルーム削除アクション
+ * ホストのみが自分のルームを削除可能
+ */
+export async function deleteGameRoomAction(
+  roomId: string,
+  hostPlayerId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // 入力検証
+    if (!validateGameId(roomId)) {
+      throw new GameActionError('Invalid room ID', 'INVALID_ROOM_ID')
+    }
+
+    if (!validatePlayerId(hostPlayerId)) {
+      throw new GameActionError('Invalid player ID', 'INVALID_PLAYER_ID')
+    }
+
+    // レート制限チェック
+    if (!checkRateLimit(`delete_room_${hostPlayerId}`, 5, 60000)) {
+      throw new GameActionError('Rate limit exceeded', 'RATE_LIMIT_EXCEEDED')
+    }
+
+    // ルームの存在確認とホスト権限チェック
+    const { data: roomData, error: roomError } = await supabaseAdmin
+      .from('game_rooms')
+      .select('host_player_id, status')
+      .eq('id', roomId)
+      .single()
+
+    if (roomError || !roomData) {
+      throw new GameActionError('Room not found', 'ROOM_NOT_FOUND')
+    }
+
+    // ホスト確認
+    if (roomData.host_player_id !== hostPlayerId) {
+      throw new GameActionError(
+        'Only the host can delete the room',
+        'UNAUTHORIZED'
+      )
+    }
+
+    // プレイヤーをルームから削除（カスケード削除の前に明示的にクリア）
+    await supabaseAdmin
+      .from('players')
+      .update({ room_id: null, connected: false })
+      .eq('room_id', roomId)
+
+    // ルームを削除
+    const { error: deleteError } = await supabaseAdmin
+      .from('game_rooms')
+      .delete()
+      .eq('id', roomId)
+
+    if (deleteError) {
+      throw new GameActionError(
+        `Failed to delete room: ${deleteError.message}`,
+        'DATABASE_ERROR'
+      )
+    }
+
+    // キャッシュ無効化
+    revalidatePath('/rooms')
+
+    return { success: true }
+  } catch (error) {
+    console.error('Room deletion error:', error)
+    return {
+      success: false,
+      error:
+        error instanceof GameActionError
+          ? error.message
+          : 'Unknown error occurred',
+    }
+  }
+}
+
+/**
+ * セキュアなゲームルーム詳細取得アクション
+ */
+export async function getRoomDetailsAction(
+  roomId: string
+): Promise<{ success: boolean; room?: GameRoom; error?: string }> {
+  try {
+    // 入力検証
+    if (!validateGameId(roomId)) {
+      throw new GameActionError('Invalid room ID', 'INVALID_ROOM_ID')
+    }
+
+    // ゲームルーム詳細を取得
+    const { data, error } = await supabaseAdmin
+      .from('game_rooms')
+      .select('*')
+      .eq('id', roomId)
+      .single()
+
+    if (error) {
+      console.error('Database error:', error)
+      throw new GameActionError(
+        `Failed to get room details: ${error.message}`,
+        'DATABASE_ERROR'
+      )
+    }
+
+    const room: GameRoom = {
+      id: data.id,
+      name: data.name,
+      playerCount: data.player_count,
+      maxPlayers: data.max_players,
+      status: data.status as 'waiting' | 'playing' | 'finished',
+      hostPlayerId: data.host_player_id,
+      createdAt: new Date(data.created_at),
+      gameId: data.game_id || undefined,
+    }
+
+    return { success: true, room }
+  } catch (error) {
+    console.error('Room details fetch error:', error)
+    return {
+      success: false,
+      error:
+        error instanceof GameActionError
+          ? error.message
+          : 'Unknown error occurred',
+    }
+  }
+}
+
+/**
+ * セキュアなゲーム開始アクション（ルームから）
+ */
+export async function startGameFromRoomAction(
+  roomId: string,
+  hostPlayerId: string
+): Promise<{ success: boolean; gameId?: string; error?: string }> {
+  try {
+    // 入力検証
+    if (!validateGameId(roomId)) {
+      throw new GameActionError('Invalid room ID', 'INVALID_ROOM_ID')
+    }
+
+    if (!validatePlayerId(hostPlayerId)) {
+      throw new GameActionError('Invalid player ID', 'INVALID_PLAYER_ID')
+    }
+
+    // レート制限チェック
+    if (!checkRateLimit(`start_game_${hostPlayerId}`, 5, 60000)) {
+      throw new GameActionError('Rate limit exceeded', 'RATE_LIMIT_EXCEEDED')
+    }
+
+    // ルームの状態確認
+    const { data: roomData, error: roomError } = await supabaseAdmin
+      .from('game_rooms')
+      .select('player_count, max_players, status, host_player_id')
+      .eq('id', roomId)
+      .single()
+
+    if (roomError) {
+      throw new GameActionError(
+        `Room not found: ${roomError.message}`,
+        'ROOM_NOT_FOUND'
+      )
+    }
+
+    // ホスト確認
+    if (roomData.host_player_id !== hostPlayerId) {
+      throw new GameActionError('Only the host can start the game', 'NOT_HOST')
+    }
+
+    // プレイヤー数確認
+    if (roomData.player_count < 4) {
+      throw new GameActionError(
+        'Need 4 players to start the game',
+        'INSUFFICIENT_PLAYERS'
+      )
+    }
+
+    // ルームの状態確認
+    if (roomData.status !== 'waiting') {
+      throw new GameActionError('Room is not in waiting status', 'ROOM_CLOSED')
+    }
+
+    // ルーム内のプレイヤーを取得
+    const { data: playersData, error: playersError } = await supabaseAdmin
+      .from('players')
+      .select('id, name')
+      .eq('room_id', roomId)
+      .eq('connected', true)
+      .limit(4)
+
+    if (playersError || !playersData || playersData.length !== 4) {
+      throw new GameActionError(
+        'Failed to get players in room',
+        'PLAYERS_NOT_FOUND'
+      )
+    }
+
+    // プレイヤー名リストとIDリストを作成
+    const playerNames = playersData.map((p) => p.name)
+    const playerIds = playersData.map((p) => p.id)
+
+    // ゲームを初期化（マルチプレイヤー対応）
+    // 既存のプレイヤーIDを使用してゲームを初期化
+    console.log('🎮 Initializing game for room:', roomId)
+    console.log('Players:', playerNames)
+    console.log('Player IDs:', playerIds)
+    console.log('Host Player ID:', hostPlayerId)
+
+    const { initializeGameAction } = await import('./gameInitActions')
+    const gameResult = await initializeGameAction(
+      playerNames,
+      hostPlayerId,
+      playerIds, // 既存のプレイヤーIDを渡す
+      roomId // ルームIDも渡す
+    )
+
+    console.log('Game initialization result:', {
+      success: gameResult.success,
+      gameId: gameResult.data?.gameId,
+      error: gameResult.error,
+    })
+
+    if (!gameResult.success || !gameResult.data?.gameId) {
+      throw new GameActionError(
+        `Failed to initialize game: ${gameResult.error}`,
+        'GAME_INIT_ERROR'
+      )
+    }
+
+    const gameId = gameResult.data.gameId
+    console.log('✅ Game created with ID:', gameId)
+
+    // ルームの状態を 'playing' に更新し、game_id を設定
+    const { error: updateError } = await supabaseAdmin
+      .from('game_rooms')
+      .update({
+        status: 'playing',
+        game_id: gameId,
+      })
+      .eq('id', roomId)
+
+    if (updateError) {
+      console.error('Failed to update room status:', updateError)
+      // ゲームは作成されたが、ルーム更新失敗（整合性の問題）
+    }
+
+    // キャッシュ無効化
+    revalidatePath('/rooms')
+    revalidatePath(`/rooms/${roomId}`)
+
+    return { success: true, gameId }
+  } catch (error) {
+    console.error('Start game from room error:', error)
     return {
       success: false,
       error:

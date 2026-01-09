@@ -24,10 +24,17 @@ export interface GameInitActionResult<T = GameState> {
 /**
  * セキュアゲーム初期化 Server Action
  * デッキシャッフルとカード配布をサーバーサイドで実行し、改ざんを防止
+ *
+ * @param playerNames - プレイヤー名の配列（4人）
+ * @param hostPlayerId - ホストプレイヤーID
+ * @param playerIds - (オプション) 既存のプレイヤーIDの配列（マルチプレイヤールーム用）
+ * @param _roomId - (オプション) ルームID（マルチプレイヤールーム用、将来の拡張用）
  */
 export async function initializeGameAction(
   playerNames: string[],
-  hostPlayerId: string
+  hostPlayerId: string,
+  playerIds?: string[],
+  _roomId?: string
 ): Promise<GameInitActionResult<{ gameState: GameState; gameId: string }>> {
   try {
     // セッション検証
@@ -63,6 +70,23 @@ export async function initializeGameAction(
       }
     }
 
+    // プレイヤーIDの検証（提供された場合）
+    if (playerIds) {
+      if (!Array.isArray(playerIds) || playerIds.length !== 4) {
+        throw new GameActionError(
+          'Must provide exactly 4 player IDs',
+          GAME_ACTION_ERROR_CODES.INVALID_INPUT
+        )
+      }
+      // プレイヤー名とIDの数が一致することを確認
+      if (playerIds.length !== playerNames.length) {
+        throw new GameActionError(
+          'Player IDs and names must match in count',
+          GAME_ACTION_ERROR_CODES.INVALID_INPUT
+        )
+      }
+    }
+
     // レート制限チェック
     if (!checkRateLimit(`init_game_${hostPlayerId}`, 5, 60000)) {
       throw new GameActionError(
@@ -77,8 +101,9 @@ export async function initializeGameAction(
     // サーバーサイドでセキュアなデッキ作成（dealCards内でシャッフル済み）
 
     // プレイヤーオブジェクトを作成
+    // playerIdsが提供された場合は既存のIDを使用、そうでない場合は新規生成
     const initialPlayers: Player[] = playerNames.map((name, index) => ({
-      id: generatePlayerId(),
+      id: playerIds ? playerIds[index] : generatePlayerId(),
       name: name.trim(),
       hand: [],
       isNapoleon: false,
@@ -97,16 +122,20 @@ export async function initializeGameAction(
     gameState.hiddenCards = dealtCards.hiddenCards
 
     // プレイヤー情報をデータベースに登録
-    for (const player of gameState.players) {
-      const createPlayerResult = await createPlayerAction(
-        player.id,
-        player.name
-      )
-      if (!createPlayerResult.success) {
-        throw new GameActionError(
-          `Failed to create player: ${player.name}`,
-          GAME_ACTION_ERROR_CODES.DATABASE_ERROR
+    // マルチプレイヤールームの場合（playerIdsが提供された場合）、プレイヤーは既に存在
+    if (!playerIds) {
+      // 新規ゲームの場合のみプレイヤーを作成
+      for (const player of gameState.players) {
+        const createPlayerResult = await createPlayerAction(
+          player.id,
+          player.name
         )
+        if (!createPlayerResult.success) {
+          throw new GameActionError(
+            `Failed to create player: ${player.name}`,
+            GAME_ACTION_ERROR_CODES.DATABASE_ERROR
+          )
+        }
       }
     }
 
