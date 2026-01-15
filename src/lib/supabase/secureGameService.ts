@@ -26,7 +26,15 @@ function getPlayerId(gameState?: GameState): string {
     return playerId
   }
 
-  // フォールバック: ゲーム状態から取得を試行
+  // フォールバック1: localStorageから取得（マルチプレイヤールーム用）
+  if (typeof window !== 'undefined') {
+    const localPlayerId = localStorage.getItem('playerId')
+    if (localPlayerId) {
+      return localPlayerId
+    }
+  }
+
+  // フォールバック2: ゲーム状態から取得を試行
   if (gameState && gameState.players.length > 0) {
     return gameState.players[0].id
   }
@@ -270,7 +278,8 @@ export async function createPlayer(id: string, name: string): Promise<void> {
 export async function secureGameRoomCreate(
   room: Omit<GameRoom, 'createdAt'>
 ): Promise<GameRoom> {
-  const playerId = getPlayerId()
+  // ルーム作成時はホストプレイヤーIDを使用（まだストレージに保存されていない可能性があるため）
+  const playerId = room.hostPlayerId
   const result = await createGameRoomAction(room, playerId)
 
   if (!result.success) {
@@ -287,8 +296,9 @@ export async function secureGameRoomCreate(
  * セキュアなゲームルーム一覧取得
  */
 export async function secureGameRoomsGet(): Promise<GameRoom[]> {
-  const playerId = getPlayerId()
-  const result = await getGameRoomsAction(playerId)
+  // プレイヤーIDは任意（ルーム一覧取得には不要）
+  const playerId = getSecurePlayerId()
+  const result = await getGameRoomsAction(playerId || undefined)
 
   if (!result.success) {
     throw new Error(result.error || 'Failed to get game rooms')
@@ -402,6 +412,7 @@ export function subscribeToGameRoom(
               status: newData.status as 'waiting' | 'playing' | 'finished',
               hostPlayerId: newData.host_player_id as string,
               createdAt: new Date(newData.created_at as string),
+              gameId: (newData.game_id as string | null) || undefined,
             }
             callbacks.onRoomUpdate(room)
           }

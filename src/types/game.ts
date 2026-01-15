@@ -118,6 +118,7 @@ export interface GameRoom {
     | typeof GAME_ROOM_STATUS.FINISHED
   createdAt: Date
   hostPlayerId: string
+  gameId?: string // ルームで実行中のゲームID（ゲーム開始後に設定）
 }
 
 // Napoleon game specific rules
