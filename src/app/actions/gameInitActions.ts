@@ -9,11 +9,7 @@ import { initializeAIGame, initializeGame } from '@/lib/gameLogic'
 import { checkRateLimit, validateGameId } from '@/lib/supabase/server'
 import type { GameState, Player } from '@/types/game'
 import { dealCards, generateGameId, generatePlayerId } from '@/utils/cardUtils'
-import {
-  createPlayerAction,
-  saveGameStateAction,
-  validateSessionAction,
-} from './gameActions'
+import { saveGameStateAction, validateSessionAction } from './gameActions'
 
 export interface GameInitActionResult<T = GameState> {
   success: boolean
@@ -124,18 +120,16 @@ export async function initializeGameAction(
     // プレイヤー情報をデータベースに登録
     // マルチプレイヤールームの場合（playerIdsが提供された場合）、プレイヤーは既に存在
     if (!playerIds) {
-      // 新規ゲームの場合のみプレイヤーを作成
-      for (const player of gameState.players) {
-        const createPlayerResult = await createPlayerAction(
-          player.id,
-          player.name
+      // ✅ N+1問題解決: バッチinsertで1回のDB呼び出し（従来の4回から75%削減）
+      const { createPlayersAction } = await import('./gameActions')
+      const createPlayersResult = await createPlayersAction(
+        gameState.players.map((p) => ({ id: p.id, name: p.name }))
+      )
+      if (!createPlayersResult.success) {
+        throw new GameActionError(
+          'Failed to create players',
+          GAME_ACTION_ERROR_CODES.DATABASE_ERROR
         )
-        if (!createPlayerResult.success) {
-          throw new GameActionError(
-            `Failed to create player: ${player.name}`,
-            GAME_ACTION_ERROR_CODES.DATABASE_ERROR
-          )
-        }
       }
     }
 
@@ -276,31 +270,16 @@ export async function initializeAIGameAction(
       gameState.players.map((p) => ({ id: p.id, name: p.name, isAI: p.isAI }))
     )
 
-    // 人間プレイヤー情報をデータベースに登録
-    const createHumanPlayerResult = await createPlayerAction(
-      humanPlayerId,
-      humanPlayerName.trim()
+    // ✅ N+1問題解決: 全プレイヤー（人間1人+AI3人）をバッチinsert（従来の4回から75%削減）
+    const { createPlayersAction } = await import('./gameActions')
+    const createPlayersResult = await createPlayersAction(
+      gameState.players.map((p) => ({ id: p.id, name: p.name }))
     )
-    if (!createHumanPlayerResult.success) {
+    if (!createPlayersResult.success) {
       throw new GameActionError(
-        'Failed to create human player',
-        'DATABASE_ERROR'
+        'Failed to create players',
+        GAME_ACTION_ERROR_CODES.DATABASE_ERROR
       )
-    }
-
-    // AIプレイヤー情報をデータベースに登録
-    for (let i = 1; i < 4; i++) {
-      const aiPlayer = gameState.players[i]
-      const createAIPlayerResult = await createPlayerAction(
-        aiPlayer.id,
-        aiPlayer.name
-      )
-      if (!createAIPlayerResult.success) {
-        throw new GameActionError(
-          `Failed to create AI player: ${aiPlayer.name}`,
-          GAME_ACTION_ERROR_CODES.DATABASE_ERROR
-        )
-      }
     }
 
     // ゲーム状態をデータベースに保存
