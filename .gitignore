@@ -73,8 +73,9 @@ pids
 tmp/
 temp/
 
-# Claude Code
-.claude/
+# Claude Code (track project instructions and skills, but not local settings)
+.claude/settings.local.json
+.claude/cache/
 
 # Prisma generated
 /generated/prisma
@@ -84,7 +85,6 @@ temp/
 
 # Development tools
 .serena/
-.claude/
 
 # Deployment
 .vercel/
