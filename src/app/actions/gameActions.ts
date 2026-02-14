@@ -430,6 +430,23 @@ export async function createGameRoomAction(
       createdAt: new Date(data.created_at),
     }
 
+    // ホストプレイヤー自身もルームに参加させる
+    const { error: hostJoinError } = await supabaseAdmin
+      .from('players')
+      .update({ room_id: room.id, connected: true })
+      .eq('id', playerId)
+
+    if (hostJoinError) {
+      console.error('Failed to add host to room:', hostJoinError)
+      // ホストの参加に失敗してもルームは作成されているので、警告のみ
+      console.warn(
+        'Room created but host player update failed:',
+        hostJoinError.message
+      )
+    } else {
+      console.log('✅ Host player added to room:', playerId)
+    }
+
     // キャッシュ無効化
     revalidatePath('/rooms')
 
@@ -611,18 +628,26 @@ export async function setPlayerOnlineAction(
     }
 
     // プレイヤーをオンライン状態に設定
-    const { error } = await supabaseAdmin
+    console.log('🔄 Setting player online in DB:', playerId)
+    const { data, error } = await supabaseAdmin
       .from('players')
       .update({ connected: true })
       .eq('id', playerId)
+      .select()
 
     if (error) {
-      console.error('Database error:', error)
+      console.error('❌ Database error:', error)
       throw new GameActionError(
         `Failed to set player online: ${error.message}`,
         'DATABASE_ERROR'
       )
     }
+
+    console.log('✅ Player online status updated:', {
+      playerId,
+      updatedRows: data?.length || 0,
+      data,
+    })
 
     return { success: true }
   } catch (error) {
@@ -1181,6 +1206,18 @@ export async function startGameFromRoomAction(
       throw new GameActionError('Rate limit exceeded', 'RATE_LIMIT_EXCEEDED')
     }
 
+    // まずすべてのプレイヤーを取得してデバッグ
+    const { data: allPlayers, error: allPlayersError } = await supabaseAdmin
+      .from('players')
+      .select('id, name, room_id, connected')
+      .eq('room_id', roomId)
+
+    console.log('🔍 All players in room (before filtering):', {
+      error: allPlayersError,
+      count: allPlayers?.length,
+      players: allPlayers,
+    })
+
     // ✅ 並列化: ルーム情報とプレイヤー情報を同時取得（50%高速化）
     const [roomResult, playersResult] = await Promise.all([
       supabaseAdmin
@@ -1225,13 +1262,22 @@ export async function startGameFromRoomAction(
     }
 
     // プレイヤー情報の検証
-    if (
-      playersResult.error ||
-      !playersResult.data ||
-      playersResult.data.length !== 4
-    ) {
+    console.log('🔍 Players query result:', {
+      error: playersResult.error,
+      dataLength: playersResult.data?.length,
+      data: playersResult.data,
+    })
+
+    if (playersResult.error) {
       throw new GameActionError(
-        'Failed to get players in room',
+        `Failed to query players: ${playersResult.error.message}`,
+        'PLAYERS_QUERY_ERROR'
+      )
+    }
+
+    if (!playersResult.data || playersResult.data.length !== 4) {
+      throw new GameActionError(
+        `Expected 4 players, found ${playersResult.data?.length || 0}`,
         'PLAYERS_NOT_FOUND'
       )
     }

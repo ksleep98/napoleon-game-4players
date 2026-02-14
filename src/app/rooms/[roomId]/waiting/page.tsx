@@ -1,15 +1,15 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   getRoomDetailsAction,
   leaveGameRoomAction,
+  setPlayerOnlineAction,
   startGameFromRoomAction,
 } from '@/app/actions/gameActions'
 import { GAME_ROOM_STATUS } from '@/lib/constants'
 import { performanceSupabase } from '@/lib/supabase/performanceClient'
-import { subscribeToGameRoom } from '@/lib/supabase/secureGameService'
 import type { GameRoom } from '@/types/game'
 
 interface WaitingRoomPageProps {
@@ -47,104 +47,99 @@ export default function WaitingRoomPage({ params }: WaitingRoomPageProps) {
       return
     }
     setPlayerId(storedPlayerId)
+
+    // プレイヤーをオンラインに設定
+    console.log('🔄 Setting player online:', storedPlayerId)
+    console.log(
+      '⚠️  このplayerIdがすべてのブラウザで異なることを確認してください！'
+    )
+    setPlayerOnlineAction(storedPlayerId)
+      .then((result) => {
+        if (result.success) {
+          console.log('✅ Player set to online:', storedPlayerId)
+        } else {
+          console.error('❌ Failed to set player online:', result.error)
+        }
+      })
+      .catch((err) => {
+        console.error('❌ Error setting player online:', err)
+      })
   }, [])
 
-  // Load room details and players
-  const loadRoomData = useCallback(async () => {
-    if (!roomId) return
-
-    try {
-      setLoading(true)
-
-      // ✅ 並列化: ルーム情報とプレイヤー情報を同時取得（50%高速化）
-      const [roomResult, playersResult] = await Promise.all([
-        getRoomDetailsAction(roomId),
-        performanceSupabase.getPlayersInRoom(roomId, {
-          includeDisconnected: false,
-        }),
-      ])
-
-      if (!roomResult.success || !roomResult.room) {
-        throw new Error(roomResult.error || 'Room not found')
-      }
-
-      if (playersResult.error) {
-        throw new Error('Failed to load players')
-      }
-
-      setRoom(roomResult.room)
-      setIsHost(roomResult.room.hostPlayerId === playerId)
-      setPlayers(playersResult.data || [])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load room data')
-    } finally {
-      setLoading(false)
-    }
-  }, [roomId, playerId])
-
-  // Subscribe to room updates
+  // Poll room updates (ポーリング方式でルーム更新を監視)
   useEffect(() => {
-    if (!roomId) return
+    if (!roomId || !playerId) return
 
-    const unsubscribe = subscribeToGameRoom(roomId, {
-      onRoomUpdate: (updatedRoom) => {
-        setRoom(updatedRoom)
+    console.log('🔄 Starting room polling for:', roomId)
 
-        // Auto-navigate to game when status changes to playing
-        if (updatedRoom.status === GAME_ROOM_STATUS.PLAYING) {
-          // Use game_id from room if available, otherwise fall back to room ID
-          const gameId = updatedRoom.gameId || roomId
-          console.log('🎮 Navigating to game:', gameId, 'from room:', roomId)
-          router.push(`/game/${gameId}?multiplayer=true`)
+    // 前回の状態を保存（変更検出用）
+    let lastPlayerCount = 0
+    let lastStatus = ''
+
+    // ポーリング関数
+    const pollRoomUpdates = async () => {
+      try {
+        const [roomResult, playersResult] = await Promise.all([
+          getRoomDetailsAction(roomId),
+          performanceSupabase.getPlayersInRoom(roomId, {
+            includeDisconnected: false,
+          }),
+        ])
+
+        if (roomResult.success && roomResult.room) {
+          const updatedRoom = roomResult.room
+
+          // 変更があった場合のみ更新
+          const hasChanged =
+            updatedRoom.playerCount !== lastPlayerCount ||
+            updatedRoom.status !== lastStatus
+
+          if (hasChanged || lastPlayerCount === 0) {
+            setRoom(updatedRoom)
+            setIsHost(updatedRoom.hostPlayerId === playerId)
+            setLoading(false)
+
+            lastPlayerCount = updatedRoom.playerCount
+            lastStatus = updatedRoom.status
+          }
+
+          // ゲーム開始時に自動遷移
+          if (updatedRoom.status === GAME_ROOM_STATUS.PLAYING) {
+            const gameId = updatedRoom.gameId || roomId
+            console.log('🎮 Game started! Navigating to:', gameId)
+            router.push(`/game/${gameId}?multiplayer=true`)
+            return // ナビゲーション後はポーリング停止
+          }
         }
-      },
-      onPlayerJoin: (player) => {
-        setPlayers((prev) => {
-          // Check if player already exists
-          const exists = prev.some((p) => p.id === player.id)
-          if (exists) return prev
 
-          return [
-            ...prev,
-            {
-              id: player.id,
-              name: player.name,
-              connected: true,
-              created_at: new Date().toISOString(),
-            },
-          ]
-        })
-        // ✅ 不要I/O削減: リアルタイムサブスクリプションで既に更新済みのためDB再取得不要
-        // ルームのプレイヤー数のみローカル更新
-        setRoom((prev) =>
-          prev ? { ...prev, playerCount: prev.playerCount + 1 } : null
+        // プレイヤーリストを更新（変更があった場合のみ）
+        if (!playersResult.error && playersResult.data) {
+          setPlayers((prev) => {
+            const hasPlayerChanged =
+              JSON.stringify(prev) !== JSON.stringify(playersResult.data)
+            return hasPlayerChanged ? playersResult.data : prev
+          })
+        }
+      } catch (err) {
+        console.error('Room polling error:', err)
+        setError(
+          err instanceof Error ? err.message : 'Failed to load room data'
         )
-      },
-      onPlayerLeave: (playerId) => {
-        setPlayers((prev) => prev.filter((p) => p.id !== playerId))
-        // ✅ 不要I/O削減: リアルタイムサブスクリプションで既に更新済みのためDB再取得不要
-        // ルームのプレイヤー数のみローカル更新
-        setRoom((prev) =>
-          prev ? { ...prev, playerCount: prev.playerCount - 1 } : null
-        )
-      },
-      onError: (error) => {
-        console.error('Room subscription error:', error)
-        setError(error.message)
-      },
-    })
+        setLoading(false)
+      }
+    }
+
+    // 初回実行
+    pollRoomUpdates()
+
+    // 2秒ごとにポーリング（負荷軽減）
+    const intervalId = setInterval(pollRoomUpdates, 2000)
 
     return () => {
-      unsubscribe()
+      console.log('🔌 Stopping room polling for:', roomId)
+      clearInterval(intervalId)
     }
-  }, [roomId, router])
-
-  // Initial data load
-  useEffect(() => {
-    if (roomId && playerId) {
-      loadRoomData()
-    }
-  }, [roomId, playerId, loadRoomData])
+  }, [roomId, playerId, router])
 
   const handleStartGame = async () => {
     if (!room || !playerId || !isHost || !roomId) return
@@ -156,6 +151,11 @@ export default function WaitingRoomPage({ params }: WaitingRoomPageProps) {
 
     try {
       setError(null)
+
+      // スタート前にプレイヤー情報をログ出力
+      console.log('🎮 Starting game - UI shows players:', players)
+      console.log('🎮 Room player count:', room.playerCount)
+
       const result = await startGameFromRoomAction(roomId, playerId)
 
       if (!result.success) {
@@ -372,6 +372,15 @@ export default function WaitingRoomPage({ params }: WaitingRoomPageProps) {
             <p>
               <span className="font-semibold">Room ID:</span>{' '}
               <code className="bg-gray-100 px-2 py-1 rounded">{roomId}</code>
+            </p>
+            <p>
+              <span className="font-semibold">Your Player ID:</span>{' '}
+              <code className="bg-yellow-100 px-2 py-1 rounded font-mono text-xs">
+                {playerId}
+              </code>
+              <span className="ml-2 text-xs text-gray-500">
+                (各ブラウザで異なるIDか確認してください)
+              </span>
             </p>
             <p>
               <span className="font-semibold">Created:</span>{' '}

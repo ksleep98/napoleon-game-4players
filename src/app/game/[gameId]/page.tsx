@@ -9,6 +9,7 @@ import { CardExchangeSelector } from '@/components/game/CardExchangeSelector'
 import { GameBoard } from '@/components/game/GameBoard'
 import { CompactGameProgress, GameStatus } from '@/components/game/GameStatus'
 import { NapoleonSelector } from '@/components/game/NapoleonSelector'
+import { OpponentHand } from '@/components/game/OpponentHand'
 import { PlayerHand } from '@/components/game/PlayerHand'
 import { TrickResult } from '@/components/game/TrickResult'
 import { GameProvider, useGame } from '@/contexts/GameContext'
@@ -18,7 +19,10 @@ import { calculateGameResult, getPlayerFaceCardCount } from '@/lib/scoring'
 import type { Card as CardType, NapoleonDeclaration } from '@/types/game'
 
 function GamePageContent() {
-  const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null) // 実際の実装では認証から取得
+  const searchParams = useSearchParams()
+  const isMultiplayer = searchParams.get('multiplayer') === 'true'
+
+  const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null)
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
 
   const { gameState, loading, error, actions, utils } = useGame()
@@ -26,6 +30,20 @@ function GamePageContent() {
   // actionsの参照を安定化
   const actionsRef = useRef(actions)
   actionsRef.current = actions
+
+  // マルチプレイヤーモードでplayerIdを取得
+  useEffect(() => {
+    if (isMultiplayer) {
+      const storedPlayerId = localStorage.getItem('playerId')
+      if (storedPlayerId && storedPlayerId !== currentPlayerId) {
+        console.log(
+          '🎮 Multiplayer mode: Using playerId from localStorage:',
+          storedPlayerId
+        )
+        setCurrentPlayerId(storedPlayerId)
+      }
+    }
+  }, [isMultiplayer, currentPlayerId])
 
   // プレイヤーIDを設定（AIモードでは人間プレイヤー、通常モードでは最初のプレイヤー）
   // プレイヤー構成の変化のみを監視（プレイヤー数とAIフラグの変化）
@@ -44,6 +62,9 @@ function GamePageContent() {
   }, [gameState?.players])
 
   useEffect(() => {
+    // マルチプレイヤーモードの場合はlocalStorageから取得するのでスキップ
+    if (isMultiplayer) return
+
     if (!playerConfig) return
 
     if (playerConfig.hasAI && playerConfig.humanPlayerId) {
@@ -53,7 +74,7 @@ function GamePageContent() {
     } else if (!currentPlayerId && playerConfig.firstPlayerId) {
       setCurrentPlayerId(playerConfig.firstPlayerId)
     }
-  }, [playerConfig, currentPlayerId])
+  }, [playerConfig, currentPlayerId, isMultiplayer])
 
   // 配り直しの自動検出と実行
   useEffect(() => {
@@ -355,29 +376,75 @@ function GamePageContent() {
             )}
 
             {/* プレイヤーの手札 */}
-            {currentPlayer && (
-              <div className="space-y-2 md:space-y-4">
-                <PlayerHand
-                  player={currentPlayer}
-                  isCurrentPlayer={isCurrentTurn}
-                  onCardClick={handleCardClick}
-                  selectedCardId={selectedCardId || undefined}
-                  playableCardIds={playableCards}
-                />
+            {isMultiplayer ? (
+              // マルチプレイヤーモード: すべてのプレイヤーを表示
+              <div className="space-y-4 md:space-y-6">
+                {gameState.players.map((player) => {
+                  const isCurrentUser = player.id === currentPlayerId
+                  const isPlayerTurn =
+                    utils.getCurrentPlayer()?.id === player.id
 
-                {/* プレイボタン */}
-                {isCurrentTurn && selectedCardId && (
-                  <div className="text-center py-1">
-                    <button
-                      type="button"
-                      onClick={handlePlayCard}
-                      className="px-4 py-2 md:px-6 md:py-3 text-sm md:text-base bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors"
-                    >
-                      Play Selected Card
-                    </button>
-                  </div>
-                )}
+                  return (
+                    <div key={player.id}>
+                      {isCurrentUser ? (
+                        <div className="space-y-2 md:space-y-4">
+                          <PlayerHand
+                            player={player}
+                            isCurrentPlayer={isPlayerTurn}
+                            onCardClick={handleCardClick}
+                            selectedCardId={selectedCardId || undefined}
+                            playableCardIds={playableCards}
+                          />
+
+                          {/* プレイボタン */}
+                          {isPlayerTurn && selectedCardId && (
+                            <div className="text-center py-1">
+                              <button
+                                type="button"
+                                onClick={handlePlayCard}
+                                className="px-4 py-2 md:px-6 md:py-3 text-sm md:text-base bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors"
+                              >
+                                Play Selected Card
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <OpponentHand
+                          player={player}
+                          isCurrentTurn={isPlayerTurn}
+                        />
+                      )}
+                    </div>
+                  )
+                })}
               </div>
+            ) : (
+              // シングルプレイヤー/AIモード: 自分の手札のみ表示
+              currentPlayer && (
+                <div className="space-y-2 md:space-y-4">
+                  <PlayerHand
+                    player={currentPlayer}
+                    isCurrentPlayer={isCurrentTurn}
+                    onCardClick={handleCardClick}
+                    selectedCardId={selectedCardId || undefined}
+                    playableCardIds={playableCards}
+                  />
+
+                  {/* プレイボタン */}
+                  {isCurrentTurn && selectedCardId && (
+                    <div className="text-center py-1">
+                      <button
+                        type="button"
+                        onClick={handlePlayCard}
+                        className="px-4 py-2 md:px-6 md:py-3 text-sm md:text-base bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors"
+                      >
+                        Play Selected Card
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )
             )}
 
             {/* 各プレイヤーの取得した絵札表示 */}
@@ -498,7 +565,13 @@ export default function GamePage() {
   // URLクエリパラメータを取得
   const playersParam = searchParams.get('players')
   const isAI = searchParams.get('ai') === 'true'
+  const isMultiplayer = searchParams.get('multiplayer') === 'true'
   const playerNames = playersParam ? playersParam.split(',') : undefined
+
+  // 初回マウント時のみログ
+  if (typeof window !== 'undefined') {
+    console.log('🎮 GamePage:', { gameId, isMultiplayer })
+  }
 
   return (
     <GameProvider gameId={gameId} playerNames={playerNames} isAI={isAI}>
