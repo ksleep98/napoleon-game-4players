@@ -53,9 +53,6 @@ export default function RoomsPage() {
 
       if (!playerId) {
         playerId = generatePlayerId()
-        console.log('🆕 新しいplayerIdを生成しました:', playerId)
-      } else {
-        console.log('♻️  既存のplayerIdを使用します:', playerId)
       }
 
       const roomId = generateGameId()
@@ -103,9 +100,6 @@ export default function RoomsPage() {
 
       if (!playerId) {
         playerId = generatePlayerId()
-        console.log('🆕 新しいplayerIdを生成しました:', playerId)
-      } else {
-        console.log('♻️  既存のplayerIdを使用します:', playerId)
       }
 
       // 新規プレイヤーの場合のみプレイヤー作成
