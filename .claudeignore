@@ -1,0 +1,79 @@
+# .claudeignore
+# Claude Codeがコンテキストに含めないファイル・フォルダを指定
+# .gitignoreと同じ構文を使用
+
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Build outputs
+.next/
+out/
+dist/
+build/
+.vercel/
+.turbo/
+
+# Cache & temporary files
+.cache/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Test coverage
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# Environment files (セキュリティ上重要)
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Lock files (大きいファイル)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Supabase
+.supabase/
+
+# IDE settings (個人設定)
+.vscode/settings.json
+.idea/
+
+# Git
+.git/
+
+# Large generated files
+public/static/
+*.map
+*.chunk.js
+
+# Documentation images (大きい画像ファイル)
+docs/**/*.png
+docs/**/*.jpg
+docs/**/*.gif
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Compiled files
+*.min.js
+*.min.css

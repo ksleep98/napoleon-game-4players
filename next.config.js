@@ -3,17 +3,13 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  eslint: {
-    ignoreDuringBuilds: false,
-  },
   // Optimized for Vercel deployment with Server Actions support
   experimental: {
-    dynamicIO: false,
-    // CSS最適化 - 一時的に無効化 (critters依存関係の問題のため)
-    // optimizeCss: true,
     // パッケージインポート最適化
     optimizePackageImports: ['@supabase/supabase-js'],
   },
+  // Enable Turbopack (Next.js 16 default)
+  turbopack: {},
   // Optimize for production
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
