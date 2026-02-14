@@ -1,25 +1,24 @@
 'use client'
 
 import type { Player } from '@/types/game'
-import { sortHand } from '@/utils/cardUtils'
 import { Card } from './Card'
 
-interface PlayerHandProps {
+interface OpponentHandProps {
   player: Player
-  isCurrentPlayer?: boolean
-  onCardClick?: (cardId: string) => void
-  selectedCardId?: string
-  playableCardIds?: string[]
+  isCurrentTurn?: boolean
 }
 
-export function PlayerHand({
+export function OpponentHand({
   player,
-  isCurrentPlayer = false,
-  onCardClick,
-  selectedCardId,
-  playableCardIds = [],
-}: PlayerHandProps) {
-  const sortedHand = sortHand(player.hand)
+  isCurrentTurn = false,
+}: OpponentHandProps) {
+  // カードの裏面を表示するためのダミーカード
+  const backCards = Array.from({ length: player.hand.length }, (_, i) => ({
+    id: `back-${player.id}-${i}`,
+    rank: 'A' as const,
+    suit: 'spades' as const,
+    value: 0,
+  }))
 
   return (
     <div className="space-y-2">
@@ -35,28 +34,25 @@ export function PlayerHand({
             Adjutant
           </span>
         )}
-        {isCurrentPlayer && (
+        {isCurrentTurn && (
           <span className="px-2 py-1 bg-blue-200 text-blue-800 rounded-full text-xs font-bold">
-            Your Turn
+            Turn
           </span>
         )}
-        <span
-          className={`px-2 py-1 rounded-full text-xs font-bold ${player.hand.length !== 12 ? 'bg-red-200 text-red-800' : 'bg-gray-200 text-gray-600'}`}
-        >
+        <span className="px-2 py-1 bg-gray-200 text-gray-600 rounded-full text-xs font-bold">
           {player.hand.length} cards
-          {player.hand.length !== 12 && ' ⚠️'}
         </span>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {sortedHand.map((card) => (
+        {backCards.map((card) => (
           <Card
             key={card.id}
             card={card}
-            isPlayable={isCurrentPlayer && playableCardIds.includes(card.id)}
-            isSelected={selectedCardId === card.id}
+            isPlayable={false}
+            isSelected={false}
             size="medium"
-            onClick={onCardClick}
+            faceDown={true}
           />
         ))}
       </div>

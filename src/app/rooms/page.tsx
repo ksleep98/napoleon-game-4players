@@ -18,6 +18,7 @@ export default function RoomsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [playerName, setPlayerName] = useState('')
+  const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null)
   const [showCreateRoom, setShowCreateRoom] = useState(false)
   const [newRoomName, setNewRoomName] = useState('')
   const [deletingRoomId, setDeletingRoomId] = useState<string | null>(null)
@@ -52,6 +53,9 @@ export default function RoomsPage() {
 
       if (!playerId) {
         playerId = generatePlayerId()
+        console.log('🆕 新しいplayerIdを生成しました:', playerId)
+      } else {
+        console.log('♻️  既存のplayerIdを使用します:', playerId)
       }
 
       const roomId = generateGameId()
@@ -99,6 +103,9 @@ export default function RoomsPage() {
 
       if (!playerId) {
         playerId = generatePlayerId()
+        console.log('🆕 新しいplayerIdを生成しました:', playerId)
+      } else {
+        console.log('♻️  既存のplayerIdを使用します:', playerId)
       }
 
       // 新規プレイヤーの場合のみプレイヤー作成
@@ -150,10 +157,15 @@ export default function RoomsPage() {
   useEffect(() => {
     loadRooms()
 
-    // 保存された名前を読み込み
+    // 保存された名前とplayerIdを読み込み
     const savedName = localStorage.getItem('playerName')
     if (savedName) {
       setPlayerName(savedName)
+    }
+
+    const savedPlayerId = localStorage.getItem('playerId')
+    if (savedPlayerId) {
+      setCurrentPlayerId(savedPlayerId)
     }
 
     // 30秒ごとにルーム一覧を更新
@@ -204,7 +216,7 @@ export default function RoomsPage() {
         {/* プレイヤー名入力 */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Join or Create a Room</h2>
-          <div className="flex gap-4">
+          <div className="flex gap-4 mb-3">
             <input
               type="text"
               value={playerName}
@@ -222,6 +234,32 @@ export default function RoomsPage() {
               Create Room
             </button>
           </div>
+          {currentPlayerId && (
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-gray-600">
+                <span className="font-semibold">Your Player ID:</span>{' '}
+                <code className="bg-yellow-100 px-2 py-1 rounded font-mono">
+                  {currentPlayerId}
+                </code>
+                <span className="ml-2 text-red-600">
+                  ⚠️
+                  4つの異なるブラウザ（Chrome/Safari/Firefox/Edge）またはシークレットモードを使用してください
+                </span>
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.removeItem('playerId')
+                  localStorage.removeItem('playerName')
+                  window.location.reload()
+                }}
+                className="text-xs px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded"
+                title="新しいPlayer IDを生成するためにリセット"
+              >
+                🔄 Reset ID
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 新しいルーム作成 */}
@@ -299,7 +337,6 @@ export default function RoomsPage() {
           ) : (
             <div className="space-y-4">
               {rooms.map((room) => {
-                const currentPlayerId = localStorage.getItem('playerId')
                 const isHost = currentPlayerId === room.hostPlayerId
                 return (
                   <div

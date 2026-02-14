@@ -159,6 +159,13 @@ export function secureSubscribeToGameState(
 ) {
   const playerId = getPlayerId()
 
+  console.log(
+    '📡 Setting up subscription for game:',
+    gameId,
+    'playerId:',
+    playerId
+  )
+
   const channel = supabase
     .channel(`game_${gameId}`, {
       config: {
@@ -177,25 +184,42 @@ export function secureSubscribeToGameState(
         try {
           const gameState = payload.new.state as GameState
 
+          console.log('📨 Received game state update:', {
+            gameId: gameState.id,
+            phase: gameState.phase,
+            playerId,
+            players: gameState.players.map((p) => p.id),
+          })
+
           // プレイヤーがゲームに参加しているかチェック
           const playerInGame = gameState.players.some((p) => p.id === playerId)
           if (!playerInGame) {
+            console.error(
+              '❌ Player not in game:',
+              playerId,
+              'players:',
+              gameState.players.map((p) => p.id)
+            )
             onError?.(new Error('Player not in game'))
             return
           }
 
+          console.log('✅ Updating game state for player:', playerId)
           onUpdate(gameState)
         } catch (_error) {
+          console.error('❌ Failed to parse game state update:', _error)
           onError?.(new Error('Failed to parse game state update'))
         }
       }
     )
     .subscribe((status) => {
+      console.log('📡 Subscription status:', status)
       if (
         status === CONNECTION_STATES.CLOSED ||
         status === CONNECTION_STATES.CHANNEL_ERROR ||
         status === CONNECTION_STATES.TIMED_OUT
       ) {
+        console.error('❌ Subscription failed with status:', status)
         onError?.(new Error('Failed to subscribe to game updates'))
       }
     })

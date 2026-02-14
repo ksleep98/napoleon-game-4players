@@ -11,6 +11,7 @@ interface CardProps {
   size?: 'tiny' | 'small' | 'medium' | 'large'
   onClick?: (cardId: string) => void
   className?: string
+  faceDown?: boolean
 }
 
 const CardComponent = function Card({
@@ -20,6 +21,7 @@ const CardComponent = function Card({
   size = 'medium',
   onClick,
   className = '',
+  faceDown = false,
 }: CardProps) {
   // サイズクラスをメモ化（モバイルファースト）
   const sizeClasses = useMemo(
@@ -75,6 +77,25 @@ const CardComponent = function Card({
     getSuitColor,
   ])
 
+  // 裏面表示の場合
+  if (faceDown) {
+    return (
+      <button
+        type="button"
+        disabled={true}
+        className={`
+          bg-gradient-to-br from-blue-600 to-blue-800 border-2 border-gray-700 rounded-lg shadow-md
+          flex flex-col items-center justify-center
+          transition-all duration-200 select-none cursor-default
+          ${className}
+          ${sizeClasses[size]}
+        `}
+      >
+        <div className="text-white text-xs opacity-50">🂠</div>
+      </button>
+    )
+  }
+
   return (
     <button
       type="button"
@@ -97,6 +118,7 @@ export const Card = memo(CardComponent, (prevProps, nextProps) => {
     prevProps.isSelected === nextProps.isSelected &&
     prevProps.size === nextProps.size &&
     prevProps.className === nextProps.className &&
-    prevProps.onClick === nextProps.onClick
+    prevProps.onClick === nextProps.onClick &&
+    prevProps.faceDown === nextProps.faceDown
   )
 })
