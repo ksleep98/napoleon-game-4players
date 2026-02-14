@@ -18,7 +18,8 @@
     ├── deploy.md             # Vercelデプロイスキル
     ├── db-migrate.md         # Supabaseマイグレーションスキル
     ├── test.md               # テスト実行・修正スキル
-    └── security-check.md     # セキュリティチェックスキル
+    ├── security-check.md     # セキュリティチェックスキル
+    └── create-pr.md          # PR作成スキル
 ```
 
 ## ファイル説明
@@ -207,6 +208,24 @@ Claude Code: /test
 Claude Code: /security-check
 ```
 
+#### create-pr.md - PR作成スキル
+
+**用途**: ローカルでfeatureブランチを作成し、developへのPRを自動作成
+
+**主な内容**:
+
+- ブランチ命名規則
+- Conventional Commitsでのコミット
+- GitHub CLIでのPR作成
+- PR本文テンプレート
+- 自動化スクリプト例
+
+**使用方法**:
+
+```
+Claude Code: /create-pr
+```
+
 ## スキルの使い方
 
 ### 基本的な使用方法
@@ -221,6 +240,7 @@ Claude Code: /security-check
 
    ```
    Claude Code: /commit
+   Claude Code: /create-pr
    Claude Code: /review-pr https://github.com/ksleep98/napoleon-game-4players/pull/167
    Claude Code: /fix-build
    Claude Code: /optimize-perf
@@ -357,7 +377,7 @@ code .claude/skills/my-custom-skill.md
 - 2026-02-15: Claude Code最新機能追加
   - `.claudeignore`追加（コンテキスト最適化）
   - `.claude/settings.json`追加（チーム共有設定）
-  - 4つの新スキル追加（deploy, db-migrate, test, security-check）
+  - 5つの新スキル追加（deploy, db-migrate, test, security-check, create-pr）
 - 2026-01-25: 初期作成
   - CLAUDE.mdをルートから移動
   - skillsフォルダ作成
