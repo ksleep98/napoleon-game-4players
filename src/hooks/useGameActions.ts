@@ -27,16 +27,12 @@ import type {
 // Broadcast helper: ゲーム更新を他のクライアントに通知
 function broadcastGameUpdate(gameId: string) {
   if (gameId?.startsWith('game_')) {
-    console.log('📣 Broadcasting game update for:', gameId)
     supabase
       .channel(`game:${gameId}`)
       .send({
         type: 'broadcast',
         event: 'game-updated',
         payload: { gameId, timestamp: Date.now() },
-      })
-      .then(() => {
-        console.log('✅ Broadcast sent successfully')
       })
       .catch((err) => {
         console.error('❌ Failed to broadcast:', err)
@@ -438,7 +434,6 @@ export function useGameActions({
             type: ACTION_TYPES.GAME.SET_GAME_STATE,
             payload: { gameState: result.data },
           })
-          console.log('Cards redealt - new game started')
         } else {
           throw new Error(result.error || 'Failed to redeal cards')
         }

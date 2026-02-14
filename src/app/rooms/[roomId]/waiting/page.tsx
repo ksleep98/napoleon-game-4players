@@ -49,15 +49,9 @@ export default function WaitingRoomPage({ params }: WaitingRoomPageProps) {
     setPlayerId(storedPlayerId)
 
     // プレイヤーをオンラインに設定
-    console.log('🔄 Setting player online:', storedPlayerId)
-    console.log(
-      '⚠️  このplayerIdがすべてのブラウザで異なることを確認してください！'
-    )
     setPlayerOnlineAction(storedPlayerId)
       .then((result) => {
-        if (result.success) {
-          console.log('✅ Player set to online:', storedPlayerId)
-        } else {
+        if (!result.success) {
           console.error('❌ Failed to set player online:', result.error)
         }
       })
@@ -69,8 +63,6 @@ export default function WaitingRoomPage({ params }: WaitingRoomPageProps) {
   // Poll room updates (ポーリング方式でルーム更新を監視)
   useEffect(() => {
     if (!roomId || !playerId) return
-
-    console.log('🔄 Starting room polling for:', roomId)
 
     // 前回の状態を保存（変更検出用）
     let lastPlayerCount = 0
@@ -106,7 +98,6 @@ export default function WaitingRoomPage({ params }: WaitingRoomPageProps) {
           // ゲーム開始時に自動遷移
           if (updatedRoom.status === GAME_ROOM_STATUS.PLAYING) {
             const gameId = updatedRoom.gameId || roomId
-            console.log('🎮 Game started! Navigating to:', gameId)
             router.push(`/game/${gameId}?multiplayer=true`)
             return // ナビゲーション後はポーリング停止
           }
@@ -136,7 +127,6 @@ export default function WaitingRoomPage({ params }: WaitingRoomPageProps) {
     const intervalId = setInterval(pollRoomUpdates, 2000)
 
     return () => {
-      console.log('🔌 Stopping room polling for:', roomId)
       clearInterval(intervalId)
     }
   }, [roomId, playerId, router])
@@ -151,10 +141,6 @@ export default function WaitingRoomPage({ params }: WaitingRoomPageProps) {
 
     try {
       setError(null)
-
-      // スタート前にプレイヤー情報をログ出力
-      console.log('🎮 Starting game - UI shows players:', players)
-      console.log('🎮 Room player count:', room.playerCount)
 
       const result = await startGameFromRoomAction(roomId, playerId)
 

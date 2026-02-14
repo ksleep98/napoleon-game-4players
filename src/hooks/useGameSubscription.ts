@@ -22,7 +22,6 @@ export function useGameSubscription(
 
   useEffect(() => {
     if (!gameId) {
-      console.log('⚠️  No gameId provided, skipping subscription')
       return
     }
 
@@ -30,8 +29,6 @@ export function useGameSubscription(
     const isMultiplayerRoom = gameId.startsWith('game_')
 
     if (isMultiplayerRoom) {
-      console.log('📡 Using Supabase Broadcast for multiplayer room:', gameId)
-
       // マルチプレイヤーモードではlocalStorageからplayerIdを取得
       const getPlayerId = () => {
         if (typeof window !== 'undefined') {
@@ -46,13 +43,10 @@ export function useGameSubscription(
         return
       }
 
-      console.log('🔑 Using playerId:', playerId)
-
       // 初回ロード
       loadGameStateAction(gameId, playerId)
         .then((result) => {
           if (result.success && result.gameState) {
-            console.log('✅ Initial game state loaded via Broadcast')
             stableCallback(result.gameState)
           } else {
             console.error('❌ Failed to load initial game state:', result.error)
@@ -66,14 +60,11 @@ export function useGameSubscription(
       const channel = supabase.channel(`game:${gameId}`)
 
       channel
-        .on('broadcast', { event: 'game-updated' }, async (payload) => {
-          console.log('📨 Received game update broadcast:', payload)
-
+        .on('broadcast', { event: 'game-updated' }, async () => {
           // ゲーム状態を再取得
           try {
             const result = await loadGameStateAction(gameId, playerId)
             if (result.success && result.gameState) {
-              console.log('✅ Game state updated from broadcast')
               stableCallback(result.gameState)
             } else {
               console.error(
@@ -85,29 +76,21 @@ export function useGameSubscription(
             console.error('❌ Error loading game state after broadcast:', err)
           }
         })
-        .subscribe((status) => {
-          console.log('📡 Broadcast channel status:', status)
-        })
+        .subscribe()
 
       return () => {
-        console.log('🔌 Unsubscribing from broadcast channel')
         supabase.removeChannel(channel)
       }
     }
 
     // 通常のゲームモード（AIモード）ではリアルタイムサブスクリプションを使用
     if (!isAuthenticated) {
-      console.log(
-        '🔒 Waiting for authentication before subscribing to game state'
-      )
       return
     }
 
-    console.log('📡 Subscribing to game state:', gameId)
     const unsubscribe = subscribeToGameState(gameId, stableCallback)
 
     return () => {
-      console.log('🔌 Unsubscribing from game state:', gameId)
       unsubscribe()
     }
   }, [gameId, isAuthenticated, stableCallback])

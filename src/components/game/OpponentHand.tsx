@@ -6,11 +6,15 @@ import { Card } from './Card'
 interface OpponentHandProps {
   player: Player
   isCurrentTurn?: boolean
+  isAdjutantRevealed?: boolean
+  isCurrentUser?: boolean
 }
 
 export function OpponentHand({
   player,
   isCurrentTurn = false,
+  isAdjutantRevealed = false,
+  isCurrentUser = false,
 }: OpponentHandProps) {
   // カードの裏面を表示するためのダミーカード
   const backCards = Array.from({ length: player.hand.length }, (_, i) => ({
@@ -29,7 +33,7 @@ export function OpponentHand({
             Napoleon
           </span>
         )}
-        {player.isAdjutant && (
+        {player.isAdjutant && (isCurrentUser || isAdjutantRevealed) && (
           <span className="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs font-bold">
             Adjutant
           </span>

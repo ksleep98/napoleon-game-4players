@@ -95,8 +95,6 @@ export async function secureGameStateSave(gameState: GameState): Promise<void> {
 
       throw new Error(result.error || 'Failed to save game state')
     }
-
-    console.log('✅ Game state saved successfully')
   } catch (actionError) {
     console.error('Server action threw error:', actionError)
     throw actionError
@@ -184,13 +182,6 @@ export function secureSubscribeToGameState(
         try {
           const gameState = payload.new.state as GameState
 
-          console.log('📨 Received game state update:', {
-            gameId: gameState.id,
-            phase: gameState.phase,
-            playerId,
-            players: gameState.players.map((p) => p.id),
-          })
-
           // プレイヤーがゲームに参加しているかチェック
           const playerInGame = gameState.players.some((p) => p.id === playerId)
           if (!playerInGame) {
@@ -204,7 +195,6 @@ export function secureSubscribeToGameState(
             return
           }
 
-          console.log('✅ Updating game state for player:', playerId)
           onUpdate(gameState)
         } catch (_error) {
           console.error('❌ Failed to parse game state update:', _error)
@@ -213,7 +203,6 @@ export function secureSubscribeToGameState(
       }
     )
     .subscribe((status) => {
-      console.log('📡 Subscription status:', status)
       if (
         status === CONNECTION_STATES.CLOSED ||
         status === CONNECTION_STATES.CHANNEL_ERROR ||
