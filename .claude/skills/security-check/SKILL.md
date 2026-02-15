@@ -1,10 +1,14 @@
-# Audit Skill
+---
+name: security-check
+description: アプリケーションのセキュリティ監査を実行し、脆弱性を検出・修正します。依存関係の脆弱性チェック、環境変数チェック、RLSポリシー確認などを行います。Use when checking application security, finding vulnerabilities, or before deployment.
+disable-model-invocation: true
+---
 
-## 目的
+# セキュリティチェックスキル
 
-アプリケーションのセキュリティ監査を実行し、脆弱性を検出・修正するスキル。依存関係の脆弱性チェック、環境変数チェック、RLSポリシー確認などを行います。
+アプリケーションのセキュリティ監査を実行し、脆弱性を検出・修正するスキルです。
 
-**使用方法**: `/audit` で実行してください。
+**使用方法**: `/security-check` で実行してください。
 
 **注意**: `/security-review` はClaude Code組み込みのPRコードレビュー用スキルです（別機能）。
 

@@ -11,15 +11,15 @@
 ├── settings.json             # チーム共有設定
 ├── settings.local.json       # Claude Codeローカル設定
 └── skills/                   # スキル定義フォルダ
-    ├── commit.md             # コミット作成スキル
-    ├── review-pr.md          # PRレビュースキル
-    ├── fix-build.md          # ビルドエラー修正スキル
-    ├── optimize-perf.md      # パフォーマンス最適化スキル
-    ├── deploy.md             # Vercelデプロイスキル
-    ├── db-migrate.md         # Supabaseマイグレーションスキル
-    ├── test.md               # テスト実行・修正スキル
-    ├── audit.md              # セキュリティ監査スキル
-    └── create-pr.md          # PR作成スキル
+    ├── commit/SKILL.md           # コミット作成スキル
+    ├── review-pr/SKILL.md        # PRレビュースキル
+    ├── fix-build/SKILL.md        # ビルドエラー修正スキル
+    ├── optimize-perf/SKILL.md    # パフォーマンス最適化スキル
+    ├── deploy/SKILL.md           # Vercelデプロイスキル
+    ├── db-migrate/SKILL.md       # Supabaseマイグレーションスキル
+    ├── test/SKILL.md             # テスト実行・修正スキル
+    ├── security-check/SKILL.md   # セキュリティチェックスキル
+    └── create-pr/SKILL.md        # PR作成スキル
 ```
 
 ## ファイル説明
@@ -190,7 +190,7 @@ Claude Code: /db-migrate
 Claude Code: /test
 ```
 
-#### audit.md - セキュリティ監査スキル
+#### security-check/SKILL.md - セキュリティチェックスキル
 
 **用途**: 脆弱性検出とセキュリティ強化
 
@@ -205,7 +205,7 @@ Claude Code: /test
 **使用方法**:
 
 ```
-Claude Code: /audit
+Claude Code: /security-check
 ```
 
 **注意**: `/security-review` はClaude Code組み込みのPRコードレビュー用スキルです（別機能）。
@@ -249,7 +249,7 @@ Claude Code: /create-pr
    Claude Code: /deploy
    Claude Code: /db-migrate
    Claude Code: /test
-   Claude Code: /audit
+   Claude Code: /security-check
    ```
 
 3. **スキルの詳細を確認**
@@ -376,10 +376,14 @@ code .claude/skills/my-custom-skill.md
 
 ## 更新履歴
 
+- 2026-02-15: スキルファイル構造修正
+  - スキルファイルを`*.md`から`*/SKILL.md`形式に変更
+  - YAMLフロントマター追加（Claude Code 2.1.6対応）
+  - `audit`スキルを`security-check`にリネーム
 - 2026-02-15: Claude Code最新機能追加
   - `.claudeignore`追加（コンテキスト最適化）
   - `.claude/settings.json`追加（チーム共有設定）
-  - 5つの新スキル追加（deploy, db-migrate, test, audit, create-pr）
+  - 5つの新スキル追加（deploy, db-migrate, test, security-check, create-pr）
 - 2026-01-25: 初期作成
   - CLAUDE.mdをルートから移動
   - skillsフォルダ作成

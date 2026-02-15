@@ -1,6 +1,9 @@
-# Test Skill
+---
+name: test
+description: Jestテストの実行・修正・新規作成を効率的に行います。TDD（テスト駆動開発）をサポート。Use when running tests, writing new tests, or fixing test failures.
+---
 
-## 目的
+# テストスキル
 
 Jestテストの実行・修正・新規作成を効率的に行うスキル。TDD（テスト駆動開発）をサポート。
 

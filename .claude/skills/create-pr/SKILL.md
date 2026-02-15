@@ -1,6 +1,10 @@
-# Create PR Skill
+---
+name: create-pr
+description: ローカルでfeatureブランチを作成し、変更をコミットして、developへのPRを自動作成します。Use when creating a new pull request or preparing changes for review.
+disable-model-invocation: true
+---
 
-## 目的
+# PR作成スキル
 
 ローカルでfeatureブランチを作成し、変更をコミットして、developへのPRを自動作成するスキル。
 

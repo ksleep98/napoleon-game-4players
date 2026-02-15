@@ -1,6 +1,10 @@
-# Database Migration Skill
+---
+name: db-migrate
+description: Supabaseデータベースのマイグレーション作成・適用・ロールバックを安全に実行します。Use when creating database migrations, updating schema, or managing RLS policies.
+disable-model-invocation: true
+---
 
-## 目的
+# データベースマイグレーションスキル
 
 Supabaseデータベースのマイグレーション作成・適用・ロールバックを安全に実行するスキル。
 
