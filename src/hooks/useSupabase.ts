@@ -1,6 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useReducer, useState } from 'react'
+import {
+  clearSessionAction,
+  createSessionAction,
+  getSessionAction,
+} from '@/app/actions/cookieSessionActions'
 import { ACTION_TYPES, CONNECTION_STATES } from '@/lib/constants'
 import { setPlayerSession } from '@/lib/supabase/client'
 import {
@@ -178,6 +183,23 @@ export function usePlayerSession() {
   useEffect(() => {
     const initializeSession = async () => {
       try {
+        // Phase 3: クッキー優先、localStorageフォールバック
+        // 1. まずhttpOnlyクッキーから取得を試みる
+        const cookieResult = await getSessionAction()
+
+        if (cookieResult.success && cookieResult.data) {
+          // クッキーセッションが存在する場合
+          dispatch({
+            type: ACTION_TYPES.PLAYER_SESSION.SET_SESSION_FROM_SECURE,
+            payload: {
+              id: cookieResult.data.playerId,
+              name: cookieResult.data.playerName,
+            },
+          })
+          return
+        }
+
+        // 2. クッキーがない場合、localStorageフォールバック
         const securePlayerId = getSecurePlayerId()
         const securePlayerName = getSecurePlayerName()
 
@@ -188,7 +210,7 @@ export function usePlayerSession() {
           })
         }
       } catch (error) {
-        console.warn('Failed to initialize secure session:', error)
+        console.warn('Failed to initialize session:', error)
       }
     }
 
@@ -197,7 +219,19 @@ export function usePlayerSession() {
 
   const initializePlayer = useCallback(async (id: string, name: string) => {
     try {
-      setSecurePlayer(id, name)
+      // Phase 3: httpOnlyクッキーに保存（優先）
+      const cookieResult = await createSessionAction(id, name)
+
+      if (!cookieResult.success) {
+        // クッキー保存失敗時はlocalStorageフォールバック
+        console.warn(
+          '[Session] Cookie creation failed, falling back to localStorage:',
+          cookieResult.error
+        )
+        setSecurePlayer(id, name)
+      }
+
+      // Supabase RLS設定
       await setPlayerSession(id)
 
       dispatch({
@@ -217,7 +251,19 @@ export function usePlayerSession() {
         await setPlayerOffline(state.playerId)
       }
 
+      // Phase 3: httpOnlyクッキー優先でクリア
+      const cookieResult = await clearSessionAction()
+
+      if (!cookieResult.success) {
+        console.warn(
+          '[Session] Cookie clear failed, clearing localStorage:',
+          cookieResult.error
+        )
+      }
+
+      // localStorageもクリア（念のため）
       clearSecurePlayer()
+
       dispatch({ type: ACTION_TYPES.PLAYER_SESSION.CLEAR_PLAYER })
     } catch (error) {
       console.warn('Failed to clear player session:', error)
