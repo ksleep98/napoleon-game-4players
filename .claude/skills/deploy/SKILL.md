@@ -1,6 +1,10 @@
-# Deploy Skill
+---
+name: deploy
+description: Vercelへの安全なデプロイを実行します。環境変数チェック、ビルド検証、デプロイ実行を段階的に行います。Use when deploying to Vercel or preparing for production deployment.
+disable-model-invocation: true
+---
 
-## 目的
+# Vercelデプロイスキル
 
 Vercelへの安全なデプロイを実行するスキル。環境変数チェック、ビルド検証、デプロイ実行を段階的に行います。
 

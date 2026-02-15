@@ -1,4 +1,9 @@
-# Fix Build Skill
+---
+name: fix-build
+description: Next.jsプロジェクトのビルドエラーを効率的に診断・修正します。TypeScript型エラー、環境変数エラー、モジュールインポートエラーなどを解決します。Use when build fails or encountering compilation errors.
+---
+
+# ビルドエラー修正スキル
 
 このスキルは、Next.jsプロジェクトのビルドエラーを効率的に診断・修正するためのガイドです。
 
