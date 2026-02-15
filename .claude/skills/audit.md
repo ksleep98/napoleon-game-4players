@@ -1,10 +1,12 @@
-# Security Audit Skill
+# Audit Skill
 
 ## 目的
 
 アプリケーションのセキュリティ監査を実行し、脆弱性を検出・修正するスキル。依存関係の脆弱性チェック、環境変数チェック、RLSポリシー確認などを行います。
 
-**注意**: このスキルは `/security-audit` で実行してください。`/security-review` はClaude Code組み込みのPRコードレビュー用スキルです。
+**使用方法**: `/audit` で実行してください。
+
+**注意**: `/security-review` はClaude Code組み込みのPRコードレビュー用スキルです（別機能）。
 
 ## セキュリティチェックリスト
 

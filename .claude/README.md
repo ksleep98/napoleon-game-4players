@@ -18,7 +18,7 @@
     ├── deploy.md             # Vercelデプロイスキル
     ├── db-migrate.md         # Supabaseマイグレーションスキル
     ├── test.md               # テスト実行・修正スキル
-    ├── security-audit.md     # セキュリティ監査スキル
+    ├── audit.md              # セキュリティ監査スキル
     └── create-pr.md          # PR作成スキル
 ```
 
@@ -190,7 +190,7 @@ Claude Code: /db-migrate
 Claude Code: /test
 ```
 
-#### security-audit.md - セキュリティ監査スキル
+#### audit.md - セキュリティ監査スキル
 
 **用途**: 脆弱性検出とセキュリティ強化
 
@@ -205,10 +205,10 @@ Claude Code: /test
 **使用方法**:
 
 ```
-Claude Code: /security-audit
+Claude Code: /audit
 ```
 
-**注意**: `/security-review` はClaude Code組み込みのPRコードレビュー用スキルです。
+**注意**: `/security-review` はClaude Code組み込みのPRコードレビュー用スキルです（別機能）。
 
 #### create-pr.md - PR作成スキル
 
@@ -249,7 +249,7 @@ Claude Code: /create-pr
    Claude Code: /deploy
    Claude Code: /db-migrate
    Claude Code: /test
-   Claude Code: /security-audit
+   Claude Code: /audit
    ```
 
 3. **スキルの詳細を確認**
@@ -379,7 +379,7 @@ code .claude/skills/my-custom-skill.md
 - 2026-02-15: Claude Code最新機能追加
   - `.claudeignore`追加（コンテキスト最適化）
   - `.claude/settings.json`追加（チーム共有設定）
-  - 5つの新スキル追加（deploy, db-migrate, test, security-audit, create-pr）
+  - 5つの新スキル追加（deploy, db-migrate, test, audit, create-pr）
 - 2026-01-25: 初期作成
   - CLAUDE.mdをルートから移動
   - skillsフォルダ作成
