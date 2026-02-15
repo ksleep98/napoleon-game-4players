@@ -1,4 +1,4 @@
-export const runtime = 'edge'
+export const runtime = 'nodejs'
 
 interface GameLayoutProps {
   children: React.ReactNode
