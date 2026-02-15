@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
+import { SessionMigrationProvider } from '@/components/providers/SessionMigrationProvider'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -30,7 +31,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Suspense fallback={<FastLoadingFallback />}>{children}</Suspense>
+        <SessionMigrationProvider>
+          <Suspense fallback={<FastLoadingFallback />}>{children}</Suspense>
+        </SessionMigrationProvider>
       </body>
     </html>
   )
