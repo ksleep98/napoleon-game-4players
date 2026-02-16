@@ -2,26 +2,34 @@
 
 import { useRouter } from 'next/navigation'
 import { PerformanceProvider } from '@/components/debug/PerformanceDashboard'
+import { usePlayerSession } from '@/hooks/useSupabase'
 import { FEATURE_FLAGS } from '@/lib/utils/environment'
 
 export default function Home() {
   const router = useRouter()
+  const { initializePlayer, isAuthenticated } = usePlayerSession()
 
   const handleStartGame = () => {
     router.push('/rooms')
   }
 
-  const handleQuickGame = () => {
-    // AI対戦用のクイックスタート（人間1人 + AI 3人）
-    const gameId = `ai_game_${Date.now()}_${Math.random()
-      .toString(36)
-      .substring(2, 8)}`
+  const handleQuickGame = async () => {
+    try {
+      // AI対戦用のクイックスタート（人間1人 + AI 3人）
+      const gameId = `ai_game_${Date.now()}_${Math.random()
+        .toString(36)
+        .substring(2, 8)}`
 
-    // プレイヤーIDを保存
-    localStorage.setItem('playerId', 'player_1')
-    localStorage.setItem('playerName', 'You')
+      // Phase 5: httpOnlyクッキーでセッション保存（localStorage削除）
+      if (!isAuthenticated) {
+        await initializePlayer('player_1', 'You')
+      }
 
-    router.push(`/game/${gameId}?ai=true`)
+      router.push(`/game/${gameId}?ai=true`)
+    } catch (error) {
+      console.error('Failed to initialize player:', error)
+      alert('Failed to start game. Please try again.')
+    }
   }
 
   return (
