@@ -39,10 +39,8 @@ export default function Home() {
           {/* ヘッダー */}
           <div className="text-center mb-16">
             <h1 className="text-6xl font-bold text-white mb-6">Napoleon</h1>
-            <h2 className="text-2xl text-white text-opacity-90 mb-8">
-              4-Player Card Game
-            </h2>
-            <p className="text-lg text-white text-opacity-80 max-w-2xl mx-auto leading-relaxed">
+            <h2 className="text-2xl text-green-200 mb-8">4-Player Card Game</h2>
+            <p className="text-lg text-green-100 max-w-2xl mx-auto leading-relaxed">
               Experience the classic Napoleon card game online. Form teams,
               declare strategies, and compete to win the most tricks in this
               exciting 4-player card game.
@@ -53,34 +51,34 @@ export default function Home() {
           <div className="max-w-4xl mx-auto">
             {/* ゲームの特徴 */}
             <div className="grid md:grid-cols-3 gap-8 mb-16">
-              <div className="bg-green-900 bg-opacity-30 backdrop-blur-sm rounded-lg p-6 text-center">
+              <div className="bg-green-800 bg-opacity-40 backdrop-blur-sm rounded-lg p-6 text-center">
                 <div className="text-4xl mb-4">🎴</div>
                 <h3 className="text-xl font-semibold text-white mb-2">
                   Classic Napoleon
                 </h3>
-                <p className="text-white text-opacity-80">
+                <p className="text-green-100">
                   Play the traditional Japanese card game with authentic rules
                   and gameplay
                 </p>
               </div>
 
-              <div className="bg-green-900 bg-opacity-30 backdrop-blur-sm rounded-lg p-6 text-center">
+              <div className="bg-green-800 bg-opacity-40 backdrop-blur-sm rounded-lg p-6 text-center">
                 <div className="text-4xl mb-4">👥</div>
                 <h3 className="text-xl font-semibold text-white mb-2">
                   4-Player Online
                 </h3>
-                <p className="text-white text-opacity-80">
+                <p className="text-green-100">
                   Join or create rooms to play with friends or other players
                   online
                 </p>
               </div>
 
-              <div className="bg-green-900 bg-opacity-30 backdrop-blur-sm rounded-lg p-6 text-center">
+              <div className="bg-green-800 bg-opacity-40 backdrop-blur-sm rounded-lg p-6 text-center">
                 <div className="text-4xl mb-4">⚡</div>
                 <h3 className="text-xl font-semibold text-white mb-2">
                   Real-time Play
                 </h3>
-                <p className="text-white text-opacity-80">
+                <p className="text-green-100">
                   Live gameplay with instant updates and smooth card animations
                 </p>
               </div>
@@ -109,7 +107,7 @@ export default function Home() {
                 </button>
               </div>
 
-              <p className="text-white text-opacity-80 text-sm">
+              <p className="text-green-100 text-sm">
                 {FEATURE_FLAGS.MULTIPLAYER_ROOMS
                   ? 'Join a room to play with others, or play against AI to practice'
                   : 'Play against AI to practice your skills'}
@@ -117,12 +115,12 @@ export default function Home() {
             </div>
 
             {/* ゲームルール */}
-            <div className="mt-16 bg-green-900 bg-opacity-30 backdrop-blur-sm rounded-lg p-8">
+            <div className="mt-16 bg-green-800 bg-opacity-40 backdrop-blur-sm rounded-lg p-8">
               <h3 className="text-2xl font-bold text-white mb-6 text-center">
                 How to Play
               </h3>
 
-              <div className="grid md:grid-cols-2 gap-8 text-white text-opacity-80">
+              <div className="grid md:grid-cols-2 gap-8 text-green-100">
                 <div>
                   <h4 className="font-semibold text-white mb-3">Game Setup</h4>
                   <ul className="space-y-2 text-sm">
@@ -149,7 +147,7 @@ export default function Home() {
           </div>
 
           {/* フッター */}
-          <div className="text-center mt-16 text-white text-opacity-70">
+          <div className="text-center mt-16 text-green-300">
             <p className="text-sm">
               Built with Next.js, TypeScript, and Tailwind CSS
             </p>
