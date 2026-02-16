@@ -192,7 +192,7 @@ export default function RoomsPage() {
             <button
               type="button"
               onClick={() => router.push('/')}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors cursor-pointer"
             >
               ← Back to Home
             </button>
@@ -272,7 +272,7 @@ export default function RoomsPage() {
               <button
                 type="button"
                 onClick={handleCreateRoom}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors"
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors cursor-pointer"
                 disabled={!newRoomName.trim() || !playerName.trim()}
               >
                 Create
@@ -312,7 +312,7 @@ export default function RoomsPage() {
             <button
               type="button"
               onClick={loadRooms}
-              className="text-blue-600 hover:text-blue-700 text-sm"
+              className="text-blue-600 hover:text-blue-700 text-sm cursor-pointer"
               disabled={loading}
             >
               {loading ? 'Loading...' : 'Refresh'}
@@ -429,7 +429,7 @@ export default function RoomsPage() {
           <button
             type="button"
             onClick={() => router.push('/')}
-            className="text-blue-600 hover:text-blue-700"
+            className="text-blue-600 hover:text-blue-700 cursor-pointer"
           >
             ← Back to Home
           </button>

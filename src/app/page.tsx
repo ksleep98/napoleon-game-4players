@@ -51,34 +51,34 @@ export default function Home() {
           <div className="max-w-4xl mx-auto">
             {/* ゲームの特徴 */}
             <div className="grid md:grid-cols-3 gap-8 mb-16">
-              <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6 text-center">
+              <div className="bg-green-800 bg-opacity-40 backdrop-blur-sm rounded-lg p-6 text-center">
                 <div className="text-4xl mb-4">🎴</div>
                 <h3 className="text-xl font-semibold text-white mb-2">
                   Classic Napoleon
                 </h3>
-                <p className="text-green-200">
+                <p className="text-green-100">
                   Play the traditional Japanese card game with authentic rules
                   and gameplay
                 </p>
               </div>
 
-              <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6 text-center">
+              <div className="bg-green-800 bg-opacity-40 backdrop-blur-sm rounded-lg p-6 text-center">
                 <div className="text-4xl mb-4">👥</div>
                 <h3 className="text-xl font-semibold text-white mb-2">
                   4-Player Online
                 </h3>
-                <p className="text-green-200">
+                <p className="text-green-100">
                   Join or create rooms to play with friends or other players
                   online
                 </p>
               </div>
 
-              <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6 text-center">
+              <div className="bg-green-800 bg-opacity-40 backdrop-blur-sm rounded-lg p-6 text-center">
                 <div className="text-4xl mb-4">⚡</div>
                 <h3 className="text-xl font-semibold text-white mb-2">
                   Real-time Play
                 </h3>
-                <p className="text-green-200">
+                <p className="text-green-100">
                   Live gameplay with instant updates and smooth card animations
                 </p>
               </div>
@@ -92,7 +92,7 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={handleStartGame}
-                    className="inline-block bg-yellow-500 hover:bg-yellow-600 text-yellow-900 font-bold py-4 px-8 rounded-lg text-xl transition-colors shadow-lg"
+                    className="inline-block bg-yellow-500 hover:bg-yellow-600 text-yellow-900 font-bold py-4 px-8 rounded-lg text-xl transition-colors shadow-lg cursor-pointer"
                   >
                     Join Game Room
                   </button>
@@ -101,13 +101,13 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={handleQuickGame}
-                  className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-lg text-xl transition-colors shadow-lg"
+                  className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-lg text-xl transition-colors shadow-lg cursor-pointer"
                 >
                   Play vs AI
                 </button>
               </div>
 
-              <p className="text-green-200 text-sm">
+              <p className="text-green-100 text-sm">
                 {FEATURE_FLAGS.MULTIPLAYER_ROOMS
                   ? 'Join a room to play with others, or play against AI to practice'
                   : 'Play against AI to practice your skills'}
@@ -115,7 +115,7 @@ export default function Home() {
             </div>
 
             {/* ゲームルール */}
-            <div className="mt-16 bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-8">
+            <div className="mt-16 bg-green-800 bg-opacity-40 backdrop-blur-sm rounded-lg p-8">
               <h3 className="text-2xl font-bold text-white mb-6 text-center">
                 How to Play
               </h3>

@@ -324,7 +324,7 @@ export default function WaitingRoomPage({ params }: WaitingRoomPageProps) {
                 type="button"
                 onClick={handleStartGame}
                 disabled={!room || room.playerCount < 4}
-                className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+                className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-lg transition-colors cursor-pointer"
               >
                 {room && room.playerCount < 4
                   ? `Waiting for ${4 - room.playerCount} more player${4 - room.playerCount > 1 ? 's' : ''}...`
@@ -334,7 +334,7 @@ export default function WaitingRoomPage({ params }: WaitingRoomPageProps) {
             <button
               type="button"
               onClick={handleLeaveRoom}
-              className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors"
+              className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors cursor-pointer"
             >
               Leave Room
             </button>

@@ -279,7 +279,7 @@ function GamePageContent() {
               onClick={() => {
                 window.location.href = '/'
               }}
-              className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700"
+              className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 cursor-pointer"
             >
               Back to Home
             </button>
@@ -304,7 +304,7 @@ function GamePageContent() {
                 onClick={() => {
                   window.location.href = '/'
                 }}
-                className="px-2 py-1 md:px-4 md:py-2 text-sm md:text-base bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition-colors"
+                className="px-2 py-1 md:px-4 md:py-2 text-sm md:text-base bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
               >
                 ← Home
               </button>
@@ -383,7 +383,7 @@ function GamePageContent() {
                     <button
                       type="button"
                       onClick={handlePlayCard}
-                      className="px-4 py-2 md:px-6 md:py-3 text-sm md:text-base bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors"
+                      className="px-4 py-2 md:px-6 md:py-3 text-sm md:text-base bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors cursor-pointer"
                     >
                       Play Selected Card
                     </button>
