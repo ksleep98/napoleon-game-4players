@@ -192,7 +192,7 @@ export default function RoomsPage() {
             <button
               type="button"
               onClick={() => router.push('/')}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors cursor-pointer"
             >
               ← Back to Home
             </button>
@@ -429,7 +429,7 @@ export default function RoomsPage() {
           <button
             type="button"
             onClick={() => router.push('/')}
-            className="text-blue-600 hover:text-blue-700"
+            className="text-blue-600 hover:text-blue-700 cursor-pointer"
           >
             ← Back to Home
           </button>
