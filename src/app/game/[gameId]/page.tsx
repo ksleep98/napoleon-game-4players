@@ -383,7 +383,7 @@ function GamePageContent() {
                     <button
                       type="button"
                       onClick={handlePlayCard}
-                      className="px-4 py-2 md:px-6 md:py-3 text-sm md:text-base bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors"
+                      className="px-4 py-2 md:px-6 md:py-3 text-sm md:text-base bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors cursor-pointer"
                     >
                       Play Selected Card
                     </button>

@@ -126,7 +126,7 @@ export default function ResetSessionPage() {
               <button
                 type="button"
                 onClick={handleReset}
-                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-6 rounded-lg transition-colors shadow-md hover:shadow-lg"
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-6 rounded-lg transition-colors shadow-md hover:shadow-lg cursor-pointer"
               >
                 🗑️ セッションをリセット
               </button>
@@ -137,14 +137,14 @@ export default function ResetSessionPage() {
                 <button
                   type="button"
                   onClick={handleGoRooms}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg transition-colors shadow-md hover:shadow-lg"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg transition-colors shadow-md hover:shadow-lg cursor-pointer"
                 >
                   🎮 ルーム一覧へ
                 </button>
                 <button
                   type="button"
                   onClick={handleGoHome}
-                  className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-4 px-6 rounded-lg transition-colors"
+                  className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-4 px-6 rounded-lg transition-colors cursor-pointer"
                 >
                   🏠 ホームへ
                 </button>
@@ -155,7 +155,7 @@ export default function ResetSessionPage() {
               <button
                 type="button"
                 onClick={handleGoHome}
-                className="w-full bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-colors"
+                className="w-full bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-colors cursor-pointer"
               >
                 ← キャンセル
               </button>
