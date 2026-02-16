@@ -1,6 +1,6 @@
 /**
  * usePlayerSession Hook テスト
- * Phase 3: Cookie-first with localStorage fallback
+ * Phase 5: httpOnly Cookie only (localStorage完全削除)
  */
 
 import { renderHook, waitFor } from '@testing-library/react'
@@ -16,13 +16,6 @@ import {
   setPlayerOffline,
   setPlayerOnline,
 } from '@/lib/supabase/secureGameService'
-import {
-  clearSecurePlayer,
-  getSecurePlayerId,
-  getSecurePlayerName,
-  isSecureSessionValid,
-  setSecurePlayer,
-} from '@/utils/secureStorage'
 
 // Server Actionsのモック
 jest.mock('@/app/actions/cookieSessionActions', () => ({
@@ -42,20 +35,18 @@ jest.mock('@/lib/supabase/secureGameService', () => ({
   setPlayerOffline: jest.fn(),
 }))
 
-describe('usePlayerSession (Phase 3: Cookie-First)', () => {
+describe('usePlayerSession (Phase 5: httpOnly Cookie Only)', () => {
   beforeEach(() => {
     localStorage.clear()
-    clearSecurePlayer()
     jest.clearAllMocks()
   })
 
   afterEach(() => {
     localStorage.clear()
-    clearSecurePlayer()
   })
 
   describe('Initialization', () => {
-    it('should initialize from httpOnly cookie first', async () => {
+    it('should initialize from httpOnly cookie', async () => {
       // クッキーセッションをモック
       ;(getSessionAction as jest.Mock).mockResolvedValue({
         success: true,
@@ -77,34 +68,11 @@ describe('usePlayerSession (Phase 3: Cookie-First)', () => {
         expect(result.current.playerName).toBe('CookiePlayer')
       })
 
-      // クッキーが優先されたか確認
+      // クッキーが読み込まれた
       expect(getSessionAction).toHaveBeenCalledTimes(1)
     })
 
-    it('should fallback to localStorage when cookie not found', async () => {
-      // クッキーなし
-      ;(getSessionAction as jest.Mock).mockResolvedValue({
-        success: false,
-        error: 'Session not found',
-      })
-
-      // localStorageにセッション設定
-      setSecurePlayer('local-player-id', 'LocalPlayer')
-
-      const { result } = renderHook(() => usePlayerSession())
-
-      // localStorage フォールバック完了を待つ
-      await waitFor(() => {
-        expect(result.current.isAuthenticated).toBe(true)
-        expect(result.current.playerId).toBe('local-player-id')
-        expect(result.current.playerName).toBe('LocalPlayer')
-      })
-
-      // クッキー試行後、localStorageフォールバック
-      expect(getSessionAction).toHaveBeenCalledTimes(1)
-    })
-
-    it('should not authenticate when no session exists', async () => {
+    it('should not authenticate when no cookie exists', async () => {
       // クッキーなし
       ;(getSessionAction as jest.Mock).mockResolvedValue({
         success: false,
@@ -119,11 +87,35 @@ describe('usePlayerSession (Phase 3: Cookie-First)', () => {
         expect(result.current.playerId).toBeNull()
         expect(result.current.playerName).toBeNull()
       })
+
+      expect(getSessionAction).toHaveBeenCalledTimes(1)
+    })
+
+    it('should handle getSessionAction error', async () => {
+      // getSessionAction が例外をスロー
+      ;(getSessionAction as jest.Mock).mockRejectedValue(
+        new Error('Network error')
+      )
+
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation()
+
+      const { result } = renderHook(() => usePlayerSession())
+
+      // エラーハンドリング
+      await waitFor(() => {
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          'Failed to initialize session:',
+          expect.any(Error)
+        )
+        expect(result.current.isAuthenticated).toBe(false)
+      })
+
+      consoleWarnSpy.mockRestore()
     })
   })
 
-  describe('initializePlayer (Cookie-First)', () => {
-    it('should save to httpOnly cookie first', async () => {
+  describe('initializePlayer (httpOnly Cookie Only)', () => {
+    it('should save to httpOnly cookie', async () => {
       // クッキー保存成功
       ;(createSessionAction as jest.Mock).mockResolvedValue({ success: true })
       ;(setPlayerSession as jest.Mock).mockResolvedValue(undefined)
@@ -154,49 +146,35 @@ describe('usePlayerSession (Phase 3: Cookie-First)', () => {
       })
     })
 
-    it('should fallback to localStorage when cookie save fails', async () => {
+    it('should throw error when cookie save fails', async () => {
       // クッキー保存失敗
       ;(createSessionAction as jest.Mock).mockResolvedValue({
         success: false,
         error: 'Cookie save failed',
       })
       ;(setPlayerSession as jest.Mock).mockResolvedValue(undefined)
-      ;(setPlayerOnline as jest.Mock).mockResolvedValue(undefined)
 
       const { result } = renderHook(() => usePlayerSession())
 
-      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation()
+      await expect(
+        act(async () => {
+          await result.current.initializePlayer('player-456', 'FailPlayer')
+        })
+      ).rejects.toThrow('Failed to create session: Cookie save failed')
 
-      await act(async () => {
-        await result.current.initializePlayer('player-456', 'FallbackPlayer')
-      })
-
-      // クッキー失敗 → localStorage フォールバック
+      // クッキー保存が試行された
       expect(createSessionAction).toHaveBeenCalledWith(
         'player-456',
-        'FallbackPlayer'
-      )
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        '[Session] Cookie creation failed, falling back to localStorage:',
-        'Cookie save failed'
+        'FailPlayer'
       )
 
-      // localStorageに保存されている
-      expect(getSecurePlayerId()).toBe('player-456')
-      expect(getSecurePlayerName()).toBe('FallbackPlayer')
-
-      // プレイヤーは認証される
-      await waitFor(() => {
-        expect(result.current.isAuthenticated).toBe(true)
-        expect(result.current.playerId).toBe('player-456')
-      })
-
-      consoleWarnSpy.mockRestore()
+      // プレイヤーは認証されない
+      expect(result.current.isAuthenticated).toBe(false)
     })
   })
 
-  describe('clearPlayer (Cookie-First)', () => {
-    it('should clear httpOnly cookie first', async () => {
+  describe('clearPlayer (httpOnly Cookie Only)', () => {
+    it('should clear httpOnly cookie', async () => {
       // 初期セッション設定
       ;(getSessionAction as jest.Mock).mockResolvedValue({
         success: true,
@@ -263,7 +241,7 @@ describe('usePlayerSession (Phase 3: Cookie-First)', () => {
 
       // エラーログ出力
       expect(consoleWarnSpy).toHaveBeenCalledWith(
-        '[Session] Cookie clear failed, clearing localStorage:',
+        '[Session] Cookie clear failed:',
         'Clear failed'
       )
 
@@ -273,51 +251,6 @@ describe('usePlayerSession (Phase 3: Cookie-First)', () => {
       })
 
       consoleWarnSpy.mockRestore()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle getSessionAction throwing error', async () => {
-      // getSessionAction が例外をスロー
-      ;(getSessionAction as jest.Mock).mockRejectedValue(
-        new Error('Network error')
-      )
-
-      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation()
-
-      const { result } = renderHook(() => usePlayerSession())
-
-      // エラーハンドリング
-      await waitFor(() => {
-        expect(consoleWarnSpy).toHaveBeenCalledWith(
-          'Failed to initialize session:',
-          expect.any(Error)
-        )
-        expect(result.current.isAuthenticated).toBe(false)
-      })
-
-      consoleWarnSpy.mockRestore()
-    })
-
-    it('should handle invalid localStorage session', async () => {
-      // クッキーなし
-      ;(getSessionAction as jest.Mock).mockResolvedValue({
-        success: false,
-      })
-
-      // localStorageに無効なセッション
-      setSecurePlayer('invalid-player', 'InvalidPlayer')
-      // セッション有効期限を切らす
-      jest
-        .spyOn({ isSecureSessionValid }, 'isSecureSessionValid')
-        .mockReturnValue(false)
-
-      const { result } = renderHook(() => usePlayerSession())
-
-      // セッションは認証されない
-      await waitFor(() => {
-        expect(result.current.isAuthenticated).toBe(false)
-      })
     })
   })
 })
