@@ -71,6 +71,7 @@ export function useGameState(gameId: string | null) {
 
     const unsubscribe = subscribeToGameState(
       gameId,
+      playerId, // Phase 4: playerId引数追加（localStorage依存削除）
       (newGameState) => {
         setGameState(newGameState)
         setLoading(false)

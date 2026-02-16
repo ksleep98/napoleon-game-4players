@@ -1,6 +1,20 @@
 /**
  * セキュアなローカルストレージユーティリティ
  * XSS攻撃からプレイヤーデータを保護
+ *
+ * @deprecated Phase 4完了: localStorage使用を非推奨化
+ * - httpOnlyクッキーへ完全移行（XSS完全保護）
+ * - 新規コードではusePlayerSession Hookを使用してください
+ * - このファイルはPhase 2移行期間のフォールバック用に一時的に保持
+ * - 将来のバージョンで削除予定
+ *
+ * 移行ガイド:
+ * - setSecurePlayer() → usePlayerSession().initializePlayer()
+ * - getSecurePlayerId() → usePlayerSession().playerId
+ * - getSecurePlayerName() → usePlayerSession().playerName
+ * - clearSecurePlayer() → usePlayerSession().clearPlayer()
+ *
+ * 詳細: docs/security/HTTPONLY_COOKIE_MIGRATION.md
  */
 
 import CryptoJS from 'crypto-js'

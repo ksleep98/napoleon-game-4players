@@ -105,7 +105,7 @@ export function GameProvider({
     initialized: false,
   })
 
-  const { isAuthenticated } = usePlayerSession()
+  const { playerId, isAuthenticated } = usePlayerSession() // Phase 4: playerId取得
 
   // ゲーム初期化後は実際のゲームIDを使用、そうでなければURLのゲームIDを使用
   const actualGameId = state.gameState?.id || gameId
@@ -148,7 +148,12 @@ export function GameProvider({
   }, [])
 
   // Use separated custom hooks for side effects
-  useGameSubscription(gameId, isAuthenticated, handleGameStateUpdate)
+  useGameSubscription(
+    gameId,
+    playerId, // Phase 4: playerId引数追加（localStorage依存削除）
+    isAuthenticated,
+    handleGameStateUpdate
+  )
 
   useGameInitialization({
     gameId,

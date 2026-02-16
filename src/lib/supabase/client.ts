@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
 import type { GameState, PlayerScore } from '@/types/game'
-import { getSecurePlayerName, setSecurePlayer } from '@/utils/secureStorage'
 
 const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mock.supabase.co'
@@ -75,19 +74,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 })
 
-// プレイヤーIDをセッションに設定するヘルパー関数（セキュア版）
+// プレイヤーIDをセッションに設定するヘルパー関数（RLS設定のみ）
+// Phase 4: localStorage依存を完全削除、httpOnlyクッキーのみ使用
 export const setPlayerSession = async (playerId: string): Promise<void> => {
-  // セキュアストレージに保存
-  if (typeof window !== 'undefined') {
-    try {
-      // プレイヤー名は別途設定する必要があるため、既存の名前を取得または匿名設定
-      const currentName = getSecurePlayerName() || 'Anonymous'
-      setSecurePlayer(playerId, currentName)
-    } catch (error) {
-      console.warn('Failed to use secure storage:', error)
-    }
-  }
-
   // テスト環境でのみRLS関数呼び出しをスキップ
   if (process.env.NODE_ENV === 'test') {
     console.log('Test mode: Skipping RLS setup')
