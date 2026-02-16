@@ -92,7 +92,7 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={handleStartGame}
-                    className="inline-block bg-yellow-500 hover:bg-yellow-600 text-yellow-900 font-bold py-4 px-8 rounded-lg text-xl transition-colors shadow-lg"
+                    className="inline-block bg-yellow-500 hover:bg-yellow-600 text-yellow-900 font-bold py-4 px-8 rounded-lg text-xl transition-colors shadow-lg cursor-pointer"
                   >
                     Join Game Room
                   </button>
@@ -101,7 +101,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={handleQuickGame}
-                  className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-lg text-xl transition-colors shadow-lg"
+                  className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-lg text-xl transition-colors shadow-lg cursor-pointer"
                 >
                   Play vs AI
                 </button>
