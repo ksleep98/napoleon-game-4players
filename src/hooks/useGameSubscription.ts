@@ -8,6 +8,7 @@ import type { GameState } from '@/types/game'
 
 export function useGameSubscription(
   gameId: string | undefined,
+  playerId: string | null,
   isAuthenticated: boolean,
   onGameStateUpdate: (gameState: GameState) => void
 ) {
@@ -29,17 +30,9 @@ export function useGameSubscription(
     const isMultiplayerRoom = gameId.startsWith('game_')
 
     if (isMultiplayerRoom) {
-      // マルチプレイヤーモードではlocalStorageからplayerIdを取得
-      const getPlayerId = () => {
-        if (typeof window !== 'undefined') {
-          return localStorage.getItem('playerId')
-        }
-        return null
-      }
-
-      const playerId = getPlayerId()
+      // Phase 4: httpOnlyクッキーからplayerIdを取得（引数で受け取る）
       if (!playerId) {
-        console.error('❌ No playerId found in localStorage')
+        console.error('❌ No playerId provided')
         return
       }
 
@@ -84,14 +77,18 @@ export function useGameSubscription(
     }
 
     // 通常のゲームモード（AIモード）ではリアルタイムサブスクリプションを使用
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !playerId) {
       return
     }
 
-    const unsubscribe = subscribeToGameState(gameId, stableCallback)
+    const unsubscribe = subscribeToGameState(
+      gameId,
+      playerId, // Phase 4: playerId引数追加（localStorage依存削除）
+      stableCallback
+    )
 
     return () => {
       unsubscribe()
     }
-  }, [gameId, isAuthenticated, stableCallback])
+  }, [gameId, playerId, isAuthenticated, stableCallback])
 }
