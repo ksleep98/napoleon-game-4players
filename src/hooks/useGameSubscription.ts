@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import { loadGameStateAction } from '@/app/actions/gameActions'
+import { BROADCAST_EVENTS, GAME_ID_PREFIXES } from '@/lib/constants'
 import { supabase } from '@/lib/supabase/client'
 import { subscribeToGameState } from '@/lib/supabase/secureGameService'
 import type { GameState } from '@/types/game'
@@ -27,7 +28,7 @@ export function useGameSubscription(
     }
 
     // マルチプレイヤーモード（gameIdが'game_'で始まる場合）ではポーリングを使用
-    const isMultiplayerRoom = gameId.startsWith('game_')
+    const isMultiplayerRoom = gameId.startsWith(GAME_ID_PREFIXES.MULTIPLAYER)
 
     if (isMultiplayerRoom) {
       // Phase 4: httpOnlyクッキーからplayerIdを取得（引数で受け取る）
@@ -53,7 +54,7 @@ export function useGameSubscription(
       const channel = supabase.channel(`game:${gameId}`)
 
       channel
-        .on('broadcast', { event: 'game-updated' }, async () => {
+        .on('broadcast', { event: BROADCAST_EVENTS.GAME_UPDATED }, async () => {
           // ゲーム状態を再取得
           try {
             const result = await loadGameStateAction(gameId, playerId)

@@ -5,6 +5,7 @@
 
 'use server'
 
+import { SESSION_DURATION_MS, SESSION_ERRORS } from '@/lib/constants'
 import {
   clearSessionCookie,
   getSessionCookie,
@@ -40,7 +41,7 @@ export async function createSessionAction(
     if (!playerId || !playerName) {
       return {
         success: false,
-        error: 'Player ID and name are required',
+        error: SESSION_ERRORS.REQUIRED,
       }
     }
 
@@ -52,7 +53,7 @@ export async function createSessionAction(
       playerName,
       sessionToken,
       createdAt: now,
-      expiresAt: now + 86400000, // 24時間（ミリ秒）
+      expiresAt: now + SESSION_DURATION_MS,
     }
 
     // httpOnlyクッキーに保存
@@ -89,7 +90,7 @@ export async function getSessionAction(): Promise<
     if (!session) {
       return {
         success: false,
-        error: 'Session not found',
+        error: SESSION_ERRORS.NOT_FOUND,
       }
     }
 
@@ -98,7 +99,7 @@ export async function getSessionAction(): Promise<
       await clearSessionCookie()
       return {
         success: false,
-        error: 'Session expired',
+        error: SESSION_ERRORS.EXPIRED,
       }
     }
 
@@ -191,7 +192,7 @@ export async function refreshSessionAction(): Promise<
     if (!session) {
       return {
         success: false,
-        error: 'Session not found',
+        error: SESSION_ERRORS.NOT_FOUND,
       }
     }
 
@@ -199,7 +200,7 @@ export async function refreshSessionAction(): Promise<
       await clearSessionCookie()
       return {
         success: false,
-        error: 'Session expired',
+        error: SESSION_ERRORS.EXPIRED,
       }
     }
 
