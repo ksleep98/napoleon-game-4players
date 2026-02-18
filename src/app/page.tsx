@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { PerformanceProvider } from '@/components/debug/PerformanceDashboard'
 import { usePlayerSession } from '@/hooks/useSupabase'
+import { AI_GAME_DEFAULTS, GAME_ID_PREFIXES } from '@/lib/constants'
 import { FEATURE_FLAGS } from '@/lib/utils/environment'
 
 export default function Home() {
@@ -16,13 +17,16 @@ export default function Home() {
   const handleQuickGame = async () => {
     try {
       // AI対戦用のクイックスタート（人間1人 + AI 3人）
-      const gameId = `ai_game_${Date.now()}_${Math.random()
+      const gameId = `${GAME_ID_PREFIXES.AI}${Date.now()}_${Math.random()
         .toString(36)
         .substring(2, 8)}`
 
       // Phase 5: httpOnlyクッキーでセッション保存（localStorage削除）
       if (!isAuthenticated) {
-        await initializePlayer('player_1', 'You')
+        await initializePlayer(
+          AI_GAME_DEFAULTS.PLAYER_ID,
+          AI_GAME_DEFAULTS.PLAYER_NAME
+        )
       }
 
       router.push(`/game/${gameId}?ai=true`)

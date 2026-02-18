@@ -189,8 +189,36 @@ export const CONNECTION_STATES = {
   CONNECTING: 'CONNECTING',
   OPEN: 'OPEN',
   CLOSED: 'CLOSED',
+  SUBSCRIBED: 'SUBSCRIBED',
   CHANNEL_ERROR: 'CHANNEL_ERROR',
   TIMED_OUT: 'TIMED_OUT',
+} as const
+
+// Session error messages
+export const SESSION_ERRORS = {
+  NOT_FOUND: 'Session not found',
+  EXPIRED: 'Session expired',
+  REQUIRED: 'Player ID and name are required',
+} as const
+
+// Session duration in milliseconds (24 hours)
+export const SESSION_DURATION_MS = 86400000
+
+// Supabase Realtime broadcast event names
+export const BROADCAST_EVENTS = {
+  GAME_UPDATED: 'game-updated',
+} as const
+
+// Game ID prefixes for mode detection
+export const GAME_ID_PREFIXES = {
+  MULTIPLAYER: 'game_',
+  AI: 'ai_game_',
+} as const
+
+// Default player info for AI game quick start
+export const AI_GAME_DEFAULTS = {
+  PLAYER_ID: 'player_1',
+  PLAYER_NAME: 'You',
 } as const
 
 // Jokerを除外した52枚のトランプカードデッキを生成（スペード・ハート・ダイヤ・クラブ各13枚）
