@@ -1,4 +1,10 @@
-# Review PR Skill
+---
+name: review-pr
+description: プルリクエストのレビューを効率的かつ効果的に行うためのガイド。品質保証、セキュリティチェック、コーディング規約の確認を実施します。Use when reviewing pull requests or providing code feedback.
+argument-hint: [PR URL or PR number]
+---
+
+# PRレビュースキル
 
 このスキルは、プルリクエストのレビューを効率的かつ効果的に行うためのガイドです。
 

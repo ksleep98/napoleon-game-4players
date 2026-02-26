@@ -1,0 +1,44 @@
+{
+  "$schema": "https://claude.ai/schema/settings.json",
+  "description": "Napoleon Game (4 Players) - Team shared Claude Code settings",
+  "permissions": {
+    "allow": [
+      "Bash(pnpm:*)",
+      "Bash(npm:*)",
+      "Bash(git:*)",
+      "Bash(gh:*)",
+      "Bash(npx:*)",
+      "Bash(node:*)",
+      "Bash(docker:*)",
+      "Bash(./scripts/*)",
+      "WebSearch",
+      "mcp__serena__*",
+      "mcp__github__*"
+    ],
+    "deny": ["Bash(rm -rf /)", "Bash(sudo rm:*)", "Bash(git push --force:*)"],
+    "ask": [
+      "Bash(git push origin main)",
+      "Bash(git push origin develop)",
+      "Bash(pnpm publish:*)",
+      "Bash(vercel --prod:*)"
+    ]
+  },
+  "rules": {
+    "coding": {
+      "language": "TypeScript",
+      "style": "Biome",
+      "conventions": "Conventional Commits",
+      "importStyle": "static"
+    },
+    "branch": {
+      "protected": ["main", "develop"],
+      "pattern": "feature/*"
+    },
+    "testing": {
+      "required": true,
+      "framework": "Jest",
+      "coverage": "recommended"
+    }
+  },
+  "enableAllProjectMcpServers": true
+}

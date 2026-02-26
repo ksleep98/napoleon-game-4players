@@ -18,7 +18,10 @@ import { calculateGameResult, getPlayerFaceCardCount } from '@/lib/scoring'
 import type { Card as CardType, NapoleonDeclaration } from '@/types/game'
 
 function GamePageContent() {
-  const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null) // 実際の実装では認証から取得
+  const searchParams = useSearchParams()
+  const isMultiplayer = searchParams.get('multiplayer') === 'true'
+
+  const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null)
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
 
   const { gameState, loading, error, actions, utils } = useGame()
@@ -26,6 +29,16 @@ function GamePageContent() {
   // actionsの参照を安定化
   const actionsRef = useRef(actions)
   actionsRef.current = actions
+
+  // マルチプレイヤーモードでplayerIdを取得
+  useEffect(() => {
+    if (isMultiplayer) {
+      const storedPlayerId = localStorage.getItem('playerId')
+      if (storedPlayerId && storedPlayerId !== currentPlayerId) {
+        setCurrentPlayerId(storedPlayerId)
+      }
+    }
+  }, [isMultiplayer, currentPlayerId])
 
   // プレイヤーIDを設定（AIモードでは人間プレイヤー、通常モードでは最初のプレイヤー）
   // プレイヤー構成の変化のみを監視（プレイヤー数とAIフラグの変化）
@@ -44,6 +57,9 @@ function GamePageContent() {
   }, [gameState?.players])
 
   useEffect(() => {
+    // マルチプレイヤーモードの場合はlocalStorageから取得するのでスキップ
+    if (isMultiplayer) return
+
     if (!playerConfig) return
 
     if (playerConfig.hasAI && playerConfig.humanPlayerId) {
@@ -53,13 +69,11 @@ function GamePageContent() {
     } else if (!currentPlayerId && playerConfig.firstPlayerId) {
       setCurrentPlayerId(playerConfig.firstPlayerId)
     }
-  }, [playerConfig, currentPlayerId])
+  }, [playerConfig, currentPlayerId, isMultiplayer])
 
   // 配り直しの自動検出と実行
   useEffect(() => {
     if (gameState?.needsRedeal) {
-      console.log('All players passed - triggering automatic redeal')
-
       // 1.5秒後に配り直しを実行（ユーザーにメッセージを表示するため）
       const timer = setTimeout(() => {
         actionsRef.current.redealCards()
@@ -161,7 +175,6 @@ function GamePageContent() {
   if (gameState.phase === GAME_PHASES.FINISHED) {
     // トリック結果表示中は、ゲームボードも表示（早期終了の場合も含む）
     if (gameState.showingTrickResult && gameState.lastCompletedTrick) {
-      console.log('🎯 FINISHED phase - Still showing trick result, waiting...')
       // トリック結果表示を優先し、ゲーム結果画面は後で表示
       // ゲームボードも表示してトリック結果の背景として機能させる
       return (
@@ -206,7 +219,6 @@ function GamePageContent() {
     }
 
     const result = calculateGameResult(gameState)
-    console.log('🎯 FINISHED phase - Showing final game results')
 
     return (
       <div className="min-h-screen bg-gray-100 py-8">
@@ -267,7 +279,7 @@ function GamePageContent() {
               onClick={() => {
                 window.location.href = '/'
               }}
-              className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700"
+              className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 cursor-pointer"
             >
               Back to Home
             </button>
@@ -292,7 +304,7 @@ function GamePageContent() {
                 onClick={() => {
                   window.location.href = '/'
                 }}
-                className="px-2 py-1 md:px-4 md:py-2 text-sm md:text-base bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition-colors"
+                className="px-2 py-1 md:px-4 md:py-2 text-sm md:text-base bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
               >
                 ← Home
               </button>
@@ -354,7 +366,7 @@ function GamePageContent() {
               />
             )}
 
-            {/* プレイヤーの手札 */}
+            {/* プレイヤーの手札 - 常に自分の手札のみ表示 */}
             {currentPlayer && (
               <div className="space-y-2 md:space-y-4">
                 <PlayerHand
@@ -371,7 +383,7 @@ function GamePageContent() {
                     <button
                       type="button"
                       onClick={handlePlayCard}
-                      className="px-4 py-2 md:px-6 md:py-3 text-sm md:text-base bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors"
+                      className="px-4 py-2 md:px-6 md:py-3 text-sm md:text-base bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors cursor-pointer"
                     >
                       Play Selected Card
                     </button>
@@ -432,11 +444,13 @@ function GamePageContent() {
                               N
                             </span>
                           )}
-                          {player.isAdjutant && isAdjutantRevealed && (
-                            <span className="px-1 py-0.5 md:px-2 md:py-1 bg-green-200 text-green-800 rounded-full text-[0.6rem] md:text-xs font-bold">
-                              A
-                            </span>
-                          )}
+                          {player.isAdjutant &&
+                            (player.id === currentPlayerId ||
+                              isAdjutantRevealed) && (
+                              <span className="px-1 py-0.5 md:px-2 md:py-1 bg-green-200 text-green-800 rounded-full text-[0.6rem] md:text-xs font-bold">
+                                A
+                              </span>
+                            )}
                         </div>
 
                         <div className="text-[0.65rem] md:text-sm text-gray-600 mb-1 md:mb-2">

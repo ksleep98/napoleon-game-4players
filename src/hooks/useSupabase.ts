@@ -1,6 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useReducer, useState } from 'react'
+import {
+  clearSessionAction,
+  createSessionAction,
+  getSessionAction,
+} from '@/app/actions/cookieSessionActions'
 import { ACTION_TYPES, CONNECTION_STATES } from '@/lib/constants'
 import { setPlayerSession } from '@/lib/supabase/client'
 import {
@@ -11,13 +16,6 @@ import {
   subscribeToGameState,
 } from '@/lib/supabase/secureGameService'
 import type { GameRoom, GameState, Player } from '@/types/game'
-import {
-  clearSecurePlayer,
-  getSecurePlayerId,
-  getSecurePlayerName,
-  isSecureSessionValid,
-  setSecurePlayer,
-} from '@/utils/secureStorage'
 
 // 接続状態フック
 export function useConnectionState() {
@@ -66,6 +64,7 @@ export function useGameState(gameId: string | null) {
 
     const unsubscribe = subscribeToGameState(
       gameId,
+      playerId, // Phase 4: playerId引数追加（localStorage依存削除）
       (newGameState) => {
         setGameState(newGameState)
         setLoading(false)
@@ -178,17 +177,20 @@ export function usePlayerSession() {
   useEffect(() => {
     const initializeSession = async () => {
       try {
-        const securePlayerId = getSecurePlayerId()
-        const securePlayerName = getSecurePlayerName()
+        // Phase 5: httpOnlyクッキーのみ使用（localStorage完全削除）
+        const cookieResult = await getSessionAction()
 
-        if (securePlayerId && isSecureSessionValid()) {
+        if (cookieResult.success && cookieResult.data) {
           dispatch({
             type: ACTION_TYPES.PLAYER_SESSION.SET_SESSION_FROM_SECURE,
-            payload: { id: securePlayerId, name: securePlayerName },
+            payload: {
+              id: cookieResult.data.playerId,
+              name: cookieResult.data.playerName,
+            },
           })
         }
       } catch (error) {
-        console.warn('Failed to initialize secure session:', error)
+        console.warn('Failed to initialize session:', error)
       }
     }
 
@@ -197,7 +199,16 @@ export function usePlayerSession() {
 
   const initializePlayer = useCallback(async (id: string, name: string) => {
     try {
-      setSecurePlayer(id, name)
+      // Phase 5: httpOnlyクッキーのみ使用（localStorage完全削除）
+      const cookieResult = await createSessionAction(id, name)
+
+      if (!cookieResult.success) {
+        throw new Error(
+          `Failed to create session: ${cookieResult.error || 'Unknown error'}`
+        )
+      }
+
+      // Supabase RLS設定
       await setPlayerSession(id)
 
       dispatch({
@@ -217,7 +228,13 @@ export function usePlayerSession() {
         await setPlayerOffline(state.playerId)
       }
 
-      clearSecurePlayer()
+      // Phase 5: httpOnlyクッキーのみクリア（localStorage完全削除）
+      const cookieResult = await clearSessionAction()
+
+      if (!cookieResult.success) {
+        console.warn('[Session] Cookie clear failed:', cookieResult.error)
+      }
+
       dispatch({ type: ACTION_TYPES.PLAYER_SESSION.CLEAR_PLAYER })
     } catch (error) {
       console.warn('Failed to clear player session:', error)

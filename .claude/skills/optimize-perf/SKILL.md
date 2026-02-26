@@ -1,4 +1,9 @@
-# Optimize Performance Skill
+---
+name: optimize-perf
+description: Next.js + Supabaseプロジェクトのパフォーマンスを体系的に最適化します。データベース最適化、ネットワーク最適化、レンダリング最適化、バンドルサイズ最適化を実施します。Use when improving application performance or reducing load times.
+---
+
+# パフォーマンス最適化スキル
 
 このスキルは、Next.js + Supabaseプロジェクトのパフォーマンス最適化を体系的に行うためのガイドです。
 

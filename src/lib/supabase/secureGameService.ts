@@ -1,3 +1,4 @@
+import { getSessionAction } from '@/app/actions/cookieSessionActions'
 import {
   createGameRoomAction,
   createPlayerAction,
@@ -14,39 +15,33 @@ import {
 } from '@/app/actions/gameActions'
 import { CONNECTION_STATES } from '@/lib/constants'
 import type { GameResult, GameRoom, GameState, Player } from '@/types/game'
-import { getSecurePlayerId } from '@/utils/secureStorage'
 import { setPlayerSession, supabase } from './client'
 
-// セキュアなゲームサービス関数（サーバーアクション使用）
-function getPlayerId(gameState?: GameState): string {
-  // セキュアストレージからプレイヤーIDを取得
-  const playerId = getSecurePlayerId()
+// セキュアなゲームサービス関数（httpOnlyクッキー使用）
+// Phase 4: localStorage依存を完全削除、httpOnlyクッキーのみ使用
+async function getPlayerId(gameState?: GameState): Promise<string> {
+  // httpOnlyクッキーからプレイヤーIDを取得
+  const sessionResult = await getSessionAction()
 
-  if (playerId) {
-    return playerId
+  if (sessionResult.success && sessionResult.data?.playerId) {
+    return sessionResult.data.playerId
   }
 
-  // フォールバック1: localStorageから取得（マルチプレイヤールーム用）
-  if (typeof window !== 'undefined') {
-    const localPlayerId = localStorage.getItem('playerId')
-    if (localPlayerId) {
-      return localPlayerId
-    }
-  }
-
-  // フォールバック2: ゲーム状態から取得を試行
+  // フォールバック: ゲーム状態から取得を試行
   if (gameState && gameState.players.length > 0) {
     return gameState.players[0].id
   }
 
-  throw new Error('Player session not found. Please use usePlayerSession hook.')
+  throw new Error(
+    'Player session not found. Please use usePlayerSession hook to initialize.'
+  )
 }
 
 /**
  * セキュアなゲーム状態保存
  */
 export async function secureGameStateSave(gameState: GameState): Promise<void> {
-  const playerId = getPlayerId(gameState)
+  const playerId = await getPlayerId(gameState)
 
   // プレイヤーセッションを現在のゲーム状態の実際のプレイヤーIDに更新
   let actualPlayerId = playerId
@@ -95,8 +90,6 @@ export async function secureGameStateSave(gameState: GameState): Promise<void> {
 
       throw new Error(result.error || 'Failed to save game state')
     }
-
-    console.log('✅ Game state saved successfully')
   } catch (actionError) {
     console.error('Server action threw error:', actionError)
     throw actionError
@@ -109,7 +102,7 @@ export async function secureGameStateSave(gameState: GameState): Promise<void> {
 export async function secureGameStateLoad(
   gameId: string
 ): Promise<GameState | null> {
-  const playerId = getPlayerId()
+  const playerId = await getPlayerId()
   const result = await loadGameStateAction(gameId, playerId)
 
   if (!result.success) {
@@ -126,7 +119,7 @@ export async function secureGameStateLoad(
  * セキュアなゲーム結果保存
  */
 export async function secureGameResultSave(result: GameResult): Promise<void> {
-  const playerId = getPlayerId()
+  const playerId = await getPlayerId()
   const saveResult = await saveGameResultAction(result, playerId)
 
   if (!saveResult.success) {
@@ -151,13 +144,20 @@ export async function securePlayerCreate(
 /**
  * リアルタイム監視（クライアントサイド）
  * RLSポリシーが適用されるため、プレイヤーセッション設定が必要
+ * Phase 4: playerId引数を受け取るように変更（localStorage依存削除）
  */
 export function secureSubscribeToGameState(
   gameId: string,
+  playerId: string,
   onUpdate: (gameState: GameState) => void,
   onError?: (error: Error) => void
 ) {
-  const playerId = getPlayerId()
+  console.log(
+    '📡 Setting up subscription for game:',
+    gameId,
+    'playerId:',
+    playerId
+  )
 
   const channel = supabase
     .channel(`game_${gameId}`, {
@@ -180,12 +180,19 @@ export function secureSubscribeToGameState(
           // プレイヤーがゲームに参加しているかチェック
           const playerInGame = gameState.players.some((p) => p.id === playerId)
           if (!playerInGame) {
+            console.error(
+              '❌ Player not in game:',
+              playerId,
+              'players:',
+              gameState.players.map((p) => p.id)
+            )
             onError?.(new Error('Player not in game'))
             return
           }
 
           onUpdate(gameState)
         } catch (_error) {
+          console.error('❌ Failed to parse game state update:', _error)
           onError?.(new Error('Failed to parse game state update'))
         }
       }
@@ -196,6 +203,7 @@ export function secureSubscribeToGameState(
         status === CONNECTION_STATES.CHANNEL_ERROR ||
         status === CONNECTION_STATES.TIMED_OUT
       ) {
+        console.error('❌ Subscription failed with status:', status)
         onError?.(new Error('Failed to subscribe to game updates'))
       }
     })
@@ -294,11 +302,10 @@ export async function secureGameRoomCreate(
 
 /**
  * セキュアなゲームルーム一覧取得
+ * Phase 4: localStorage依存削除、playerIdは不要（ルーム一覧は公開情報）
  */
 export async function secureGameRoomsGet(): Promise<GameRoom[]> {
-  // プレイヤーIDは任意（ルーム一覧取得には不要）
-  const playerId = getSecurePlayerId()
-  const result = await getGameRoomsAction(playerId || undefined)
+  const result = await getGameRoomsAction(undefined)
 
   if (!result.success) {
     throw new Error(result.error || 'Failed to get game rooms')
@@ -371,10 +378,11 @@ export async function setPlayerOffline(playerId: string): Promise<void> {
 
 export function subscribeToGameState(
   gameId: string,
+  playerId: string,
   onUpdate: (gameState: GameState) => void,
   onError?: (error: Error) => void
 ) {
-  return secureSubscribeToGameState(gameId, onUpdate, onError)
+  return secureSubscribeToGameState(gameId, playerId, onUpdate, onError)
 }
 
 /**

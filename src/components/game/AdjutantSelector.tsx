@@ -268,7 +268,7 @@ export function AdjutantSelector({
           <button
             type="button"
             onClick={handleConfirmSelection}
-            className="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
+            className="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors cursor-pointer"
           >
             ✅ Confirm Adjutant Selection
           </button>

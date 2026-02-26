@@ -157,7 +157,7 @@ export function CardExchangeSelector({
           type="button"
           onClick={handleConfirmExchange}
           disabled={selectedCards.size !== 4}
-          className="px-8 py-3 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white font-bold rounded-lg transition-colors shadow-lg disabled:cursor-not-allowed"
+          className="px-8 py-3 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white font-bold rounded-lg transition-colors shadow-lg disabled:cursor-not-allowed cursor-pointer"
         >
           Exchange Cards
         </button>

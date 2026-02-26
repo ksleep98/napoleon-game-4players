@@ -1,4 +1,10 @@
-# Commit Skill
+---
+name: commit
+description: プロジェクトのConventional Commits規約に従った高品質なコミットを作成します。Use when creating commits, fixing commit messages, or following commit conventions.
+disable-model-invocation: true
+---
+
+# コミット作成スキル
 
 このスキルは、プロジェクトのコミットメッセージ規約に従った高品質なコミットを作成するためのガイドです。
 

@@ -18,7 +18,23 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
   const progress = getGameProgress(gameState)
 
   // プレイヤーの位置を計算（4人のプレイヤーを上下左右に配置）
+  // マルチプレイヤーの場合は、currentPlayerIdを基準に相対的な位置を計算
   const getPlayerPosition = (playerIndex: number) => {
+    // currentPlayerIdが指定されている場合は、そのプレイヤーをbottomに配置
+    if (currentPlayerId) {
+      const currentPlayerIndex = gameState.players.findIndex(
+        (p) => p.id === currentPlayerId
+      )
+
+      if (currentPlayerIndex !== -1) {
+        // 自分を基準に相対的な位置を計算（時計回り）
+        const relativeIndex = (playerIndex - currentPlayerIndex + 4) % 4
+        const positions = ['bottom', 'left', 'top', 'right']
+        return positions[relativeIndex]
+      }
+    }
+
+    // currentPlayerIdが指定されていない場合は、従来通り
     const positions = [
       'bottom', // プレイヤー1（自分）
       'left', // プレイヤー2
@@ -55,7 +71,7 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
 
   // プレイヤーのアイコン表示ロジックを統一化
   const getPlayerIcons = (
-    player: { isNapoleon: boolean; isAdjutant: boolean },
+    player: { id: string; isNapoleon: boolean; isAdjutant: boolean },
     playedCard?: PlayedCard
   ) => {
     const icons = []
@@ -72,18 +88,24 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
       )
     }
 
-    // 通常の副官アイコン（副官プレイヤーが判明している場合）
+    // 副官アイコン表示条件：自分が副官 OR 副官が判明している
+    const isCurrentUser = player.id === currentPlayerId
     const isAdjutantRevealed =
-      player.isAdjutant &&
       gameState.tricks.some((trick) =>
         trick.cards.some(
           (playedCard) =>
             gameState.napoleonCard &&
             playedCard.card.id === gameState.napoleonCard.id
         )
+      ) ||
+      gameState.tricks.some((trick) =>
+        trick.cards.some((playedCard) => playedCard.revealsAdjutant)
+      ) ||
+      gameState.currentTrick.cards.some(
+        (playedCard) => playedCard.revealsAdjutant
       )
 
-    if (isAdjutantRevealed) {
+    if (player.isAdjutant && (isCurrentUser || isAdjutantRevealed)) {
       icons.push(
         <span
           key="adjutant"
@@ -155,26 +177,29 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
         <div className="absolute top-1 md:top-2 right-1 md:right-2 bg-gray-900 bg-opacity-95 text-white rounded-lg p-1.5 md:p-3 text-[0.6rem] md:text-xs shadow-lg border border-gray-700">
           <div className="font-semibold mb-1 md:mb-2">Cards</div>
           {playerFaceCards.map((data) => {
-            // 副官が判明しているかチェック
+            // 副官が判明しているかチェック（自分の場合は常に判明）
             const isAdjutantRevealed =
-              data.player.isAdjutant &&
-              (gameState.tricks.some((trick) =>
+              gameState.tricks.some((trick) =>
                 trick.cards.some(
                   (playedCard) =>
                     gameState.napoleonCard &&
                     playedCard.card.id === gameState.napoleonCard.id
                 )
               ) ||
-                gameState.tricks.some((trick) =>
-                  trick.cards.some((playedCard) => playedCard.revealsAdjutant)
-                ) ||
-                gameState.currentTrick.cards.some(
-                  (playedCard) => playedCard.revealsAdjutant
-                ))
+              gameState.tricks.some((trick) =>
+                trick.cards.some((playedCard) => playedCard.revealsAdjutant)
+              ) ||
+              gameState.currentTrick.cards.some(
+                (playedCard) => playedCard.revealsAdjutant
+              )
+
+            const showAdjutant =
+              data.player.isAdjutant &&
+              (data.isCurrentUser || isAdjutantRevealed)
 
             const roleColor = data.player.isNapoleon
               ? 'text-yellow-400'
-              : isAdjutantRevealed
+              : showAdjutant
                 ? 'text-green-400'
                 : 'text-blue-400'
 
@@ -316,13 +341,14 @@ export function GameBoard({ gameState, currentPlayerId }: GameBoardProps) {
               </span>
             )}
             {currentPlayer?.isAdjutant &&
-              (gameState.tricks.some((trick) =>
-                trick.cards.some(
-                  (playedCard) =>
-                    gameState.napoleonCard &&
-                    playedCard.card.id === gameState.napoleonCard.id
-                )
-              ) ||
+              (currentPlayer.id === currentPlayerId ||
+                gameState.tricks.some((trick) =>
+                  trick.cards.some(
+                    (playedCard) =>
+                      gameState.napoleonCard &&
+                      playedCard.card.id === gameState.napoleonCard.id
+                  )
+                ) ||
                 gameState.tricks.some((trick) =>
                   trick.cards.some((playedCard) => playedCard.revealsAdjutant)
                 ) ||

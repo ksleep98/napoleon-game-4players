@@ -2,26 +2,38 @@
 
 import { useRouter } from 'next/navigation'
 import { PerformanceProvider } from '@/components/debug/PerformanceDashboard'
+import { usePlayerSession } from '@/hooks/useSupabase'
+import { AI_GAME_DEFAULTS, GAME_ID_PREFIXES } from '@/lib/constants'
 import { FEATURE_FLAGS } from '@/lib/utils/environment'
 
 export default function Home() {
   const router = useRouter()
+  const { initializePlayer, isAuthenticated } = usePlayerSession()
 
   const handleStartGame = () => {
     router.push('/rooms')
   }
 
-  const handleQuickGame = () => {
-    // AI対戦用のクイックスタート（人間1人 + AI 3人）
-    const gameId = `ai_game_${Date.now()}_${Math.random()
-      .toString(36)
-      .substring(2, 8)}`
+  const handleQuickGame = async () => {
+    try {
+      // AI対戦用のクイックスタート（人間1人 + AI 3人）
+      const gameId = `${GAME_ID_PREFIXES.AI}${Date.now()}_${Math.random()
+        .toString(36)
+        .substring(2, 8)}`
 
-    // プレイヤーIDを保存
-    localStorage.setItem('playerId', 'player_1')
-    localStorage.setItem('playerName', 'You')
+      // Phase 5: httpOnlyクッキーでセッション保存（localStorage削除）
+      if (!isAuthenticated) {
+        await initializePlayer(
+          AI_GAME_DEFAULTS.PLAYER_ID,
+          AI_GAME_DEFAULTS.PLAYER_NAME
+        )
+      }
 
-    router.push(`/game/${gameId}?ai=true`)
+      router.push(`/game/${gameId}?ai=true`)
+    } catch (error) {
+      console.error('Failed to initialize player:', error)
+      alert('Failed to start game. Please try again.')
+    }
   }
 
   return (
@@ -43,34 +55,34 @@ export default function Home() {
           <div className="max-w-4xl mx-auto">
             {/* ゲームの特徴 */}
             <div className="grid md:grid-cols-3 gap-8 mb-16">
-              <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6 text-center">
+              <div className="bg-green-800 bg-opacity-40 backdrop-blur-sm rounded-lg p-6 text-center">
                 <div className="text-4xl mb-4">🎴</div>
                 <h3 className="text-xl font-semibold text-white mb-2">
                   Classic Napoleon
                 </h3>
-                <p className="text-green-200">
+                <p className="text-green-100">
                   Play the traditional Japanese card game with authentic rules
                   and gameplay
                 </p>
               </div>
 
-              <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6 text-center">
+              <div className="bg-green-800 bg-opacity-40 backdrop-blur-sm rounded-lg p-6 text-center">
                 <div className="text-4xl mb-4">👥</div>
                 <h3 className="text-xl font-semibold text-white mb-2">
                   4-Player Online
                 </h3>
-                <p className="text-green-200">
+                <p className="text-green-100">
                   Join or create rooms to play with friends or other players
                   online
                 </p>
               </div>
 
-              <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6 text-center">
+              <div className="bg-green-800 bg-opacity-40 backdrop-blur-sm rounded-lg p-6 text-center">
                 <div className="text-4xl mb-4">⚡</div>
                 <h3 className="text-xl font-semibold text-white mb-2">
                   Real-time Play
                 </h3>
-                <p className="text-green-200">
+                <p className="text-green-100">
                   Live gameplay with instant updates and smooth card animations
                 </p>
               </div>
@@ -84,7 +96,7 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={handleStartGame}
-                    className="inline-block bg-yellow-500 hover:bg-yellow-600 text-yellow-900 font-bold py-4 px-8 rounded-lg text-xl transition-colors shadow-lg"
+                    className="inline-block bg-yellow-500 hover:bg-yellow-600 text-yellow-900 font-bold py-4 px-8 rounded-lg text-xl transition-colors shadow-lg cursor-pointer"
                   >
                     Join Game Room
                   </button>
@@ -93,13 +105,13 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={handleQuickGame}
-                  className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-lg text-xl transition-colors shadow-lg"
+                  className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-lg text-xl transition-colors shadow-lg cursor-pointer"
                 >
                   Play vs AI
                 </button>
               </div>
 
-              <p className="text-green-200 text-sm">
+              <p className="text-green-100 text-sm">
                 {FEATURE_FLAGS.MULTIPLAYER_ROOMS
                   ? 'Join a room to play with others, or play against AI to practice'
                   : 'Play against AI to practice your skills'}
@@ -107,7 +119,7 @@ export default function Home() {
             </div>
 
             {/* ゲームルール */}
-            <div className="mt-16 bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-8">
+            <div className="mt-16 bg-green-800 bg-opacity-40 backdrop-blur-sm rounded-lg p-8">
               <h3 className="text-2xl font-bold text-white mb-6 text-center">
                 How to Play
               </h3>

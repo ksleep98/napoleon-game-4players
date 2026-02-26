@@ -8,12 +8,18 @@
 .claude/
 ├── README.md                 # このファイル
 ├── CLAUDE.md                 # プロジェクト指示書（メイン設定）
+├── settings.json             # チーム共有設定
 ├── settings.local.json       # Claude Codeローカル設定
 └── skills/                   # スキル定義フォルダ
-    ├── commit.md             # コミット作成スキル
-    ├── review-pr.md          # PRレビュースキル
-    ├── fix-build.md          # ビルドエラー修正スキル
-    └── optimize-perf.md      # パフォーマンス最適化スキル
+    ├── commit/SKILL.md           # コミット作成スキル
+    ├── review-pr/SKILL.md        # PRレビュースキル
+    ├── fix-build/SKILL.md        # ビルドエラー修正スキル
+    ├── optimize-perf/SKILL.md    # パフォーマンス最適化スキル
+    ├── deploy/SKILL.md           # Vercelデプロイスキル
+    ├── db-migrate/SKILL.md       # Supabaseマイグレーションスキル
+    ├── test/SKILL.md             # テスト実行・修正スキル
+    ├── security-check/SKILL.md   # セキュリティチェックスキル
+    └── create-pr/SKILL.md        # PR作成スキル
 ```
 
 ## ファイル説明
@@ -38,6 +44,19 @@
 - プロジェクト固有のルールや規約に従った作業が可能
 - 常に最新の状態に保つこと
 
+### settings.json
+
+チーム共有のClaude Code設定ファイル。
+
+**内容**:
+
+- 許可・拒否・確認が必要なコマンド
+- コーディング規約
+- ブランチ保護設定
+- テスト要件
+
+**注意**: Gitで管理（チーム全体で共有）
+
 ### settings.local.json
 
 Claude Codeのローカル設定ファイル。
@@ -45,7 +64,7 @@ Claude Codeのローカル設定ファイル。
 **注意**:
 
 - `.gitignore`で除外されているため、個人設定を含む
-- 共有したい設定は`settings.json`を使用
+- チーム共有したい設定は`settings.json`を使用
 - 環境変数やAPIキーは含めない
 
 ### skills/
@@ -120,6 +139,95 @@ Claude Code: /fix-build
 Claude Code: /optimize-perf
 ```
 
+#### deploy.md - Vercelデプロイスキル
+
+**用途**: Vercelへの安全なデプロイ実行
+
+**主な内容**:
+
+- Pre-deployチェック
+- ビルド検証
+- 環境変数確認
+- デプロイ実行とロールバック
+
+**使用方法**:
+
+```
+Claude Code: /deploy
+```
+
+#### db-migrate.md - Supabaseマイグレーションスキル
+
+**用途**: データベースマイグレーションの作成・適用・ロールバック
+
+**主な内容**:
+
+- マイグレーションファイル作成
+- RLSポリシー設定
+- インデックス作成
+- ロールバック手順
+
+**使用方法**:
+
+```
+Claude Code: /db-migrate
+```
+
+#### test.md - テスト実行・修正スキル
+
+**用途**: Jestテストの効率的な実行・作成・修正
+
+**主な内容**:
+
+- テスト実行方法
+- ユニット・コンポーネント・統合テスト
+- ベストプラクティス（AAAパターン）
+- トラブルシューティング
+
+**使用方法**:
+
+```
+Claude Code: /test
+```
+
+#### security-check/SKILL.md - セキュリティチェックスキル
+
+**用途**: 脆弱性検出とセキュリティ強化
+
+**主な内容**:
+
+- 依存関係の脆弱性チェック
+- 環境変数チェック
+- RLSポリシー確認
+- XSS/CSRF対策
+- Server Actionsセキュリティ
+
+**使用方法**:
+
+```
+Claude Code: /security-check
+```
+
+**注意**: `/security-review` はClaude Code組み込みのPRコードレビュー用スキルです（別機能）。
+
+#### create-pr.md - PR作成スキル
+
+**用途**: ローカルでfeatureブランチを作成し、developへのPRを自動作成
+
+**主な内容**:
+
+- ブランチ命名規則
+- Conventional Commitsでのコミット
+- GitHub CLIでのPR作成
+- PR本文テンプレート
+- 自動化スクリプト例
+
+**使用方法**:
+
+```
+Claude Code: /create-pr
+```
+
 ## スキルの使い方
 
 ### 基本的な使用方法
@@ -134,9 +242,14 @@ Claude Code: /optimize-perf
 
    ```
    Claude Code: /commit
+   Claude Code: /create-pr
    Claude Code: /review-pr https://github.com/ksleep98/napoleon-game-4players/pull/167
    Claude Code: /fix-build
    Claude Code: /optimize-perf
+   Claude Code: /deploy
+   Claude Code: /db-migrate
+   Claude Code: /test
+   Claude Code: /security-check
    ```
 
 3. **スキルの詳細を確認**
@@ -217,7 +330,9 @@ code .claude/skills/my-custom-skill.md
 
 - `.claude/CLAUDE.md`
 - `.claude/README.md`
+- `.claude/settings.json`
 - `.claude/skills/*.md`
+- `.claudeignore`
 
 ❌ Gitから除外:
 
@@ -261,6 +376,14 @@ code .claude/skills/my-custom-skill.md
 
 ## 更新履歴
 
+- 2026-02-15: スキルファイル構造修正
+  - スキルファイルを`*.md`から`*/SKILL.md`形式に変更
+  - YAMLフロントマター追加（Claude Code 2.1.6対応）
+  - `audit`スキルを`security-check`にリネーム
+- 2026-02-15: Claude Code最新機能追加
+  - `.claudeignore`追加（コンテキスト最適化）
+  - `.claude/settings.json`追加（チーム共有設定）
+  - 5つの新スキル追加（deploy, db-migrate, test, security-check, create-pr）
 - 2026-01-25: 初期作成
   - CLAUDE.mdをルートから移動
   - skillsフォルダ作成

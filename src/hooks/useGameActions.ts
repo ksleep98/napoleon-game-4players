@@ -15,7 +15,7 @@ import {
   setAdjutantAction,
 } from '@/app/actions/gameLogicActions'
 import { ACTION_TYPES } from '@/lib/constants'
-import { setPlayerSession } from '@/lib/supabase/client'
+import { setPlayerSession, supabase } from '@/lib/supabase/client'
 import { loadGameState } from '@/lib/supabase/secureGameService'
 import type {
   Card,
@@ -23,6 +23,22 @@ import type {
   GameContextState,
   NapoleonDeclaration,
 } from '@/types/game'
+
+// Broadcast helper: ゲーム更新を他のクライアントに通知
+function broadcastGameUpdate(gameId: string) {
+  if (gameId?.startsWith('game_')) {
+    supabase
+      .channel(`game:${gameId}`)
+      .send({
+        type: 'broadcast',
+        event: 'game-updated',
+        payload: { gameId, timestamp: Date.now() },
+      })
+      .catch((err) => {
+        console.error('❌ Failed to broadcast:', err)
+      })
+  }
+}
 
 interface UseGameActionsProps {
   state: GameContextState
@@ -74,7 +90,7 @@ export function useGameActions({
           }
 
           if (result.success && result.data) {
-            const { gameState, gameId: newGameId } = result.data
+            const { gameState } = result.data
 
             dispatch({
               type: ACTION_TYPES.GAME.SET_GAME_STATE,
@@ -178,6 +194,8 @@ export function useGameActions({
               type: ACTION_TYPES.GAME.SET_GAME_STATE,
               payload: { gameState: result.data },
             })
+            // Broadcastで他のプレイヤーに通知
+            broadcastGameUpdate(gameId)
           } else {
             throw new Error(result.error || 'Failed to play card')
           }
@@ -219,6 +237,8 @@ export function useGameActions({
               type: ACTION_TYPES.GAME.SET_GAME_STATE,
               payload: { gameState: result.data },
             })
+            // Broadcastで他のプレイヤーに通知
+            broadcastGameUpdate(gameId)
           } else {
             throw new Error(result.error || 'Failed to declare Napoleon')
           }
@@ -255,6 +275,8 @@ export function useGameActions({
               type: ACTION_TYPES.GAME.SET_GAME_STATE,
               payload: { gameState: result.data },
             })
+            // Broadcastで他のプレイヤーに通知
+            broadcastGameUpdate(gameId)
           } else {
             throw new Error(result.error || 'Failed to pass Napoleon')
           }
@@ -296,6 +318,8 @@ export function useGameActions({
               type: ACTION_TYPES.GAME.SET_GAME_STATE,
               payload: { gameState: result.data },
             })
+            // Broadcastで他のプレイヤーに通知
+            broadcastGameUpdate(gameId)
           } else {
             throw new Error(result.error || 'Failed to set adjutant')
           }
@@ -334,6 +358,8 @@ export function useGameActions({
               type: ACTION_TYPES.GAME.SET_GAME_STATE,
               payload: { gameState: result.data },
             })
+            // Broadcastで他のプレイヤーに通知
+            broadcastGameUpdate(gameId)
           } else {
             throw new Error(result.error || 'Failed to exchange cards')
           }
@@ -370,6 +396,8 @@ export function useGameActions({
             type: ACTION_TYPES.GAME.SET_GAME_STATE,
             payload: { gameState: result.data },
           })
+          // Broadcastで他のプレイヤーに通知
+          broadcastGameUpdate(gameId)
         } else {
           throw new Error(result.error || 'Failed to close trick result')
         }
@@ -406,7 +434,6 @@ export function useGameActions({
             type: ACTION_TYPES.GAME.SET_GAME_STATE,
             payload: { gameState: result.data },
           })
-          console.log('Cards redealt - new game started')
         } else {
           throw new Error(result.error || 'Failed to redeal cards')
         }
