@@ -106,6 +106,34 @@ function selectLeadingCard(
   gameState: GameState,
   player: Player
 ): Card {
+  // 🔧 改善: 手札構成を分析
+  const composition = analyzeHandComposition(player.hand, gameState)
+
+  // 🔧 改善: 戦略的なスートを選択
+  const strategicSuit = selectBestLeadingSuit(
+    player.hand,
+    gameState,
+    player,
+    composition
+  )
+
+  // 戦略的スートが決まっている場合、そのスートからカードを選ぶ
+  if (strategicSuit) {
+    const cardsInStrategicSuit = playableCards.filter(
+      (card) => card.suit === strategicSuit
+    )
+
+    if (cardsInStrategicSuit.length > 0) {
+      return selectBestCardFromSuit(
+        cardsInStrategicSuit,
+        gameState,
+        player,
+        strategicSuit
+      )
+    }
+  }
+
+  // 戦略的スートがない場合、従来のロジックを使用
   // カードを戦略的価値で評価
   const cardEvaluations = playableCards.map((card) => ({
     card,
@@ -114,8 +142,8 @@ function selectLeadingCard(
   }))
 
   // 役割別のリード戦略
-  if (player.isNapoleon) {
-    // ナポレオン：強いカードでトリックを取りに行く
+  if (player.isNapoleon || player.isAdjutant) {
+    // ナポレオンチーム: 強いカードでトリックを取りに行く
     return cardEvaluations.sort(
       (a, b) =>
         b.strategicValue +
@@ -123,7 +151,7 @@ function selectLeadingCard(
         (a.strategicValue + a.leadingStrategy)
     )[0].card
   } else {
-    // 連合軍：相手の強いカードを引き出すか、弱いカードで様子見
+    // 連合軍: 相手の強いカードを引き出すか、弱いカードで様子見
     const weakCards = cardEvaluations.filter(
       (evaluation) => evaluation.strategicValue < 500
     )
@@ -978,4 +1006,318 @@ function shouldPassFaceCardToNapoleon(
 
   // 副官が勝てない場合は、弱い絵札を出してナポレオンに渡す
   return weakestFaceCard
+}
+
+/**
+ * 🆕 手札の構成を分析
+ * スート別のカード枚数、絵札の分布を把握
+ */
+interface HandComposition {
+  suitCounts: Map<Suit, number>
+  faceCardsBySuit: Map<Suit, Card[]>
+  trumpCount: number
+  totalFaceCards: number
+  voidSuits: Suit[] // 持っていないスート
+  shortSuits: Suit[] // 1-2枚しかないスート（ボイド作成候補）
+}
+
+function analyzeHandComposition(
+  hand: Card[],
+  gameState: GameState
+): HandComposition {
+  const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
+  const suits: Suit[] = ['spades', 'hearts', 'diamonds', 'clubs']
+
+  const suitCounts = new Map<Suit, number>()
+  const faceCardsBySuit = new Map<Suit, Card[]>()
+
+  // 初期化
+  for (const suit of suits) {
+    suitCounts.set(suit, 0)
+    faceCardsBySuit.set(suit, [])
+  }
+
+  // スート別にカウント
+  for (const card of hand) {
+    const currentCount = suitCounts.get(card.suit) || 0
+    suitCounts.set(card.suit, currentCount + 1)
+
+    if (isFaceCard(card)) {
+      const faceCards = faceCardsBySuit.get(card.suit) || []
+      faceCards.push(card)
+      faceCardsBySuit.set(card.suit, faceCards)
+    }
+  }
+
+  const trumpCount = suitCounts.get(trumpSuit) || 0
+  const totalFaceCards = hand.filter(isFaceCard).length
+
+  // ボイドスート（0枚）とショートスート（1-2枚）を特定
+  const voidSuits: Suit[] = []
+  const shortSuits: Suit[] = []
+
+  for (const suit of suits) {
+    const count = suitCounts.get(suit) || 0
+    if (count === 0) {
+      voidSuits.push(suit)
+    } else if (count <= 2 && suit !== trumpSuit) {
+      shortSuits.push(suit)
+    }
+  }
+
+  return {
+    suitCounts,
+    faceCardsBySuit,
+    trumpCount,
+    totalFaceCards,
+    voidSuits,
+    shortSuits,
+  }
+}
+
+/**
+ * 🆕 切り札でリードすべきか判定
+ * ナポレオンは切り札支配を狙う、連合軍は切り札引き出しを狙う
+ */
+function shouldLeadWithTrump(
+  hand: Card[],
+  gameState: GameState,
+  player: Player,
+  composition: HandComposition
+): boolean {
+  const gameProgress = calculateGameProgress(gameState)
+  const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
+
+  // 切り札を持っていない場合はfalse
+  if (composition.trumpCount === 0) return false
+
+  if (player.isNapoleon || player.isAdjutant) {
+    // ナポレオンチーム: 切り札支配戦略
+
+    // 終盤（70%以降）で切り札が複数ある場合、切り札でリード
+    if (gameProgress >= 0.7 && composition.trumpCount >= 2) {
+      return true
+    }
+
+    // 中盤（40-70%）で強い切り札（Mighty, Jack, A, K）がある場合
+    if (gameProgress >= 0.4 && gameProgress < 0.7) {
+      const strongTrumps = hand.filter(
+        (card) =>
+          card.suit === trumpSuit &&
+          (checkIsMighty(card) ||
+            checkIsTrumpJack(card, trumpSuit) ||
+            ['A', 'K'].includes(card.rank))
+      )
+      if (strongTrumps.length > 0) {
+        return true
+      }
+    }
+  } else {
+    // 連合軍: 切り札引き出し戦略
+
+    // 序盤（0-40%）で弱い切り札（2-7）がある場合、ナポレオンの強い切り札を引き出す
+    if (gameProgress < 0.4) {
+      const weakTrumps = hand.filter(
+        (card) =>
+          card.suit === trumpSuit &&
+          !checkIsMighty(card) &&
+          !checkIsTrumpJack(card, trumpSuit) &&
+          !checkIsCounterJack(card, trumpSuit) &&
+          ['2', '3', '4', '5', '6', '7'].includes(card.rank)
+      )
+
+      // 弱い切り札が1-2枚ある場合、引き出し戦略を実行
+      if (weakTrumps.length >= 1 && weakTrumps.length <= 2) {
+        return true
+      }
+    }
+  }
+
+  return false
+}
+
+/**
+ * 🆕 戦略的にリードすべきスートを選択
+ * 絵札が多いスート、ボイド作成候補スートなどを考慮
+ */
+function selectBestLeadingSuit(
+  hand: Card[],
+  gameState: GameState,
+  player: Player,
+  composition: HandComposition
+): Suit | null {
+  const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
+  const gameProgress = calculateGameProgress(gameState)
+
+  // 切り札でリードすべき場合
+  if (shouldLeadWithTrump(hand, gameState, player, composition)) {
+    return trumpSuit
+  }
+
+  if (player.isNapoleon || player.isAdjutant) {
+    // ナポレオンチーム: 絵札が多いスートでリード（得点チャンス）
+
+    let bestSuit: Suit | null = null
+    let maxFaceCards = 0
+
+    for (const [suit, faceCards] of composition.faceCardsBySuit) {
+      // 切り札以外で絵札が多いスートを選択
+      if (suit !== trumpSuit && faceCards.length > maxFaceCards) {
+        maxFaceCards = faceCards.length
+        bestSuit = suit
+      }
+    }
+
+    // 絵札が2枚以上あるスートがあれば、そこでリード
+    if (bestSuit && maxFaceCards >= 2) {
+      return bestSuit
+    }
+  } else {
+    // 連合軍: ボイド作成戦略
+
+    // 序盤〜中盤（0-70%）でショートスートがある場合、そこでリード
+    // → 早めにそのスートを使い切り、後で切り札で介入できるようにする
+    if (gameProgress < 0.7 && composition.shortSuits.length > 0) {
+      // ショートスートの中で、絵札が少ないスートを優先（損失を最小化）
+      const shortSuitsByFaceCards = composition.shortSuits.sort((a, b) => {
+        const faceCardsA = composition.faceCardsBySuit.get(a)?.length || 0
+        const faceCardsB = composition.faceCardsBySuit.get(b)?.length || 0
+        return faceCardsA - faceCardsB
+      })
+
+      return shortSuitsByFaceCards[0]
+    }
+
+    // 中盤〜終盤（40%以降）で絵札が多いスートがある場合
+    // → 味方と協力して得点を取りに行く
+    if (gameProgress >= 0.4) {
+      let bestSuit: Suit | null = null
+      let maxFaceCards = 0
+
+      for (const [suit, faceCards] of composition.faceCardsBySuit) {
+        if (suit !== trumpSuit && faceCards.length > maxFaceCards) {
+          maxFaceCards = faceCards.length
+          bestSuit = suit
+        }
+      }
+
+      if (bestSuit && maxFaceCards >= 2) {
+        return bestSuit
+      }
+    }
+  }
+
+  return null
+}
+
+/**
+ * 🆕 指定されたスートから最適なリードカードを選択
+ */
+function selectBestCardFromSuit(
+  cardsInSuit: Card[],
+  gameState: GameState,
+  player: Player,
+  suit: Suit
+): Card {
+  const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
+  const gameProgress = calculateGameProgress(gameState)
+
+  // 切り札の場合
+  if (suit === trumpSuit) {
+    if (player.isNapoleon || player.isAdjutant) {
+      // ナポレオンチーム: 強い切り札でリード（切り札支配）
+      const strongTrumps = cardsInSuit.filter(
+        (card) =>
+          checkIsMighty(card) ||
+          checkIsTrumpJack(card, trumpSuit) ||
+          ['A', 'K', 'Q'].includes(card.rank)
+      )
+
+      if (strongTrumps.length > 0) {
+        // 最も強い切り札を選択
+        return strongTrumps.sort(
+          (a, b) =>
+            getCardStrengthSafe(b, gameState) -
+            getCardStrengthSafe(a, gameState)
+        )[0]
+      }
+
+      // 強い切り札がない場合は、最弱の切り札
+      return cardsInSuit.sort(
+        (a, b) =>
+          getCardStrengthSafe(a, gameState) - getCardStrengthSafe(b, gameState)
+      )[0]
+    } else {
+      // 連合軍: 弱い切り札でリード（ナポレオンの強い切り札を引き出す）
+      const weakTrumps = cardsInSuit.filter(
+        (card) =>
+          !checkIsMighty(card) &&
+          !checkIsTrumpJack(card, trumpSuit) &&
+          !checkIsCounterJack(card, trumpSuit)
+      )
+
+      if (weakTrumps.length > 0) {
+        // 最も弱い切り札を選択
+        return weakTrumps.sort(
+          (a, b) =>
+            getCardStrengthSafe(a, gameState) -
+            getCardStrengthSafe(b, gameState)
+        )[0]
+      }
+
+      // 弱い切り札がない場合は、最弱の切り札
+      return cardsInSuit.sort(
+        (a, b) =>
+          getCardStrengthSafe(a, gameState) - getCardStrengthSafe(b, gameState)
+      )[0]
+    }
+  }
+
+  // 切り札以外の場合
+  if (player.isNapoleon || player.isAdjutant) {
+    // ナポレオンチーム: 絵札が多いスートでは強いカードでリード
+    const faceCards = cardsInSuit.filter(isFaceCard)
+
+    if (faceCards.length >= 2) {
+      // 絵札が2枚以上ある場合、最も強い絵札でリード（トリックを取りに行く）
+      return faceCards.sort(
+        (a, b) =>
+          getCardStrengthSafe(b, gameState) - getCardStrengthSafe(a, gameState)
+      )[0]
+    }
+
+    // 絵札が1枚以下の場合、最弱カードでリード（探り）
+    return cardsInSuit.sort(
+      (a, b) =>
+        getCardStrengthSafe(a, gameState) - getCardStrengthSafe(b, gameState)
+    )[0]
+  } else {
+    // 連合軍: ショートスート（ボイド作成）の場合は最弱カード
+    // それ以外の場合も基本的に最弱カードで探り
+
+    // 序盤〜中盤（0-60%）: 最弱カードで探り
+    if (gameProgress < 0.6) {
+      return cardsInSuit.sort(
+        (a, b) =>
+          getCardStrengthSafe(a, gameState) - getCardStrengthSafe(b, gameState)
+      )[0]
+    }
+
+    // 終盤（60%以降）: 絵札が多いスートでは強いカードでリード
+    const faceCards = cardsInSuit.filter(isFaceCard)
+
+    if (faceCards.length >= 2) {
+      // 終盤で絵札が多い場合、味方と協力して得点を取りに行く
+      return faceCards.sort(
+        (a, b) =>
+          getCardStrengthSafe(b, gameState) - getCardStrengthSafe(a, gameState)
+      )[0]
+    }
+
+    // それ以外は最弱カード
+    return cardsInSuit.sort(
+      (a, b) =>
+        getCardStrengthSafe(a, gameState) - getCardStrengthSafe(b, gameState)
+    )[0]
+  }
 }
