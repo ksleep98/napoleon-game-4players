@@ -106,10 +106,110 @@ function selectLeadingCard(
   gameState: GameState,
   player: Player
 ): Card {
+  // 🔧 改善: 目標達成状況を計算
+  const requirements = calculateWinningRequirements(gameState)
+  const playConservatively = shouldPlayConservatively(player, requirements)
+  const playAggressively = shouldPlayAggressively(player, requirements)
+
   // 🔧 改善: 手札構成を分析
   const composition = analyzeHandComposition(player.hand, gameState)
 
-  // 🔧 改善: 戦略的なスートを選択
+  // 🔧 改善: 保守的プレイの場合、弱いカードで探る
+  if (playConservatively) {
+    if (player.isNapoleon || player.isAdjutant) {
+      // ナポレオンチーム（保守的）: 既に目標達成済みまたは余裕がある
+      // → 絵札を温存、非絵札で探る
+      const nonFaceCards = playableCards.filter((card) => !isFaceCard(card))
+
+      if (nonFaceCards.length > 0) {
+        // 非絵札の中で最も弱いカードでリード
+        return nonFaceCards.sort(
+          (a, b) =>
+            getCardStrengthSafe(a, gameState) -
+            getCardStrengthSafe(b, gameState)
+        )[0]
+      }
+
+      // 非絵札がない場合、最弱の絵札でリード
+      return playableCards.sort(
+        (a, b) =>
+          getCardStrengthSafe(a, gameState) - getCardStrengthSafe(b, gameState)
+      )[0]
+    } else {
+      // 連合軍（保守的）: 既に阻止達成済みまたは勝利確定
+      // → リスクを避けて弱いカードでリード
+      return playableCards.sort(
+        (a, b) =>
+          getCardStrengthSafe(a, gameState) - getCardStrengthSafe(b, gameState)
+      )[0]
+    }
+  }
+
+  // 🔧 改善: 攻撃的プレイの場合、絵札が多いスートを優先
+  if (playAggressively) {
+    if (player.isNapoleon || player.isAdjutant) {
+      // ナポレオンチーム（攻撃的）: 目標達成が危うい
+      // → 絵札が多いスートで積極的に得点を取りに行く
+      const strategicSuit = selectBestLeadingSuit(
+        player.hand,
+        gameState,
+        player,
+        composition
+      )
+
+      if (strategicSuit) {
+        const cardsInStrategicSuit = playableCards.filter(
+          (card) => card.suit === strategicSuit
+        )
+
+        if (cardsInStrategicSuit.length > 0) {
+          return selectBestCardFromSuit(
+            cardsInStrategicSuit,
+            gameState,
+            player,
+            strategicSuit
+          )
+        }
+      }
+
+      // 戦略的スートがない場合、絵札でリード
+      const faceCards = playableCards.filter(isFaceCard)
+      if (faceCards.length > 0) {
+        // 最も強い絵札でリード（トリックを取りに行く）
+        return faceCards.sort(
+          (a, b) =>
+            getCardStrengthSafe(b, gameState) -
+            getCardStrengthSafe(a, gameState)
+        )[0]
+      }
+    } else {
+      // 連合軍（攻撃的）: ナポレオンが優勢で阻止が危うい
+      // → 強いカードでナポレオンの強いカードを引き出す
+      const strategicSuit = selectBestLeadingSuit(
+        player.hand,
+        gameState,
+        player,
+        composition
+      )
+
+      if (strategicSuit) {
+        const cardsInStrategicSuit = playableCards.filter(
+          (card) => card.suit === strategicSuit
+        )
+
+        if (cardsInStrategicSuit.length > 0) {
+          return selectBestCardFromSuit(
+            cardsInStrategicSuit,
+            gameState,
+            player,
+            strategicSuit
+          )
+        }
+      }
+    }
+  }
+
+  // 🔧 通常プレイ: 戦略的なスートを選択
   const strategicSuit = selectBestLeadingSuit(
     player.hand,
     gameState,
@@ -180,6 +280,11 @@ function selectFollowingCard(
   player: Player,
   currentTrick: Trick
 ): Card {
+  // 🔧 改善: 目標達成状況を計算
+  const requirements = calculateWinningRequirements(gameState)
+  const playConservatively = shouldPlayConservatively(player, requirements)
+  const playAggressively = shouldPlayAggressively(player, requirements)
+
   // 既に出ているカード全てを考慮して、勝てるか判定
   const canWinTrick = canWinCurrentTrick(playableCards, currentTrick, gameState)
 
@@ -231,13 +336,61 @@ function selectFollowingCard(
       }
     }
 
-    // ナポレオンチーム：勝てるなら勝つ（絵札を集める）
+    // 🔧 改善: 目標達成状況に応じた判断
+    if (playConservatively) {
+      // 保守的プレイ: 既に目標達成済みまたは余裕がある場合
+      // → 弱いカードで勝てるなら勝つ、絵札は温存
+      const weakWinningCards = playableCards.filter(
+        (card) =>
+          !isFaceCard(card) &&
+          getCardStrengthSafe(card, gameState) >
+            getBestTrickCard(currentTrick, gameState).strength
+      )
+
+      if (weakWinningCards.length > 0) {
+        // 非絵札で勝てるなら、最も弱い勝てるカードを使う
+        return weakWinningCards.sort(
+          (a, b) =>
+            getCardStrengthSafe(a, gameState) -
+            getCardStrengthSafe(b, gameState)
+        )[0]
+      }
+
+      // 非絵札で勝てない場合、絵札を使うか捨てるか判断
+      // トリック内の絵札が多い場合は取る価値がある
+      const faceCardsInTrick = currentTrick.cards.filter((tc) =>
+        isFaceCard(tc.card)
+      ).length
+
+      if (faceCardsInTrick >= 2) {
+        // 絵札が2枚以上あるなら取る価値がある
+        return getLowestWinningCard(playableCards, currentTrick, gameState)
+      }
+
+      // 絵札が少ないトリックは諦めて、弱いカードを捨てる
+      return getWeakestCard(playableCards, gameState)
+    }
+
+    if (playAggressively) {
+      // 攻撃的プレイ: 目標達成が危うい場合
+      // → 絵札を積極的に取りに行く、強いカードを惜しまず使う
+      return getLowestWinningCard(playableCards, currentTrick, gameState)
+    }
+
+    // 通常プレイ: 最低限の勝ちカードで勝つ
     return getLowestWinningCard(playableCards, currentTrick, gameState)
   } else {
-    // 🔧 改善: 連合軍の協調戦略
+    // 🔧 改善: 連合軍の協調戦略 + 目標達成状況考慮
 
-    // 1. ナポレオンチームが現在勝っている場合：ブロックする
+    // 1. ナポレオンチームが現在勝っている場合
     if (isNapoleonWinning(currentTrick, gameState)) {
+      if (playAggressively) {
+        // 攻撃的ブロック: ナポレオンが優勢で阻止が危うい場合
+        // → 確実にブロック、強いカードを惜しまず使う
+        return getLowestWinningCard(playableCards, currentTrick, gameState)
+      }
+
+      // 通常ブロック: 最低限の勝ちカードでブロック
       return getLowestWinningCard(playableCards, currentTrick, gameState)
     }
 
@@ -274,11 +427,25 @@ function selectFollowingCard(
         }
       }
 
+      // 🔧 改善: 保守的プレイの場合、味方に任せて弱いカードを出す
+      if (playConservatively) {
+        // 既に阻止達成済みまたは勝利確定
+        // → 無理にブロックせず、弱いカードを出して絵札を温存
+        return getWeakestCard(playableCards, gameState)
+      }
+
       // 絵札がない場合、または序盤の場合は弱いカードを出す
       return getWeakestCard(playableCards, gameState)
     }
 
-    // 3. まだ誰も勝っていない場合：様子見（弱いカードを出す）
+    // 3. まだ誰も勝っていない場合
+    if (playAggressively) {
+      // 攻撃的: ナポレオンが目標まであと少しで危機的状況
+      // → 積極的に勝ってブロック
+      return getLowestWinningCard(playableCards, currentTrick, gameState)
+    }
+
+    // 通常: 様子見（弱いカードを出す）
     return getWeakestCard(playableCards, gameState)
   }
 }
@@ -665,6 +832,178 @@ function calculateGameProgress(gameState: GameState): number {
   const totalTricks = 12 // ナポレオンは12トリック
   const completedTricks = gameState.tricks.length
   return completedTricks / totalTricks
+}
+
+/**
+ * 🆕 目標達成状況を計算
+ * ナポレオンチームと連合軍の絵札獲得状況、残りトリック数を考慮
+ */
+interface WinningRequirements {
+  napoleonTeamFaceCards: number // ナポレオンチームが獲得した絵札
+  allianceTeamFaceCards: number // 連合軍が獲得した絵札
+  remainingFaceCards: number // まだ場に出ていない絵札
+  remainingTricks: number // 残りトリック数
+  napoleonNeedsToWin: number // ナポレオンが目標達成に必要な絵札数
+  allianceNeedsToBlock: number // 連合軍が阻止に必要な絵札数
+  napoleonCanAffordToLose: number // ナポレオンが失っても良い絵札数
+  isNapoleonAhead: boolean // ナポレオンが優勢か
+  isAllianceAhead: boolean // 連合軍が優勢か
+  isCriticalPhase: boolean // 勝敗が決まる重要局面か
+}
+
+function calculateWinningRequirements(
+  gameState: GameState
+): WinningRequirements {
+  const totalFaceCards = 13 // ナポレオンゲームの絵札総数（10, J, Q, K, A各スート + Jokerなし）
+  const napoleonTarget = gameState.napoleonDeclaration?.targetTricks || 8 // デフォルト8枚目標
+
+  // 各チームが獲得した絵札をカウント
+  let napoleonTeamFaceCards = 0
+  let allianceTeamFaceCards = 0
+
+  const napoleon = gameState.players.find((p) => p.isNapoleon)
+  const adjutant = gameState.players.find((p) => p.isAdjutant)
+
+  // 完了したトリックから絵札をカウント
+  for (const trick of gameState.tricks) {
+    const winner = trick.winnerPlayerId
+    if (!winner) continue
+
+    const faceCardsInTrick = trick.cards.filter((tc) =>
+      isFaceCard(tc.card)
+    ).length
+
+    if (winner === napoleon?.id || (adjutant && winner === adjutant.id)) {
+      napoleonTeamFaceCards += faceCardsInTrick
+    } else {
+      allianceTeamFaceCards += faceCardsInTrick
+    }
+  }
+
+  // まだプレイされていない絵札の枚数
+  const remainingFaceCards =
+    totalFaceCards - napoleonTeamFaceCards - allianceTeamFaceCards
+
+  // 残りトリック数（現在のトリック含む）
+  const totalTricks = 12 // ナポレオンは12トリック（52枚 / 4人 = 13枚、13トリックだが最後は4枚なので12トリック）
+  const completedTricks = gameState.tricks.length
+  const remainingTricks = totalTricks - completedTricks
+
+  // ナポレオンが目標達成に必要な絵札数
+  const napoleonNeedsToWin = Math.max(0, napoleonTarget - napoleonTeamFaceCards)
+
+  // 連合軍が阻止に必要な絵札数（ナポレオンを目標未満に抑える）
+  const allianceNeedsToBlock = Math.max(
+    0,
+    totalFaceCards - napoleonTarget + 1 - allianceTeamFaceCards
+  )
+
+  // ナポレオンが失っても良い絵札数
+  const napoleonCanAffordToLose = Math.max(
+    0,
+    remainingFaceCards - napoleonNeedsToWin
+  )
+
+  // 優勢判定
+  const isNapoleonAhead = napoleonNeedsToWin <= remainingTricks / 2
+  const isAllianceAhead = allianceNeedsToBlock <= remainingTricks / 2
+
+  // 重要局面判定（残り2-3トリックで勝敗が決まる状況）
+  const isCriticalPhase =
+    remainingTricks <= 3 && (napoleonNeedsToWin > 0 || allianceNeedsToBlock > 0)
+
+  return {
+    napoleonTeamFaceCards,
+    allianceTeamFaceCards,
+    remainingFaceCards,
+    remainingTricks,
+    napoleonNeedsToWin,
+    allianceNeedsToBlock,
+    napoleonCanAffordToLose,
+    isNapoleonAhead,
+    isAllianceAhead,
+    isCriticalPhase,
+  }
+}
+
+/**
+ * 🆕 保守的にプレイすべきか判定
+ * 目標達成済みまたは優勢の場合は保守的にプレイ
+ */
+function shouldPlayConservatively(
+  player: Player,
+  requirements: WinningRequirements
+): boolean {
+  if (player.isNapoleon || player.isAdjutant) {
+    // ナポレオンチーム: 既に目標達成済み、または大幅にリードしている場合
+    if (requirements.napoleonNeedsToWin === 0) {
+      return true // 目標達成済みなら保守的にプレイ
+    }
+
+    // 残り絵札が少なく、失っても良い絵札数が多い場合（余裕がある）
+    if (
+      requirements.napoleonCanAffordToLose >= 3 &&
+      requirements.remainingTricks >= 4
+    ) {
+      return true
+    }
+  } else {
+    // 連合軍: 既に阻止達成済み、または大幅にリードしている場合
+    if (requirements.allianceNeedsToBlock === 0) {
+      return true // 阻止達成済みなら保守的にプレイ
+    }
+
+    // ナポレオンが目標達成不可能な状況（連合軍の勝利確定）
+    if (requirements.napoleonNeedsToWin > requirements.remainingTricks) {
+      return true
+    }
+  }
+
+  return false
+}
+
+/**
+ * 🆕 攻撃的にプレイすべきか判定
+ * 目標達成が危ういまたは劣勢の場合は攻撃的にプレイ
+ */
+function shouldPlayAggressively(
+  player: Player,
+  requirements: WinningRequirements
+): boolean {
+  if (player.isNapoleon || player.isAdjutant) {
+    // ナポレオンチーム: 目標まであと少し、または劣勢の場合
+    if (
+      requirements.napoleonNeedsToWin > 0 &&
+      requirements.napoleonNeedsToWin <= 2 &&
+      requirements.isCriticalPhase
+    ) {
+      return true // 重要局面で目標まであと1-2枚なら攻撃的
+    }
+
+    // 劣勢（必要枚数が残りトリック数に対して多い）
+    if (requirements.napoleonNeedsToWin >= requirements.remainingTricks / 2) {
+      return true
+    }
+  } else {
+    // 連合軍: ナポレオンが優勢で阻止が危うい場合
+    if (
+      requirements.isNapoleonAhead &&
+      requirements.allianceNeedsToBlock > 0 &&
+      requirements.isCriticalPhase
+    ) {
+      return true // ナポレオン優勢の重要局面なら攻撃的にブロック
+    }
+
+    // ナポレオンが目標まであと1-2枚（危機的状況）
+    if (
+      requirements.napoleonNeedsToWin > 0 &&
+      requirements.napoleonNeedsToWin <= 2
+    ) {
+      return true
+    }
+  }
+
+  return false
 }
 
 function calculateLeadingStrategy(
