@@ -114,6 +114,10 @@ function selectLeadingCard(
   // 🔧 改善: 手札構成を分析
   const composition = analyzeHandComposition(player.hand, gameState)
 
+  // 🆕 改善: カードカウンティング情報を取得
+  const cardCounting = trackAllCards(player, gameState)
+  const playerVoids = estimatePlayerVoids(gameState)
+
   // 🔧 改善: 保守的プレイの場合、弱いカードで探る
   if (playConservatively) {
     if (player.isNapoleon || player.isAdjutant) {
@@ -154,7 +158,9 @@ function selectLeadingCard(
         player.hand,
         gameState,
         player,
-        composition
+        composition,
+        cardCounting,
+        playerVoids
       )
 
       if (strategicSuit) {
@@ -189,7 +195,9 @@ function selectLeadingCard(
         player.hand,
         gameState,
         player,
-        composition
+        composition,
+        cardCounting,
+        playerVoids
       )
 
       if (strategicSuit) {
@@ -214,7 +222,9 @@ function selectLeadingCard(
     player.hand,
     gameState,
     player,
-    composition
+    composition,
+    cardCounting,
+    playerVoids
   )
 
   // 戦略的スートが決まっている場合、そのスートからカードを選ぶ
@@ -1074,6 +1084,31 @@ function shouldPlayAggressively(
 }
 
 /**
+ * 🆕 各スートの追跡情報
+ */
+interface SuitTracking {
+  suit: Suit
+  playedCards: Card[] // 既に出たカード
+  remainingCards: number // 残りカード枚数（推定）
+  playedFaceCards: Card[] // 既に出た絵札
+  remainingFaceCards: number // 残り絵札枚数（推定）
+  myCards: Card[] // 自分の手札（このスートのカード）
+  myFaceCards: Card[] // 自分の絵札（このスートの絵札）
+  hasHighCards: boolean // 高位カード（A, K, Q, J）を持っているか
+}
+
+/**
+ * 🆕 カードカウンティング全体情報
+ */
+interface CardCountingInfo {
+  suitTracking: Map<Suit, SuitTracking> // 各スートの追跡情報
+  totalPlayedCards: number // 既に出たカード総数
+  totalRemainingCards: number // 残りカード総数
+  totalPlayedFaceCards: number // 既に出た絵札総数
+  totalRemainingFaceCards: number // 残り絵札総数
+}
+
+/**
  * 🆕 切り札カウンティング情報
  */
 interface TrumpTracking {
@@ -1198,6 +1233,95 @@ function trackTrumps(player: Player, gameState: GameState): TrumpTracking {
 }
 
 /**
+ * 🆕 全スートのカードをトラッキング
+ * 各スートの残りカード枚数、絵札分布、自分の手札を分析
+ */
+function trackAllCards(player: Player, gameState: GameState): CardCountingInfo {
+  const suits: Suit[] = ['spades', 'hearts', 'diamonds', 'clubs']
+  const suitTracking = new Map<Suit, SuitTracking>()
+  const cardsPerSuit = 13 // 各スート13枚
+
+  let totalPlayedCards = 0
+  let totalPlayedFaceCards = 0
+
+  // 各スートごとに追跡
+  for (const suit of suits) {
+    const playedCards: Card[] = []
+    const playedFaceCards: Card[] = []
+
+    // 完了したトリックからカードを収集
+    for (const trick of gameState.tricks) {
+      for (const playedCard of trick.cards) {
+        if (playedCard.card.suit === suit) {
+          playedCards.push(playedCard.card)
+          if (isFaceCard(playedCard.card)) {
+            playedFaceCards.push(playedCard.card)
+          }
+        }
+      }
+    }
+
+    // 現在のトリックからカードを収集
+    for (const playedCard of gameState.currentTrick.cards) {
+      if (playedCard.card.suit === suit) {
+        playedCards.push(playedCard.card)
+        if (isFaceCard(playedCard.card)) {
+          playedFaceCards.push(playedCard.card)
+        }
+      }
+    }
+
+    // 自分の手札からこのスートのカードを収集
+    const myCards = player.hand.filter((card) => card.suit === suit)
+    const myFaceCards = myCards.filter((card) => isFaceCard(card))
+
+    // 残りカード枚数を推定（総数 - 出たカード - 自分の手札）
+    const remainingCards = cardsPerSuit - playedCards.length - myCards.length
+
+    // このスートの絵札総数（4枚：A, K, Q, J）
+    const faceCardsPerSuit = 4
+    const remainingFaceCards =
+      faceCardsPerSuit - playedFaceCards.length - myFaceCards.length
+
+    // 高位カード（A, K, Q, J）を持っているか
+    const hasHighCards = myCards.some((card) =>
+      ['A', 'K', 'Q', 'J'].includes(card.rank)
+    )
+
+    suitTracking.set(suit, {
+      suit,
+      playedCards,
+      remainingCards,
+      playedFaceCards,
+      remainingFaceCards,
+      myCards,
+      myFaceCards,
+      hasHighCards,
+    })
+
+    totalPlayedCards += playedCards.length
+    totalPlayedFaceCards += playedFaceCards.length
+  }
+
+  // 全体の統計
+  const totalCardsInDeck = 52
+  const totalFaceCardsInDeck = 16 // 4スート × 4絵札
+  const totalRemainingCards =
+    totalCardsInDeck - totalPlayedCards - player.hand.length
+  const myTotalFaceCards = player.hand.filter((card) => isFaceCard(card)).length
+  const totalRemainingFaceCards =
+    totalFaceCardsInDeck - totalPlayedFaceCards - myTotalFaceCards
+
+  return {
+    suitTracking,
+    totalPlayedCards,
+    totalRemainingCards,
+    totalPlayedFaceCards,
+    totalRemainingFaceCards,
+  }
+}
+
+/**
  * 🆕 ボイド後の切り札介入を判断
  * 自分がボイド（そのスートを持っていない）で、切り札を使うべきか判断
  */
@@ -1282,6 +1406,70 @@ function shouldInterventWithTrump(
   }
 
   return false
+}
+
+/**
+ * 🆕 プレイヤー別のボイド（特定スートを持っていない）を推定
+ * 過去のトリックで、リードスートと異なるスートを出したプレイヤーを記録
+ */
+function estimatePlayerVoids(gameState: GameState): Map<string, Set<Suit>> {
+  const playerVoids = new Map<string, Set<Suit>>()
+
+  // 各プレイヤーのボイドセットを初期化
+  for (const player of gameState.players) {
+    playerVoids.set(player.id, new Set<Suit>())
+  }
+
+  // 完了したトリックを分析
+  for (const trick of gameState.tricks) {
+    if (!trick.leadingSuit) continue
+
+    const leadingSuit = trick.leadingSuit
+
+    // トリック内の各カードをチェック
+    for (const playedCard of trick.cards) {
+      const playerId = playedCard.playerId
+      const card = playedCard.card
+
+      // リードスートと異なるスートを出した場合、そのプレイヤーはリードスートをボイドしている
+      // ただし、Mightyやジャックは特殊なので除外
+      if (
+        card.suit !== leadingSuit &&
+        !checkIsMighty(card) &&
+        !checkIsTrumpJack(card, (gameState.trumpSuit as Suit) || 'spades') &&
+        !checkIsCounterJack(card, (gameState.trumpSuit as Suit) || 'spades')
+      ) {
+        const voidSet = playerVoids.get(playerId)
+        if (voidSet) {
+          voidSet.add(leadingSuit)
+        }
+      }
+    }
+  }
+
+  // 現在のトリックも分析（ただし、まだ完了していないので注意）
+  if (gameState.currentTrick.leadingSuit) {
+    const leadingSuit = gameState.currentTrick.leadingSuit
+
+    for (const playedCard of gameState.currentTrick.cards) {
+      const playerId = playedCard.playerId
+      const card = playedCard.card
+
+      if (
+        card.suit !== leadingSuit &&
+        !checkIsMighty(card) &&
+        !checkIsTrumpJack(card, (gameState.trumpSuit as Suit) || 'spades') &&
+        !checkIsCounterJack(card, (gameState.trumpSuit as Suit) || 'spades')
+      ) {
+        const voidSet = playerVoids.get(playerId)
+        if (voidSet) {
+          voidSet.add(leadingSuit)
+        }
+      }
+    }
+  }
+
+  return playerVoids
 }
 
 function calculateLeadingStrategy(
@@ -1761,7 +1949,9 @@ function selectBestLeadingSuit(
   hand: Card[],
   gameState: GameState,
   player: Player,
-  composition: HandComposition
+  composition: HandComposition,
+  cardCounting: CardCountingInfo,
+  playerVoids: Map<string, Set<Suit>>
 ): Suit | null {
   const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
   const gameProgress = calculateGameProgress(gameState)
@@ -1771,22 +1961,57 @@ function selectBestLeadingSuit(
     return trumpSuit
   }
 
+  // 🆕 他のプレイヤーのボイド状況を考慮したスート評価
+  const evaluateSuitSafety = (suit: Suit): number => {
+    let safety = 0
+    const suitInfo = cardCounting.suitTracking.get(suit)
+    if (!suitInfo) return 0
+
+    // 残り絵札が多いスートは魅力的（得点チャンス）
+    safety += suitInfo.remainingFaceCards * 10
+
+    // 他のプレイヤーがこのスートをボイドしている数をカウント
+    let voidPlayerCount = 0
+    for (const [playerId, voidSuits] of playerVoids) {
+      if (playerId !== player.id && voidSuits.has(suit)) {
+        voidPlayerCount++
+      }
+    }
+
+    // ボイドしているプレイヤーが多いスートは避ける（切り札で取られるリスク）
+    safety -= voidPlayerCount * 15
+
+    // 自分が高位カードを持っている場合はボーナス
+    if (suitInfo.hasHighCards) {
+      safety += 5
+    }
+
+    return safety
+  }
+
   if (player.isNapoleon || player.isAdjutant) {
     // ナポレオンチーム: 絵札が多いスートでリード（得点チャンス）
 
     let bestSuit: Suit | null = null
-    let maxFaceCards = 0
+    let maxScore = -100
 
     for (const [suit, faceCards] of composition.faceCardsBySuit) {
-      // 切り札以外で絵札が多いスートを選択
-      if (suit !== trumpSuit && faceCards.length > maxFaceCards) {
-        maxFaceCards = faceCards.length
-        bestSuit = suit
+      // 切り札以外で評価
+      if (suit !== trumpSuit) {
+        // 🆕 手札の絵札数とスートの安全性を総合評価
+        const faceCardScore = faceCards.length * 10
+        const safetyScore = evaluateSuitSafety(suit)
+        const totalScore = faceCardScore + safetyScore
+
+        if (totalScore > maxScore) {
+          maxScore = totalScore
+          bestSuit = suit
+        }
       }
     }
 
-    // 絵札が2枚以上あるスートがあれば、そこでリード
-    if (bestSuit && maxFaceCards >= 2) {
+    // スコアが一定以上あるスートがあれば選択
+    if (bestSuit && maxScore >= 15) {
       return bestSuit
     }
   } else {
@@ -1795,30 +2020,41 @@ function selectBestLeadingSuit(
     // 序盤〜中盤（0-70%）でショートスートがある場合、そこでリード
     // → 早めにそのスートを使い切り、後で切り札で介入できるようにする
     if (gameProgress < 0.7 && composition.shortSuits.length > 0) {
-      // ショートスートの中で、絵札が少ないスートを優先（損失を最小化）
-      const shortSuitsByFaceCards = composition.shortSuits.sort((a, b) => {
+      // 🆕 ショートスートの中で、安全性も考慮して選択
+      const shortSuitsByScore = composition.shortSuits.sort((a, b) => {
         const faceCardsA = composition.faceCardsBySuit.get(a)?.length || 0
         const faceCardsB = composition.faceCardsBySuit.get(b)?.length || 0
-        return faceCardsA - faceCardsB
+        const safetyA = evaluateSuitSafety(a)
+        const safetyB = evaluateSuitSafety(b)
+
+        // 絵札が少ない + 安全性が高いスートを優先
+        return faceCardsA - faceCardsB + (safetyB - safetyA) / 10
       })
 
-      return shortSuitsByFaceCards[0]
+      return shortSuitsByScore[0]
     }
 
     // 中盤〜終盤（40%以降）で絵札が多いスートがある場合
     // → 味方と協力して得点を取りに行く
     if (gameProgress >= 0.4) {
       let bestSuit: Suit | null = null
-      let maxFaceCards = 0
+      let maxScore = -100
 
       for (const [suit, faceCards] of composition.faceCardsBySuit) {
-        if (suit !== trumpSuit && faceCards.length > maxFaceCards) {
-          maxFaceCards = faceCards.length
-          bestSuit = suit
+        if (suit !== trumpSuit) {
+          // 🆕 絵札数と安全性を総合評価
+          const faceCardScore = faceCards.length * 10
+          const safetyScore = evaluateSuitSafety(suit)
+          const totalScore = faceCardScore + safetyScore
+
+          if (totalScore > maxScore) {
+            maxScore = totalScore
+            bestSuit = suit
+          }
         }
       }
 
-      if (bestSuit && maxFaceCards >= 2) {
+      if (bestSuit && maxScore >= 15) {
         return bestSuit
       }
     }
