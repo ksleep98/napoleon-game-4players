@@ -285,6 +285,76 @@ function selectFollowingCard(
   const playConservatively = shouldPlayConservatively(player, requirements)
   const playAggressively = shouldPlayAggressively(player, requirements)
 
+  // 🔧 改善: 切り札追跡情報を取得
+  const trumpTracking = trackTrumps(player, gameState)
+
+  // 🔧 改善: ボイド（リードスートを持っていない）の判定
+  const leadingSuit = currentTrick.leadingSuit || gameState.leadingSuit
+  const isVoid = leadingSuit
+    ? !playableCards.some((card) => card.suit === leadingSuit)
+    : false
+
+  // 🔧 改善: ボイド時の切り札介入判断
+  if (isVoid && gameState.trumpSuit) {
+    const shouldUseTrump = shouldInterventWithTrump(
+      playableCards,
+      currentTrick,
+      gameState,
+      player,
+      trumpTracking
+    )
+
+    if (shouldUseTrump) {
+      // 切り札で介入する：最も弱い勝てる切り札を使う
+      const trumpCards = playableCards.filter(
+        (card) => card.suit === gameState.trumpSuit || checkIsMighty(card)
+      )
+
+      if (trumpCards.length > 0) {
+        // 既存のトリック内の切り札より強い切り札を探す
+        const trickTrumps = currentTrick.cards
+          .map((tc) => tc.card)
+          .filter(
+            (card) => card.suit === gameState.trumpSuit || checkIsMighty(card)
+          )
+
+        if (trickTrumps.length > 0) {
+          // トリック内に切り札がある場合、それより強い最弱の切り札を使う
+          const strongestTrickTrump = trickTrumps.sort(
+            (a, b) =>
+              getCardStrengthSafe(b, gameState) -
+              getCardStrengthSafe(a, gameState)
+          )[0]
+          const strongestTrickTrumpStrength = getCardStrengthSafe(
+            strongestTrickTrump,
+            gameState
+          )
+
+          const winningTrumps = trumpCards.filter(
+            (card) =>
+              getCardStrengthSafe(card, gameState) > strongestTrickTrumpStrength
+          )
+
+          if (winningTrumps.length > 0) {
+            // 勝てる切り札の中で最も弱いものを使う
+            return winningTrumps.sort(
+              (a, b) =>
+                getCardStrengthSafe(a, gameState) -
+                getCardStrengthSafe(b, gameState)
+            )[0]
+          }
+        } else {
+          // トリック内に切り札がない場合、最も弱い切り札を使う
+          return trumpCards.sort(
+            (a, b) =>
+              getCardStrengthSafe(a, gameState) -
+              getCardStrengthSafe(b, gameState)
+          )[0]
+        }
+      }
+    }
+  }
+
   // 既に出ているカード全てを考慮して、勝てるか判定
   const canWinTrick = canWinCurrentTrick(playableCards, currentTrick, gameState)
 
@@ -540,9 +610,6 @@ function evaluateSame2Potential(card: Card, gameState: GameState): number {
 
   // 現在のトリックを確認
   const currentTrick = gameState.currentTrick
-
-  // デバッグ用フラグ（5%の確率でログ出力）
-  const _shouldLog = Math.random() < 0.05
 
   // トリックが空の場合（リード時）
   if (currentTrick.cards.length === 0) {
@@ -1001,6 +1068,217 @@ function shouldPlayAggressively(
     ) {
       return true
     }
+  }
+
+  return false
+}
+
+/**
+ * 🆕 切り札カウンティング情報
+ */
+interface TrumpTracking {
+  playedTrumps: Card[] // 既に出た切り札
+  remainingTrumps: number // 残り切り札枚数（推定）
+  myTrumps: Card[] // 自分の切り札
+  myStrongestTrump: Card | null // 自分の最強切り札
+  hasHighTrumps: boolean // 高位切り札（A, K, Q, J, Mighty）を持っているか
+  trumpsStrongerThanMine: number // 自分より強い切り札の推定枚数
+}
+
+/**
+ * 🆕 切り札をトラッキング
+ * 既に出た切り札を記録し、残り切り札枚数と自分の切り札の相対的強さを評価
+ */
+function trackTrumps(player: Player, gameState: GameState): TrumpTracking {
+  const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
+  const totalTrumpsInDeck = 13 // 各スート13枚
+
+  // 既に出た切り札を収集
+  const playedTrumps: Card[] = []
+
+  // 完了したトリックから切り札を収集
+  for (const trick of gameState.tricks) {
+    for (const playedCard of trick.cards) {
+      if (playedCard.card.suit === trumpSuit) {
+        playedTrumps.push(playedCard.card)
+      }
+    }
+  }
+
+  // 現在のトリックからも切り札を収集
+  for (const playedCard of gameState.currentTrick.cards) {
+    if (playedCard.card.suit === trumpSuit) {
+      playedTrumps.push(playedCard.card)
+    }
+  }
+
+  // Mightyが出ている場合も切り札としてカウント（スペードAの場合）
+  for (const trick of gameState.tricks) {
+    for (const playedCard of trick.cards) {
+      if (checkIsMighty(playedCard.card)) {
+        // Mightyは常に最強なのでカウント
+        playedTrumps.push(playedCard.card)
+      }
+    }
+  }
+  for (const playedCard of gameState.currentTrick.cards) {
+    if (checkIsMighty(playedCard.card)) {
+      playedTrumps.push(playedCard.card)
+    }
+  }
+
+  // 自分の切り札を取得
+  const myTrumps = player.hand.filter(
+    (card) =>
+      card.suit === trumpSuit ||
+      checkIsMighty(card) ||
+      checkIsTrumpJack(card, trumpSuit) ||
+      checkIsCounterJack(card, trumpSuit)
+  )
+
+  // 自分の最強切り札を特定
+  let myStrongestTrump: Card | null = null
+  if (myTrumps.length > 0) {
+    myStrongestTrump = myTrumps.sort(
+      (a, b) =>
+        getCardStrengthSafe(b, gameState) - getCardStrengthSafe(a, gameState)
+    )[0]
+  }
+
+  // 高位切り札を持っているか
+  const hasHighTrumps = myTrumps.some(
+    (card) =>
+      checkIsMighty(card) ||
+      checkIsTrumpJack(card, trumpSuit) ||
+      checkIsCounterJack(card, trumpSuit) ||
+      ['A', 'K', 'Q'].includes(card.rank)
+  )
+
+  // 残り切り札枚数を推定
+  const remainingTrumps =
+    totalTrumpsInDeck - playedTrumps.length - myTrumps.length
+
+  // 自分より強い切り札の推定枚数
+  let trumpsStrongerThanMine = 0
+  if (myStrongestTrump) {
+    const myStrongestStrength = getCardStrengthSafe(myStrongestTrump, gameState)
+
+    // Mighty, Jack, 高位カードのうち、まだ出ていないものをカウント
+    const highTrumps = [
+      { rank: 'A', strength: 1400 }, // Mighty (if not Mighty suit)
+      { rank: 'K', strength: 1300 },
+      { rank: 'Q', strength: 1200 },
+      { rank: 'J', strength: 1100 }, // Trump Jack or Counter Jack
+    ]
+
+    for (const highTrump of highTrumps) {
+      if (highTrump.strength > myStrongestStrength) {
+        // このカードが既に出ているかチェック
+        const alreadyPlayed = playedTrumps.some(
+          (card) => card.rank === highTrump.rank && card.suit === trumpSuit
+        )
+        // 自分が持っているかチェック
+        const inMyHand = myTrumps.some((card) => card.rank === highTrump.rank)
+
+        if (!alreadyPlayed && !inMyHand) {
+          trumpsStrongerThanMine++
+        }
+      }
+    }
+  }
+
+  return {
+    playedTrumps,
+    remainingTrumps,
+    myTrumps,
+    myStrongestTrump,
+    hasHighTrumps,
+    trumpsStrongerThanMine,
+  }
+}
+
+/**
+ * 🆕 ボイド後の切り札介入を判断
+ * 自分がボイド（そのスートを持っていない）で、切り札を使うべきか判断
+ */
+function shouldInterventWithTrump(
+  playableCards: Card[],
+  currentTrick: Trick,
+  gameState: GameState,
+  player: Player,
+  trumpTracking: TrumpTracking
+): boolean {
+  const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
+
+  // 切り札を持っていない場合はfalse
+  if (trumpTracking.myTrumps.length === 0) return false
+
+  // 既に切り札が出ている場合は、勝てるかチェック
+  const trumpInTrick = currentTrick.cards.find(
+    (tc) =>
+      tc.card.suit === trumpSuit ||
+      checkIsMighty(tc.card) ||
+      checkIsTrumpJack(tc.card, trumpSuit) ||
+      checkIsCounterJack(tc.card, trumpSuit)
+  )
+
+  if (trumpInTrick) {
+    // 切り札が既に出ている場合、勝てる切り札があるかチェック
+    const canWin = playableCards.some(
+      (card) =>
+        (card.suit === trumpSuit ||
+          checkIsMighty(card) ||
+          checkIsTrumpJack(card, trumpSuit) ||
+          checkIsCounterJack(card, trumpSuit)) &&
+        getCardStrengthSafe(card, gameState) >
+          getCardStrengthSafe(trumpInTrick.card, gameState)
+    )
+
+    if (!canWin) {
+      return false // 勝てないなら切り札を使わない
+    }
+  }
+
+  // トリック内の絵札をカウント
+  const faceCardsInTrick = currentTrick.cards.filter((tc) =>
+    isFaceCard(tc.card)
+  ).length
+
+  // 役割別の判断
+  if (player.isNapoleon || player.isAdjutant) {
+    // ナポレオンチーム: 絵札が2枚以上あるなら切り札で取る
+    if (faceCardsInTrick >= 2) {
+      return true
+    }
+
+    // 連合軍が勝っている場合、切り札でブロック
+    if (isAllianceWinning(currentTrick, gameState)) {
+      return true
+    }
+  } else {
+    // 連合軍: ナポレオンが勝っている場合、切り札でブロック
+    if (isNapoleonWinning(currentTrick, gameState)) {
+      return true
+    }
+
+    // 絵札が3枚以上ある場合、味方に渡すために切り札で勝つ
+    if (faceCardsInTrick >= 3) {
+      return true
+    }
+  }
+
+  // 切り札の強さを考慮
+  // 弱い切り札（2-7）しかない場合は使わない
+  const hasOnlyWeakTrumps = trumpTracking.myTrumps.every(
+    (card) =>
+      !checkIsMighty(card) &&
+      !checkIsTrumpJack(card, trumpSuit) &&
+      !checkIsCounterJack(card, trumpSuit) &&
+      ['2', '3', '4', '5', '6', '7'].includes(card.rank)
+  )
+
+  if (hasOnlyWeakTrumps && faceCardsInTrick < 2) {
+    return false // 弱い切り札は温存
   }
 
   return false
