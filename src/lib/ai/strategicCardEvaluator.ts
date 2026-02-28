@@ -118,6 +118,32 @@ function selectLeadingCard(
   const cardCounting = trackAllCards(player, gameState)
   const playerVoids = estimatePlayerVoids(gameState)
 
+  // 🆕 改善: 終盤状態を分析
+  const endgameInfo = analyzeEndgameState(gameState, player)
+
+  // 🆕 終盤戦略: 勝利確定の場合、最弱カードでリード
+  if (endgameInfo.isEndgame) {
+    if (player.isNapoleon || player.isAdjutant) {
+      // ナポレオンチーム: 勝利確定の場合、最弱カードでリード（手札温存）
+      if (endgameInfo.canSecureNapoleonVictory) {
+        return playableCards.sort(
+          (a, b) =>
+            getCardStrengthSafe(a, gameState) -
+            getCardStrengthSafe(b, gameState)
+        )[0]
+      }
+    } else {
+      // 連合軍: 勝利確定の場合、最弱カードでリード
+      if (endgameInfo.canSecureAllianceVictory) {
+        return playableCards.sort(
+          (a, b) =>
+            getCardStrengthSafe(a, gameState) -
+            getCardStrengthSafe(b, gameState)
+        )[0]
+      }
+    }
+  }
+
   // 🔧 改善: 保守的プレイの場合、弱いカードで探る
   if (playConservatively) {
     if (player.isNapoleon || player.isAdjutant) {
@@ -298,6 +324,9 @@ function selectFollowingCard(
   // 🔧 改善: 切り札追跡情報を取得
   const trumpTracking = trackTrumps(player, gameState)
 
+  // 🆕 改善: 終盤状態を分析
+  const endgameInfo = analyzeEndgameState(gameState, player)
+
   // 🔧 改善: ボイド（リードスートを持っていない）の判定
   const leadingSuit = currentTrick.leadingSuit || gameState.leadingSuit
   const isVoid = leadingSuit
@@ -367,6 +396,50 @@ function selectFollowingCard(
 
   // 既に出ているカード全てを考慮して、勝てるか判定
   const canWinTrick = canWinCurrentTrick(playableCards, currentTrick, gameState)
+
+  // 🆕 終盤戦略: 勝利確定または全絵札が必要な場合の特別な戦略
+  if (endgameInfo.isEndgame) {
+    if (player.isNapoleon || player.isAdjutant) {
+      // ナポレオンチーム: 勝利確定の場合、最弱カードで温存
+      if (endgameInfo.canSecureNapoleonVictory) {
+        if (!canWinTrick) {
+          return getWeakestCard(playableCards, gameState)
+        }
+        // 勝てる場合でも、絵札が無いトリックは最弱カードで勝つ
+        const faceCardsInTrick = currentTrick.cards.filter((tc) =>
+          isFaceCard(tc.card)
+        ).length
+        if (faceCardsInTrick === 0) {
+          // 絵札が無いトリックは最弱の勝ちカードで取る
+          return getLowestWinningCard(playableCards, currentTrick, gameState)
+        }
+      }
+
+      // ナポレオンチーム: 残り全絵札を取る必要がある場合、確実に勝つ
+      if (endgameInfo.napoleonNeedsAllRemaining && canWinTrick) {
+        // トリック内に絵札がある場合、確実に取る
+        const faceCardsInTrick = currentTrick.cards.filter((tc) =>
+          isFaceCard(tc.card)
+        ).length
+        if (faceCardsInTrick > 0) {
+          return getLowestWinningCard(playableCards, currentTrick, gameState)
+        }
+      }
+    } else {
+      // 連合軍: 勝利確定の場合、最弱カードで温存
+      if (endgameInfo.canSecureAllianceVictory) {
+        return getWeakestCard(playableCards, gameState)
+      }
+
+      // 連合軍: 残り全絵札を阻止する必要がある場合、確実にブロック
+      if (endgameInfo.allianceNeedsAllRemaining && canWinTrick) {
+        // ナポレオンチームが勝っている場合、確実にブロック
+        if (isNapoleonWinning(currentTrick, gameState)) {
+          return getLowestWinningCard(playableCards, currentTrick, gameState)
+        }
+      }
+    }
+  }
 
   // 勝てない場合は最弱カードを出す（役割に応じて戦略を変える）
   if (!canWinTrick) {
@@ -1121,6 +1194,19 @@ interface TrumpTracking {
 }
 
 /**
+ * 🆕 終盤状態情報
+ */
+interface EndgameInfo {
+  isEndgame: boolean // 終盤かどうか（残りトリック <= 3）
+  remainingTricks: number // 残りトリック数
+  remainingCardsInHand: number // 自分の残り手札枚数
+  canSecureNapoleonVictory: boolean // ナポレオンチームの勝利が確定しているか
+  canSecureAllianceVictory: boolean // 連合軍の勝利が確定しているか
+  napoleonNeedsAllRemaining: boolean // ナポレオンが残り全絵札を取る必要があるか
+  allianceNeedsAllRemaining: boolean // 連合軍が残り全絵札を阻止する必要があるか
+}
+
+/**
  * 🆕 切り札をトラッキング
  * 既に出た切り札を記録し、残り切り札枚数と自分の切り札の相対的強さを評価
  */
@@ -1470,6 +1556,83 @@ function estimatePlayerVoids(gameState: GameState): Map<string, Set<Suit>> {
   }
 
   return playerVoids
+}
+
+/**
+ * 🆕 終盤状態を分析
+ * 残りトリック数と目標達成状況から、終盤の戦略を決定
+ */
+function analyzeEndgameState(
+  gameState: GameState,
+  player: Player
+): EndgameInfo {
+  // 残りトリック数を計算（12トリック - 完了したトリック）
+  const totalTricks = 12
+  const completedTricks = gameState.tricks.length
+  const remainingTricks = totalTricks - completedTricks
+
+  // 終盤の定義: 残り3トリック以下
+  const isEndgame = remainingTricks <= 3
+
+  // 自分の残り手札枚数
+  const remainingCardsInHand = player.hand.length
+
+  // 各チームの絵札獲得数を計算（calculateWinningRequirementsと同様のロジック）
+  const totalFaceCards = 13
+  const napoleonTarget = gameState.napoleonDeclaration?.targetTricks || 8
+
+  let napoleonTeamFaceCards = 0
+  let allianceTeamFaceCards = 0
+
+  // 完了したトリックから絵札を集計
+  for (const trick of gameState.tricks) {
+    if (!trick.winnerPlayerId) continue
+
+    const winnerPlayer = gameState.players.find(
+      (p) => p.id === trick.winnerPlayerId
+    )
+    if (!winnerPlayer) continue
+
+    const faceCardsInTrick = trick.cards.filter((tc) =>
+      isFaceCard(tc.card)
+    ).length
+
+    if (winnerPlayer.isNapoleon || winnerPlayer.isAdjutant) {
+      napoleonTeamFaceCards += faceCardsInTrick
+    } else {
+      allianceTeamFaceCards += faceCardsInTrick
+    }
+  }
+
+  // 残り絵札数
+  const remainingFaceCards =
+    totalFaceCards - napoleonTeamFaceCards - allianceTeamFaceCards
+
+  // ナポレオンチームが必要な残り絵札数
+  const napoleonNeedsToWin = napoleonTarget - napoleonTeamFaceCards
+
+  // 連合軍が阻止するために取るべき絵札数
+  const allianceNeedsToBlock = napoleonTarget - allianceTeamFaceCards
+
+  // 勝利確定判定
+  const canSecureNapoleonVictory = napoleonTeamFaceCards >= napoleonTarget
+  const canSecureAllianceVictory = napoleonNeedsToWin > remainingFaceCards
+
+  // 残り全絵札を取る必要があるか
+  const napoleonNeedsAllRemaining =
+    napoleonNeedsToWin === remainingFaceCards && remainingFaceCards > 0
+  const allianceNeedsAllRemaining =
+    allianceNeedsToBlock === remainingFaceCards && remainingFaceCards > 0
+
+  return {
+    isEndgame,
+    remainingTricks,
+    remainingCardsInHand,
+    canSecureNapoleonVictory,
+    canSecureAllianceVictory,
+    napoleonNeedsAllRemaining,
+    allianceNeedsAllRemaining,
+  }
 }
 
 function calculateLeadingStrategy(
