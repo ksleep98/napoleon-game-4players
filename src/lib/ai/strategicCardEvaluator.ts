@@ -34,7 +34,7 @@ import {
   shouldInterventWithTrump,
   shouldLeadWithTrump,
 } from './strategies/trumps'
-import type { HandComposition } from './strategies/types'
+import type { EndgameInfo, HandComposition } from './strategies/types'
 
 /**
  * カードの戦略的価値を評価
@@ -1137,19 +1137,6 @@ interface CardCountingInfo {
   totalRemainingCards: number // 残りカード総数
   totalPlayedFaceCards: number // 既に出た絵札総数
   totalRemainingFaceCards: number // 残り絵札総数
-}
-
-/**
- * 🆕 終盤状態情報
- */
-interface EndgameInfo {
-  isEndgame: boolean // 終盤かどうか（残りトリック <= 3）
-  remainingTricks: number // 残りトリック数
-  remainingCardsInHand: number // 自分の残り手札枚数
-  canSecureNapoleonVictory: boolean // ナポレオンチームの勝利が確定しているか
-  canSecureAllianceVictory: boolean // 連合軍の勝利が確定しているか
-  napoleonNeedsAllRemaining: boolean // ナポレオンが残り全絵札を取る必要があるか
-  allianceNeedsAllRemaining: boolean // 連合軍が残り全絵札を阻止する必要があるか
 }
 
 /**
