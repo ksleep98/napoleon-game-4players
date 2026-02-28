@@ -7,9 +7,17 @@ import {
   isCounterJack as checkIsCounterJack,
   isMighty as checkIsMighty,
   isTrumpJack as checkIsTrumpJack,
-  getCardStrength,
 } from '@/lib/napoleonCardRules'
 import type { Card, GameState, Player, Suit, Trick } from '@/types/game'
+import {
+  calculateGameProgress,
+  getBestTrickCard,
+  getCardStrengthSafe,
+  getLowestWinningCard,
+  getWeakestCard,
+  getWeakestNonFaceCard,
+  isFaceCard,
+} from './strategies/helpers'
 
 /**
  * カードの戦略的価値を評価
@@ -995,31 +1003,6 @@ function evaluateSame2RiskForFaceCard(
   }
 
   return 0
-}
-
-// ヘルパー関数群
-/**
- * ゲーム状態からカードの強度を安全に計算
- */
-function getCardStrengthSafe(
-  card: Card,
-  gameState: GameState,
-  leadingSuit?: Suit
-): number {
-  const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
-  const effectiveLeadingSuit =
-    leadingSuit ||
-    (gameState.currentTrick.cards.length > 0
-      ? gameState.currentTrick.cards[0].card.suit
-      : trumpSuit)
-
-  return getCardStrength(card, trumpSuit, effectiveLeadingSuit as Suit)
-}
-
-function calculateGameProgress(gameState: GameState): number {
-  const totalTricks = 12 // ナポレオンは12トリック
-  const completedTricks = gameState.tricks.length
-  return completedTricks / totalTricks
 }
 
 /**
@@ -2008,70 +1991,6 @@ function canWinCurrentTrick(
   return cards.some(
     (card) => getCardStrengthSafe(card, gameState) > bestOpponentCard.strength
   )
-}
-
-function getBestTrickCard(currentTrick: Trick, gameState: GameState) {
-  let bestCard = currentTrick.cards[0].card
-  let bestStrength = getCardStrengthSafe(bestCard, gameState)
-
-  for (const trickCard of currentTrick.cards) {
-    const strength = getCardStrengthSafe(trickCard.card, gameState)
-    if (strength > bestStrength) {
-      bestCard = trickCard.card
-      bestStrength = strength
-    }
-  }
-
-  return { card: bestCard, strength: bestStrength }
-}
-
-function getLowestWinningCard(
-  cards: Card[],
-  currentTrick: Trick,
-  gameState: GameState
-): Card {
-  const bestOpponent = getBestTrickCard(currentTrick, gameState)
-  const winningCards = cards.filter(
-    (card) => getCardStrengthSafe(card, gameState) > bestOpponent.strength
-  )
-
-  if (winningCards.length === 0) return cards[0]
-
-  return winningCards.sort(
-    (a, b) =>
-      getCardStrengthSafe(a, gameState) - getCardStrengthSafe(b, gameState)
-  )[0]
-}
-
-function getWeakestCard(cards: Card[], gameState: GameState): Card {
-  return cards.sort(
-    (a, b) =>
-      getCardStrengthSafe(a, gameState) - getCardStrengthSafe(b, gameState)
-  )[0]
-}
-
-/**
- * カードが絵札かどうか判定（10, J, Q, K, A）
- */
-function isFaceCard(card: Card): boolean {
-  return ['10', 'J', 'Q', 'K', 'A'].includes(card.rank)
-}
-
-/**
- * 非絵札の中で最も弱いカードを取得
- * 非絵札がない場合はnullを返す
- */
-function getWeakestNonFaceCard(
-  cards: Card[],
-  gameState: GameState
-): Card | null {
-  const nonFaceCards = cards.filter((card) => !isFaceCard(card))
-  if (nonFaceCards.length === 0) return null
-
-  return nonFaceCards.sort(
-    (a, b) =>
-      getCardStrengthSafe(a, gameState) - getCardStrengthSafe(b, gameState)
-  )[0]
 }
 
 function isNapoleonWinning(currentTrick: Trick, gameState: GameState): boolean {
