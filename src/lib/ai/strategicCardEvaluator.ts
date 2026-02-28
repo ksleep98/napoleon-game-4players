@@ -206,11 +206,51 @@ function selectFollowingCard(
     // ナポレオンチーム：勝てるなら勝つ（絵札を集める）
     return getLowestWinningCard(playableCards, currentTrick, gameState)
   } else {
-    // 連合軍：ナポレオンチームが現在勝っている場合のみ勝つ（ブロック）
+    // 🔧 改善: 連合軍の協調戦略
+
+    // 1. ナポレオンチームが現在勝っている場合：ブロックする
     if (isNapoleonWinning(currentTrick, gameState)) {
       return getLowestWinningCard(playableCards, currentTrick, gameState)
     }
-    // 連合軍が既に勝っている場合は弱いカードを出す（味方に任せる）
+
+    // 2. 連合軍の味方が勝っている場合：絵札を渡す戦略
+    if (isAllianceWinning(currentTrick, gameState)) {
+      const trickPosition = currentTrick.cards.length // 現在何枚出ているか（0-3）
+
+      // 最後のプレイヤー（3枚目の後、4枚目）の場合
+      // 味方が確実に勝つので、絵札を渡すチャンス
+      if (trickPosition === 3) {
+        const faceCardToPass = getFaceCardToPassToAlliance(
+          playableCards,
+          gameState
+        )
+        if (faceCardToPass) {
+          return faceCardToPass
+        }
+      }
+
+      // 2-3枚目の場合も、絵札を渡すチャンスがあれば渡す
+      // ただし、ナポレオンチームが後から勝つリスクを考慮
+      if (trickPosition >= 1) {
+        const gameProgress = calculateGameProgress(gameState)
+
+        // 中盤以降（絵札が重要になる時期）で、絵札があれば渡す
+        if (gameProgress >= 0.4) {
+          const faceCardToPass = getFaceCardToPassToAlliance(
+            playableCards,
+            gameState
+          )
+          if (faceCardToPass) {
+            return faceCardToPass
+          }
+        }
+      }
+
+      // 絵札がない場合、または序盤の場合は弱いカードを出す
+      return getWeakestCard(playableCards, gameState)
+    }
+
+    // 3. まだ誰も勝っていない場合：様子見（弱いカードを出す）
     return getWeakestCard(playableCards, gameState)
   }
 }
@@ -311,16 +351,16 @@ function evaluateSame2Potential(card: Card, gameState: GameState): number {
 
   // トリックが空の場合（リード時）
   if (currentTrick.cards.length === 0) {
-    // 初旬（0-40%）は2でリードしない（強力に温存）
+    // 🔧 修正: 初旬（0-40%）は2を適度に温存（マイティより低い価値）
     if (gameProgress < 0.4) {
-      return 800 // マイティー超えの超高ボーナスで温存
+      return 250 // 適度に温存（マイティ+500より低い）
     }
-    // 中盤（40-70%）もある程度温存
+    // 中盤（40-70%）も温存するが、使える場面では使う
     if (gameProgress < 0.7) {
-      return 400
+      return 150 // 中程度の温存
     }
-    // 終盤はセイム2を作るチャンス
-    return 200
+    // 終盤はセイム2を作るチャンス（積極的に使う）
+    return 50
   }
 
   // 現在のトリックで異なるスートが出ている場合、そのスートは4枚揃わない
@@ -344,30 +384,30 @@ function evaluateSame2Potential(card: Card, gameState: GameState): number {
     const trickPosition = currentTrick.cards.length // 現在何枚出ているか
 
     // トリックの早い段階（1-2枚目）でMighty/Jackが出ている場合
-    // → まだ手札に余裕があるので、2は絶対に温存すべき
+    // → まだ手札に余裕があるので、2は温存すべき
     if (trickPosition <= 2) {
-      // 序盤・中盤は特に大きなペナルティ（2を絶対に出さない）
+      // 🔧 修正: ペナルティを緩和（捨てるべき場面では捨てる）
       let penalty = 0
       if (gameProgress < 0.5) {
-        penalty = -400 // 超大ペナルティで2を温存
+        penalty = -150 // 序盤は温存（緩和）
       } else if (gameProgress < 0.7) {
-        penalty = -300 // 中盤後半も大ペナルティ
+        penalty = -100 // 中盤は捨てやすく
       } else {
-        penalty = -200 // 終盤は捨てても良い
+        penalty = -50 // 終盤は積極的に捨てる
       }
 
       return penalty
     }
 
     // トリックの後半（3枚目）でMighty/Jackが出ている場合
-    // → 手札が少なくなっているが、まだ温存の価値あり
+    // → 手札が少なくなっているので、捨てても良い
     let penalty = 0
     if (gameProgress < 0.4) {
-      penalty = -200 // 序盤は温存
+      penalty = -80 // 序盤でも捨てやすく
     } else if (gameProgress < 0.7) {
-      penalty = -150 // 中盤も温存傾向
+      penalty = -50 // 中盤は捨てる傾向
     } else {
-      penalty = -100 // 終盤は積極的に捨てる
+      penalty = -20 // 終盤は積極的に捨てる
     }
 
     return penalty
@@ -377,26 +417,27 @@ function evaluateSame2Potential(card: Card, gameState: GameState): number {
   if (allSameSuit) {
     // リードスートと同じなら、セイム2の可能性が高い
     if (card.suit === leadingSuit) {
-      // セイム2発動の可能性があるので、超高ボーナス
-      return 600
+      // 🔧 修正: セイム2発動の可能性があるが、マイティより低い価値
+      return 400 // 高ボーナスだが、マイティ（+500）より低い
     }
     // 異なるスートでも、次のトリックで可能性がある
     // 初旬ほど温存
     if (gameProgress < 0.4) {
-      return 500 // 初旬は強力に温存
+      return 200 // 適度に温存（マイティより低い）
     }
-    return gameProgress < 0.7 ? 300 : 150
+    return gameProgress < 0.7 ? 100 : 50
   }
 
   // 異なるスートが混ざっている場合（セイム2無効）
   // このトリックでは使えないが、次のトリックでの可能性を考慮
+  // 🔧 修正: セイム2が無効な場合は積極的に捨てる
   if (gameProgress < 0.3) {
-    return 0 // 初旬は捨てても良い（ただし他に捨てるカードがあれば）
+    return -30 // 初旬でも捨てやすく
   }
   if (gameProgress < 0.6) {
-    return -50 // 中盤は捨てる傾向
+    return -80 // 中盤は積極的に捨てる
   }
-  // 終盤は積極的に捨てる
+  // 終盤は最優先で捨てる
   return -100
 }
 
@@ -753,6 +794,55 @@ function isNapoleonWinning(currentTrick: Trick, gameState: GameState): boolean {
         trickCard.playerId === adjutant?.id) &&
       trickCard.card === bestCard.card
   )
+}
+
+/**
+ * 🆕 連合軍が現在のトリックで勝っているか判定
+ */
+function isAllianceWinning(currentTrick: Trick, gameState: GameState): boolean {
+  const napoleon = gameState.players.find((p) => p.isNapoleon)
+  const adjutant = gameState.players.find((p) => p.isAdjutant)
+  if (!napoleon) return false
+
+  const bestCard = getBestTrickCard(currentTrick, gameState)
+  // 最強カードがナポレオンチーム以外のプレイヤーのものか確認
+  return currentTrick.cards.some(
+    (trickCard) =>
+      trickCard.playerId !== napoleon.id &&
+      trickCard.playerId !== adjutant?.id &&
+      trickCard.card === bestCard.card
+  )
+}
+
+/**
+ * 🆕 連合軍が味方に絵札を渡す
+ * ナポレオンに絵札を取られないよう、味方が勝っている場合に絵札を出す
+ */
+function getFaceCardToPassToAlliance(
+  cards: Card[],
+  gameState: GameState
+): Card | null {
+  const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
+
+  // マイティーと特殊カードを除外した絵札を取得
+  const faceCardsExcludingSpecial = cards.filter(
+    (card) =>
+      isFaceCard(card) &&
+      !checkIsMighty(card) &&
+      !checkIsTrumpJack(card, trumpSuit) &&
+      !checkIsCounterJack(card, trumpSuit)
+  )
+
+  // 絵札（特殊カード除外）がある場合は、最も強い絵札を返す
+  // （味方に確実に渡すため、勝つ必要はないので強い絵札を出す）
+  if (faceCardsExcludingSpecial.length > 0) {
+    return faceCardsExcludingSpecial.sort(
+      (a, b) =>
+        getCardStrengthSafe(b, gameState) - getCardStrengthSafe(a, gameState)
+    )[0]
+  }
+
+  return null
 }
 
 /**
