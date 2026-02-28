@@ -491,33 +491,39 @@ function selectFollowingCard(
 
   // 勝てる場合、役割に応じて判断
   if (player.isNapoleon || player.isAdjutant) {
-    // 副官の特殊ロジック
+    // 🆕 副官の高度な戦術ロジック
     if (player.isAdjutant) {
-      // 1. 副官カード早期開示（ナポレオンに認知してもらう）
-      const adjutantCardReveal = shouldRevealAdjutantCard(
+      const adjutantTactics = evaluateAdjutantTactics(
         playableCards,
-        gameState,
-        currentTrick
-      )
-      if (adjutantCardReveal) {
-        return adjutantCardReveal
-      }
-
-      // 2. ナポレオンに絵札を渡す（得点稼ぎ）
-      const faceCardPass = shouldPassFaceCardToNapoleon(
-        playableCards,
-        gameState,
         currentTrick,
-        canWinTrick
+        gameState,
+        requirements
       )
-      if (faceCardPass) {
-        return faceCardPass
+
+      // 1. 副官カード早期開示（最適なタイミングで）
+      if (adjutantTactics.shouldRevealNow && adjutantTactics.adjutantCard) {
+        return adjutantTactics.adjutantCard
       }
 
-      // 3. ナポレオンが既に勝っている場合は絵札を渡す（マイティー除外）
-      if (isNapoleonWinning(currentTrick, gameState)) {
-        const cardToPlay = getFaceCardToPassToNapoleon(playableCards, gameState)
-        return cardToPlay
+      // 2. ナポレオンに絵札を渡す（最適化された絵札選択）
+      if (
+        adjutantTactics.shouldPassFaceCard &&
+        adjutantTactics.faceCardToPass
+      ) {
+        return adjutantTactics.faceCardToPass
+      }
+
+      // 3. ナポレオンのために積極的に勝つ（ナポレオンが弱い時）
+      if (adjutantTactics.shouldWinForNapoleon && canWinTrick) {
+        // トリック内に絵札が多い場合、確実に取る
+        if (adjutantTactics.trickValueForNapoleon >= 7) {
+          return getLowestWinningCard(playableCards, currentTrick, gameState)
+        }
+      }
+
+      // 4. ナポレオン保護（ナポレオンが負けそうな時）
+      if (adjutantTactics.shouldProtectNapoleon && canWinTrick) {
+        return getLowestWinningCard(playableCards, currentTrick, gameState)
       }
     }
 
@@ -1256,6 +1262,22 @@ interface SpecialCardStrategy {
 }
 
 /**
+ * 🆕 副官戦術情報（Adjutant Tactical Information）
+ */
+interface AdjutantTacticalInfo {
+  shouldRevealNow: boolean // 副官カードを今開示すべきか
+  shouldProtectNapoleon: boolean // ナポレオンを保護すべきか（積極的にサポート）
+  shouldPassFaceCard: boolean // 絵札をナポレオンに渡すべきか
+  shouldWinForNapoleon: boolean // ナポレオンのために勝つべきか（ナポレオンが弱い時）
+  napoleonNeedsHelp: boolean // ナポレオンが助けを必要としているか
+  trickValueForNapoleon: number // このトリックのナポレオンへの価値（0-10）
+  optimalRevealTiming: number // 最適な開示タイミング評価（0-10、高いほど今が良い）
+  napoleonIsWinning: boolean // ナポレオンが現在のトリックで勝っているか
+  adjutantCard: Card | null // 副官指定カード
+  faceCardToPass: Card | null // ナポレオンに渡すべき絵札
+}
+
+/**
  * 🆕 切り札をトラッキング
  * 既に出た切り札を記録し、残り切り札枚数と自分の切り札の相対的強さを評価
  */
@@ -1664,6 +1686,154 @@ function evaluateSpecialCardStrategy(
     shouldUseCounterJack,
     faceCardsInTrick,
     hasSame2Risk,
+  }
+}
+
+/**
+ * 🆕 副官の戦術を評価
+ * 副官特有の戦略（カード開示、ナポレオンへのサポート、協調プレイ）を最適化
+ */
+function evaluateAdjutantTactics(
+  playableCards: Card[],
+  currentTrick: Trick,
+  gameState: GameState,
+  requirements: WinningRequirements
+): AdjutantTacticalInfo {
+  // ナポレオンを取得
+  const napoleon = gameState.players.find((p) => p.isNapoleon)
+
+  // 副官指定カードを取得
+  const adjutantCardId = gameState.napoleonDeclaration?.adjutantCard?.id
+  const adjutantCard = adjutantCardId
+    ? playableCards.find((card) => card.id === adjutantCardId) || null
+    : null
+
+  // ナポレオンが現在のトリックで勝っているかチェック
+  const napoleonIsWinning = napoleon
+    ? isNapoleonWinning(currentTrick, gameState)
+    : false
+
+  // トリック内の絵札数
+  const faceCardsInTrick = currentTrick.cards.filter((tc) =>
+    isFaceCard(tc.card)
+  ).length
+
+  // ゲーム進行度
+  const gameProgress = calculateGameProgress(gameState)
+  const remainingTricks = 12 - gameState.tricks.length
+
+  // ナポレオンの目標達成状況を評価
+  const napoleonNeedsHelp =
+    requirements.napoleonNeedsToWin > 0 &&
+    requirements.napoleonNeedsToWin >= remainingTricks * 0.5 // 残りトリックの50%以上必要な場合
+
+  // トリックのナポレオンへの価値評価（0-10）
+  let trickValueForNapoleon = 0
+  if (faceCardsInTrick >= 3)
+    trickValueForNapoleon = 10 // 非常に価値が高い
+  else if (faceCardsInTrick === 2)
+    trickValueForNapoleon = 7 // 価値が高い
+  else if (faceCardsInTrick === 1)
+    trickValueForNapoleon = 4 // 中程度の価値
+  else trickValueForNapoleon = 1 // 低い価値
+
+  // 終盤（残り3トリック以下）はトリック価値を上昇
+  if (remainingTricks <= 3 && faceCardsInTrick > 0) {
+    trickValueForNapoleon = Math.min(10, trickValueForNapoleon + 3)
+  }
+
+  // 副官カード開示の最適タイミング評価（0-10）
+  let optimalRevealTiming = 0
+  if (adjutantCard) {
+    // リードスートと一致するか
+    const leadingSuit = currentTrick.leadingSuit || gameState.leadingSuit
+    const matchesLeadingSuit = leadingSuit
+      ? adjutantCard.suit === leadingSuit
+      : false
+
+    if (matchesLeadingSuit) {
+      // 序盤〜中盤（70%まで）は開示しやすい
+      if (gameProgress < 0.3)
+        optimalRevealTiming = 9 // 早期開示が最適
+      else if (gameProgress < 0.5)
+        optimalRevealTiming = 7 // 中盤も良い
+      else if (gameProgress < 0.7)
+        optimalRevealTiming = 5 // まだ間に合う
+      else optimalRevealTiming = 3 // 終盤は遅い
+
+      // 特殊カードとの競合チェック
+      const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
+      if (
+        checkIsMighty(adjutantCard) ||
+        checkIsTrumpJack(adjutantCard, trumpSuit) ||
+        checkIsCounterJack(adjutantCard, trumpSuit)
+      ) {
+        optimalRevealTiming = 0 // 特殊カードは開示に使わない
+      }
+
+      // トリック内に特殊カードがある場合は開示しない
+      const hasMightyOrJack = currentTrick.cards.some((tc) => {
+        const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
+        return (
+          checkIsMighty(tc.card) ||
+          checkIsTrumpJack(tc.card, trumpSuit) ||
+          checkIsCounterJack(tc.card, trumpSuit)
+        )
+      })
+      if (hasMightyOrJack) {
+        optimalRevealTiming = Math.max(0, optimalRevealTiming - 5)
+      }
+    }
+  }
+
+  // 副官カードを今開示すべきか
+  const shouldRevealNow =
+    adjutantCard !== null &&
+    optimalRevealTiming >= 7 &&
+    currentTrick.cards.length > 0 // リード時は出さない
+
+  // ナポレオンを保護すべきか（積極的にサポート）
+  const shouldProtectNapoleon =
+    napoleonNeedsHelp || (faceCardsInTrick >= 2 && !napoleonIsWinning)
+
+  // 絵札をナポレオンに渡すべきか
+  const shouldPassFaceCard =
+    napoleonIsWinning && faceCardsInTrick >= 1 && playableCards.some(isFaceCard)
+
+  // ナポレオンのために勝つべきか（ナポレオンが弱い時）
+  const shouldWinForNapoleon =
+    napoleonNeedsHelp &&
+    !napoleonIsWinning &&
+    faceCardsInTrick >= 2 &&
+    remainingTricks <= 6 // 中盤以降
+
+  // ナポレオンに渡すべき絵札を選択
+  let faceCardToPass: Card | null = null
+  if (shouldPassFaceCard) {
+    const faceCards = playableCards.filter(
+      (card) => isFaceCard(card) && !checkIsMighty(card)
+    )
+
+    if (faceCards.length > 0) {
+      // 最も弱い絵札を選択（10 > Q > K > A の順）
+      faceCardToPass = faceCards.sort(
+        (a, b) =>
+          getCardStrengthSafe(a, gameState) - getCardStrengthSafe(b, gameState)
+      )[0]
+    }
+  }
+
+  return {
+    shouldRevealNow,
+    shouldProtectNapoleon,
+    shouldPassFaceCard,
+    shouldWinForNapoleon,
+    napoleonNeedsHelp,
+    trickValueForNapoleon,
+    optimalRevealTiming,
+    napoleonIsWinning,
+    adjutantCard,
+    faceCardToPass,
   }
 }
 
