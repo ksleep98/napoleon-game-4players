@@ -45,7 +45,7 @@ import {
   shouldInterventWithTrump,
   shouldLeadWithTrump,
 } from './strategies/trumps'
-import type { EndgameInfo, HandComposition } from './strategies/types'
+import type { HandComposition } from './strategies/types'
 
 /**
  * カードの戦略的価値を評価
