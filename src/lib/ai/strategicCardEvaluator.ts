@@ -23,6 +23,13 @@ import {
   getWeakestNonFaceCard,
   isFaceCard,
 } from './strategies/helpers'
+import {
+  isAllianceWinning,
+  isNapoleonWinning,
+  shouldInterventWithTrump,
+  shouldLeadWithTrump,
+} from './strategies/trumps'
+import type { HandComposition } from './strategies/types'
 
 /**
  * カードの戦略的価値を評価
@@ -1208,18 +1215,6 @@ interface CardCountingInfo {
 }
 
 /**
- * 🆕 切り札カウンティング情報
- */
-interface TrumpTracking {
-  playedTrumps: Card[] // 既に出た切り札
-  remainingTrumps: number // 残り切り札枚数（推定）
-  myTrumps: Card[] // 自分の切り札
-  myStrongestTrump: Card | null // 自分の最強切り札
-  hasHighTrumps: boolean // 高位切り札（A, K, Q, J, Mighty）を持っているか
-  trumpsStrongerThanMine: number // 自分より強い切り札の推定枚数
-}
-
-/**
  * 🆕 終盤状態情報
  */
 interface EndgameInfo {
@@ -1263,93 +1258,6 @@ interface AdjutantTacticalInfo {
   napoleonIsWinning: boolean // ナポレオンが現在のトリックで勝っているか
   adjutantCard: Card | null // 副官指定カード
   faceCardToPass: Card | null // ナポレオンに渡すべき絵札
-}
-
-/**
- * 🆕 ボイド後の切り札介入を判断
- * 自分がボイド（そのスートを持っていない）で、切り札を使うべきか判断
- */
-function shouldInterventWithTrump(
-  playableCards: Card[],
-  currentTrick: Trick,
-  gameState: GameState,
-  player: Player,
-  trumpTracking: TrumpTracking
-): boolean {
-  const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
-
-  // 切り札を持っていない場合はfalse
-  if (trumpTracking.myTrumps.length === 0) return false
-
-  // 既に切り札が出ている場合は、勝てるかチェック
-  const trumpInTrick = currentTrick.cards.find(
-    (tc) =>
-      tc.card.suit === trumpSuit ||
-      checkIsMighty(tc.card) ||
-      checkIsTrumpJack(tc.card, trumpSuit) ||
-      checkIsCounterJack(tc.card, trumpSuit)
-  )
-
-  if (trumpInTrick) {
-    // 切り札が既に出ている場合、勝てる切り札があるかチェック
-    const canWin = playableCards.some(
-      (card) =>
-        (card.suit === trumpSuit ||
-          checkIsMighty(card) ||
-          checkIsTrumpJack(card, trumpSuit) ||
-          checkIsCounterJack(card, trumpSuit)) &&
-        getCardStrengthSafe(card, gameState) >
-          getCardStrengthSafe(trumpInTrick.card, gameState)
-    )
-
-    if (!canWin) {
-      return false // 勝てないなら切り札を使わない
-    }
-  }
-
-  // トリック内の絵札をカウント
-  const faceCardsInTrick = currentTrick.cards.filter((tc) =>
-    isFaceCard(tc.card)
-  ).length
-
-  // 役割別の判断
-  if (player.isNapoleon || player.isAdjutant) {
-    // ナポレオンチーム: 絵札が2枚以上あるなら切り札で取る
-    if (faceCardsInTrick >= 2) {
-      return true
-    }
-
-    // 連合軍が勝っている場合、切り札でブロック
-    if (isAllianceWinning(currentTrick, gameState)) {
-      return true
-    }
-  } else {
-    // 連合軍: ナポレオンが勝っている場合、切り札でブロック
-    if (isNapoleonWinning(currentTrick, gameState)) {
-      return true
-    }
-
-    // 絵札が3枚以上ある場合、味方に渡すために切り札で勝つ
-    if (faceCardsInTrick >= 3) {
-      return true
-    }
-  }
-
-  // 切り札の強さを考慮
-  // 弱い切り札（2-7）しかない場合は使わない
-  const hasOnlyWeakTrumps = trumpTracking.myTrumps.every(
-    (card) =>
-      !checkIsMighty(card) &&
-      !checkIsTrumpJack(card, trumpSuit) &&
-      !checkIsCounterJack(card, trumpSuit) &&
-      ['2', '3', '4', '5', '6', '7'].includes(card.rank)
-  )
-
-  if (hasOnlyWeakTrumps && faceCardsInTrick < 2) {
-    return false // 弱い切り札は温存
-  }
-
-  return false
 }
 
 /**
@@ -1733,38 +1641,6 @@ function canWinCurrentTrick(
   )
 }
 
-function isNapoleonWinning(currentTrick: Trick, gameState: GameState): boolean {
-  const napoleon = gameState.players.find((p) => p.isNapoleon)
-  const adjutant = gameState.players.find((p) => p.isAdjutant)
-  if (!napoleon) return false
-
-  const bestCard = getBestTrickCard(currentTrick, gameState)
-  return currentTrick.cards.some(
-    (trickCard) =>
-      (trickCard.playerId === napoleon.id ||
-        trickCard.playerId === adjutant?.id) &&
-      trickCard.card === bestCard.card
-  )
-}
-
-/**
- * 🆕 連合軍が現在のトリックで勝っているか判定
- */
-function isAllianceWinning(currentTrick: Trick, gameState: GameState): boolean {
-  const napoleon = gameState.players.find((p) => p.isNapoleon)
-  const adjutant = gameState.players.find((p) => p.isAdjutant)
-  if (!napoleon) return false
-
-  const bestCard = getBestTrickCard(currentTrick, gameState)
-  // 最強カードがナポレオンチーム以外のプレイヤーのものか確認
-  return currentTrick.cards.some(
-    (trickCard) =>
-      trickCard.playerId !== napoleon.id &&
-      trickCard.playerId !== adjutant?.id &&
-      trickCard.card === bestCard.card
-  )
-}
-
 /**
  * 🆕 連合軍が味方に絵札を渡す
  * ナポレオンに絵札を取られないよう、味方が勝っている場合に絵札を出す
@@ -1794,19 +1670,6 @@ function getFaceCardToPassToAlliance(
   }
 
   return null
-}
-
-/**
- * 🆕 手札の構成を分析
- * スート別のカード枚数、絵札の分布を把握
- */
-interface HandComposition {
-  suitCounts: Map<Suit, number>
-  faceCardsBySuit: Map<Suit, Card[]>
-  trumpCount: number
-  totalFaceCards: number
-  voidSuits: Suit[] // 持っていないスート
-  shortSuits: Suit[] // 1-2枚しかないスート（ボイド作成候補）
 }
 
 function analyzeHandComposition(
@@ -1861,67 +1724,6 @@ function analyzeHandComposition(
     voidSuits,
     shortSuits,
   }
-}
-
-/**
- * 🆕 切り札でリードすべきか判定
- * ナポレオンは切り札支配を狙う、連合軍は切り札引き出しを狙う
- */
-function shouldLeadWithTrump(
-  hand: Card[],
-  gameState: GameState,
-  player: Player,
-  composition: HandComposition
-): boolean {
-  const gameProgress = calculateGameProgress(gameState)
-  const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
-
-  // 切り札を持っていない場合はfalse
-  if (composition.trumpCount === 0) return false
-
-  if (player.isNapoleon || player.isAdjutant) {
-    // ナポレオンチーム: 切り札支配戦略
-
-    // 終盤（70%以降）で切り札が複数ある場合、切り札でリード
-    if (gameProgress >= 0.7 && composition.trumpCount >= 2) {
-      return true
-    }
-
-    // 中盤（40-70%）で強い切り札（Mighty, Jack, A, K）がある場合
-    if (gameProgress >= 0.4 && gameProgress < 0.7) {
-      const strongTrumps = hand.filter(
-        (card) =>
-          card.suit === trumpSuit &&
-          (checkIsMighty(card) ||
-            checkIsTrumpJack(card, trumpSuit) ||
-            ['A', 'K'].includes(card.rank))
-      )
-      if (strongTrumps.length > 0) {
-        return true
-      }
-    }
-  } else {
-    // 連合軍: 切り札引き出し戦略
-
-    // 序盤（0-40%）で弱い切り札（2-7）がある場合、ナポレオンの強い切り札を引き出す
-    if (gameProgress < 0.4) {
-      const weakTrumps = hand.filter(
-        (card) =>
-          card.suit === trumpSuit &&
-          !checkIsMighty(card) &&
-          !checkIsTrumpJack(card, trumpSuit) &&
-          !checkIsCounterJack(card, trumpSuit) &&
-          ['2', '3', '4', '5', '6', '7'].includes(card.rank)
-      )
-
-      // 弱い切り札が1-2枚ある場合、引き出し戦略を実行
-      if (weakTrumps.length >= 1 && weakTrumps.length <= 2) {
-        return true
-      }
-    }
-  }
-
-  return false
 }
 
 /**

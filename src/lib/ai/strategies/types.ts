@@ -102,3 +102,15 @@ export interface AdjutantTacticalInfo {
   adjutantCard: Card | null // 副官指定カード
   faceCardToPass: Card | null // ナポレオンに渡すべき絵札
 }
+
+/**
+ * 手札の構成を分析
+ */
+export interface HandComposition {
+  suitCounts: Map<Suit, number>
+  faceCardsBySuit: Map<Suit, Card[]>
+  trumpCount: number
+  totalFaceCards: number
+  voidSuits: Suit[] // 持っていないスート
+  shortSuits: Suit[] // 1-2枚しかないスート（ボイド作成候補）
+}
