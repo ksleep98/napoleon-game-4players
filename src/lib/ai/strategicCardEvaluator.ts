@@ -327,6 +327,14 @@ function selectFollowingCard(
   // 🆕 改善: 終盤状態を分析
   const endgameInfo = analyzeEndgameState(gameState, player)
 
+  // 🆕 改善: 特殊カード戦略を評価（Mighty, Trump Jack, Counter Jack）
+  const specialCardStrategy = evaluateSpecialCardStrategy(
+    player,
+    playableCards,
+    currentTrick,
+    gameState
+  )
+
   // 🔧 改善: ボイド（リードスートを持っていない）の判定
   const leadingSuit = currentTrick.leadingSuit || gameState.leadingSuit
   const isVoid = leadingSuit
@@ -396,6 +404,30 @@ function selectFollowingCard(
 
   // 既に出ているカード全てを考慮して、勝てるか判定
   const canWinTrick = canWinCurrentTrick(playableCards, currentTrick, gameState)
+
+  // 🆕 改善: 特殊カード優先使用判定（Same-2リスク回避も考慮）
+  if (canWinTrick && !specialCardStrategy.hasSame2Risk) {
+    // Mightyを使うべき場合
+    if (specialCardStrategy.shouldUseMighty && specialCardStrategy.mightyCard) {
+      return specialCardStrategy.mightyCard
+    }
+
+    // Trump Jackを使うべき場合
+    if (
+      specialCardStrategy.shouldUseTrumpJack &&
+      specialCardStrategy.trumpJackCard
+    ) {
+      return specialCardStrategy.trumpJackCard
+    }
+
+    // Counter Jackを使うべき場合
+    if (
+      specialCardStrategy.shouldUseCounterJack &&
+      specialCardStrategy.counterJackCard
+    ) {
+      return specialCardStrategy.counterJackCard
+    }
+  }
 
   // 🆕 終盤戦略: 勝利確定または全絵札が必要な場合の特別な戦略
   if (endgameInfo.isEndgame) {
@@ -1207,6 +1239,23 @@ interface EndgameInfo {
 }
 
 /**
+ * 🆕 特殊カード戦略情報
+ */
+interface SpecialCardStrategy {
+  hasMighty: boolean // Mightyを持っているか
+  hasTrumpJack: boolean // Trump Jackを持っているか
+  hasCounterJack: boolean // Counter Jackを持っているか
+  mightyCard: Card | null // Mightyカード
+  trumpJackCard: Card | null // Trump Jackカード
+  counterJackCard: Card | null // Counter Jackカード
+  shouldUseMighty: boolean // Mightyを使うべきか
+  shouldUseTrumpJack: boolean // Trump Jackを使うべきか
+  shouldUseCounterJack: boolean // Counter Jackを使うべきか
+  faceCardsInTrick: number // トリック内の絵札数
+  hasSame2Risk: boolean // セイム2のリスクがあるか
+}
+
+/**
  * 🆕 切り札をトラッキング
  * 既に出た切り札を記録し、残り切り札枚数と自分の切り札の相対的強さを評価
  */
@@ -1492,6 +1541,130 @@ function shouldInterventWithTrump(
   }
 
   return false
+}
+
+/**
+ * 🆕 特殊カード戦略を評価
+ * Mighty、Trump Jack、Counter Jackの使用タイミングを最適化
+ */
+function evaluateSpecialCardStrategy(
+  player: Player,
+  playableCards: Card[],
+  currentTrick: Trick,
+  gameState: GameState
+): SpecialCardStrategy {
+  const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
+
+  // 自分の特殊カードを検出
+  const mightyCard = playableCards.find((card) => checkIsMighty(card)) || null
+  const trumpJackCard =
+    playableCards.find((card) => checkIsTrumpJack(card, trumpSuit)) || null
+  const counterJackCard =
+    playableCards.find((card) => checkIsCounterJack(card, trumpSuit)) || null
+
+  const hasMighty = mightyCard !== null
+  const hasTrumpJack = trumpJackCard !== null
+  const hasCounterJack = counterJackCard !== null
+
+  // トリック内の絵札数を計算
+  const faceCardsInTrick = currentTrick.cards.filter((tc) =>
+    isFaceCard(tc.card)
+  ).length
+
+  // セイム2のリスクを評価
+  const leadingSuit = currentTrick.leadingSuit || gameState.leadingSuit
+  const allSameSuit = leadingSuit
+    ? currentTrick.cards.every((tc) => tc.card.suit === leadingSuit)
+    : false
+
+  // トリック内に既に特殊カードがあるかチェック
+  const alreadyHasSpecialCard = currentTrick.cards.some(
+    (tc) =>
+      checkIsMighty(tc.card) ||
+      checkIsTrumpJack(tc.card, trumpSuit) ||
+      checkIsCounterJack(tc.card, trumpSuit)
+  )
+
+  // セイム2リスク: 全て同じスートで特殊カードがまだ出ていない場合
+  const hasSame2Risk =
+    allSameSuit && !alreadyHasSpecialCard && currentTrick.cards.length >= 2
+
+  // Mighty使用判断
+  let shouldUseMighty = false
+  if (hasMighty) {
+    // セイム2のリスクがある場合は使わない（セイム2を壊さない）
+    if (!hasSame2Risk) {
+      // 絵札が3枚以上ある重要なトリックで使用
+      if (faceCardsInTrick >= 3) {
+        shouldUseMighty = true
+      }
+      // 終盤（残り3トリック以下）で絵札が2枚以上ある場合
+      const remainingTricks = 12 - gameState.tricks.length
+      if (remainingTricks <= 3 && faceCardsInTrick >= 2) {
+        shouldUseMighty = true
+      }
+      // ナポレオンチームで目標達成に必要な場合
+      if (player.isNapoleon || player.isAdjutant) {
+        const requirements = calculateWinningRequirements(gameState)
+        if (requirements.napoleonNeedsToWin <= 2 && faceCardsInTrick >= 1) {
+          shouldUseMighty = true
+        }
+      }
+    }
+  }
+
+  // Trump Jack使用判断
+  let shouldUseTrumpJack = false
+  if (hasTrumpJack) {
+    // セイム2のリスクがある場合は使わない
+    if (!hasSame2Risk) {
+      // Mightyがない場合、Trump Jackを切り札として使用
+      if (!hasMighty && faceCardsInTrick >= 2) {
+        shouldUseTrumpJack = true
+      }
+      // 終盤で必要な場合
+      const remainingTricks = 12 - gameState.tricks.length
+      if (remainingTricks <= 2 && faceCardsInTrick >= 1) {
+        shouldUseTrumpJack = true
+      }
+    }
+  }
+
+  // Counter Jack使用判断
+  let shouldUseCounterJack = false
+  if (hasCounterJack) {
+    // セイム2のリスクがある場合は使わない
+    if (!hasSame2Risk) {
+      // 絵札が多い場合に使用
+      if (faceCardsInTrick >= 2) {
+        shouldUseCounterJack = true
+      }
+      // 連合軍でナポレオンをブロックする必要がある場合
+      if (!player.isNapoleon && !player.isAdjutant) {
+        const napoleonWinning = currentTrick.cards.some((tc) => {
+          const p = gameState.players.find((pl) => pl.id === tc.playerId)
+          return p && (p.isNapoleon || p.isAdjutant)
+        })
+        if (napoleonWinning && faceCardsInTrick >= 1) {
+          shouldUseCounterJack = true
+        }
+      }
+    }
+  }
+
+  return {
+    hasMighty,
+    hasTrumpJack,
+    hasCounterJack,
+    mightyCard,
+    trumpJackCard,
+    counterJackCard,
+    shouldUseMighty,
+    shouldUseTrumpJack,
+    shouldUseCounterJack,
+    faceCardsInTrick,
+    hasSame2Risk,
+  }
 }
 
 /**
