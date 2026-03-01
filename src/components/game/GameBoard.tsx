@@ -158,7 +158,7 @@ export const GameBoard = memo(function GameBoard({
     <div className="space-y-2 md:space-y-4">
       {/* メインゲームボード */}
       <div
-        className="relative w-full max-w-6xl mx-auto h-[350px] md:h-[600px]
+        className="relative w-full max-w-6xl mx-auto h-87.5 md:h-150
           bg-green-700 rounded-xl shadow-lg border-2 md:border-4 border-green-800"
       >
         {/* ゲーム情報 - デスクトップのみ表示（モバイルはCompactGameProgressで表示） */}
