@@ -13,6 +13,7 @@ import {
   evaluateAdjutantStrategy,
   evaluateAdjutantTactics,
 } from './strategies/adjutantTactics'
+import { evaluateAllianceCooperation } from './strategies/allianceCooperation'
 import {
   estimatePlayerVoids,
   trackAllCards,
@@ -32,6 +33,8 @@ import {
   getWeakestNonFaceCard,
   isFaceCard,
 } from './strategies/helpers'
+import { evaluateNapoleonCooperation } from './strategies/napoleonCooperation'
+import { buildSignalHistory } from './strategies/signalDecoder'
 import {
   evaluateNonViableSuit,
   evaluateSame2Breaker,
@@ -124,6 +127,22 @@ export function selectBestStrategicCard(
   if (playableCards.length === 1) return playableCards[0]
 
   const currentTrick = gameState.currentTrick
+
+  // 🆕 協力戦略を評価（シグナリング統合）
+  const cooperativeStrategy = evaluateCooperativeStrategy(
+    playableCards,
+    gameState,
+    player,
+    currentTrick
+  )
+
+  // 🆕 協調プレイが推奨されている場合、それを優先
+  if (
+    cooperativeStrategy.coordinatedPlay &&
+    playableCards.some((c) => c.id === cooperativeStrategy.coordinatedPlay?.id)
+  ) {
+    return cooperativeStrategy.coordinatedPlay
+  }
 
   // フォロー義務がない場合（最初のプレイヤー）
   if (currentTrick.cards.length === 0) {
@@ -1195,5 +1214,49 @@ function selectBestCardFromSuit(
       (a, b) =>
         getCardStrengthSafe(a, gameState) - getCardStrengthSafe(b, gameState)
     )[0]
+  }
+}
+
+/**
+ * 🆕 協力戦略を評価（シグナリング統合）
+ * Evaluate cooperative strategy with signaling integration
+ */
+function evaluateCooperativeStrategy(
+  playableCards: Card[],
+  gameState: GameState,
+  player: Player,
+  currentTrick: Trick
+): import('./strategies/types').CooperativeStrategyInfo {
+  // カードカウンティング情報を取得
+  const cardCounting = trackAllCards(player, gameState)
+
+  // シグナル履歴を構築
+  const signalHistory = buildSignalHistory(player, gameState, cardCounting)
+
+  // 目標達成状況を計算
+  const requirements = calculateWinningRequirements(gameState)
+
+  // 役割に応じて協力戦略を評価
+  if (player.isNapoleon || player.isAdjutant) {
+    // ナポレオンチーム: napoleonCooperationを使用
+    return evaluateNapoleonCooperation(
+      playableCards,
+      currentTrick,
+      gameState,
+      player,
+      signalHistory,
+      cardCounting,
+      requirements
+    )
+  } else {
+    // 連合軍: allianceCooperationを使用
+    return evaluateAllianceCooperation(
+      playableCards,
+      currentTrick,
+      gameState,
+      player,
+      signalHistory,
+      cardCounting
+    )
   }
 }
