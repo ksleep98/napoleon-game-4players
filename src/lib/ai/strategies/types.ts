@@ -114,3 +114,66 @@ export interface HandComposition {
   voidSuits: Suit[] // 持っていないスート
   shortSuits: Suit[] // 1-2枚しかないスート（ボイド作成候補）
 }
+
+/**
+ * シグナルタイプ
+ * カード選択を通じてパートナーに送る情報の種類
+ */
+export type SignalType =
+  | 'SUIT_STRENGTH' // このスートに強いカードを持っている
+  | 'VOID_SUIT' // このスートがボイド（持っていない）
+  | 'TRUMP_STRENGTH' // 強い切り札を持っている
+  | 'FACE_CARD_COUNT' // 絵札の強さを示す
+  | 'NEED_HELP' // パートナーの助けが必要
+  | 'CAN_WIN' // このトリックを勝てる
+  | 'BLOCK_NAPOLEON' // 連合軍: ナポレオンをブロックすることに集中
+  | 'SUPPORT_NAPOLEON' // 副官: ナポレオンをサポート
+
+/**
+ * シグナル情報
+ * カード選択に込められた意味のある情報
+ */
+export interface Signal {
+  type: SignalType // シグナルの種類
+  strength: 'STRONG' | 'MODERATE' | 'WEAK' | 'NONE' // 強度
+  suit?: Suit // 関連するスート（オプション）
+  trickNumber: number // トリック番号
+  playerId: string // 送信者のプレイヤーID
+  confidence: number // 信頼度（0-1）、このシグナルの確実性
+}
+
+/**
+ * カードプレイパターン
+ * プレイヤーのカード選択パターンを記録
+ */
+export interface CardPlayPattern {
+  playerId: string // プレイヤーID
+  trickNumber: number // トリック番号
+  wasLeading: boolean // リードしていたか
+  cardPlayed: Card // プレイしたカード
+  playableCards: number // プレイ可能だったカード数
+  context: 'AGGRESSIVE' | 'CONSERVATIVE' | 'SIGNALING' | 'NORMAL' // プレイの文脈
+}
+
+/**
+ * シグナル履歴
+ * ゲーム中の送受信シグナルと観察されたパターン
+ */
+export interface SignalHistory {
+  sentSignals: Signal[] // 自分が送ったシグナル
+  receivedSignals: Signal[] // パートナーから受け取ったシグナル
+  partnerPlayPatterns: CardPlayPattern[] // パートナーのプレイパターン
+}
+
+/**
+ * 協調戦略情報
+ * パートナーとの協調プレイに関する戦略的判断
+ */
+export interface CooperativeStrategyInfo {
+  shouldSignal: boolean // シグナルを送るべきか
+  signalToSend?: Signal // 送信するシグナル（オプション）
+  partnerSignals: Signal[] // パートナーからのシグナル
+  coordinatedPlay?: Card // 協調プレイ推奨カード（オプション）
+  reasoning: string // 判断の理由
+  cooperationBonus: number // カードスコアに追加される協調ボーナス
+}
