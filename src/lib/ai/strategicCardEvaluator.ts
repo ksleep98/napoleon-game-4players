@@ -25,6 +25,10 @@ import {
   shouldPlayConservatively,
 } from './strategies/endgame'
 import {
+  shouldUseEndgameSolver,
+  solveEndgame,
+} from './strategies/endgameSolver'
+import {
   calculateGameProgress,
   getBestTrickCard,
   getCardStrengthSafe,
@@ -127,6 +131,23 @@ export function selectBestStrategicCard(
   if (playableCards.length === 1) return playableCards[0]
 
   const currentTrick = gameState.currentTrick
+
+  // 🆕 エンドゲームソルバー: 残り2-3トリックで完全探索
+  if (shouldUseEndgameSolver(gameState, 3)) {
+    const cardCounting = trackAllCards(player, gameState)
+    const endgameResult = solveEndgame(
+      playableCards,
+      gameState,
+      player,
+      cardCounting,
+      3 // 最大3トリック先まで探索
+    )
+
+    if (endgameResult && endgameResult.confidence >= 0.8) {
+      // 高い信頼度（0.8以上）の場合、エンドゲームソルバーの結果を採用
+      return endgameResult.bestCard
+    }
+  }
 
   // 🆕 協力戦略を評価（シグナリング統合）
   const cooperativeStrategy = evaluateCooperativeStrategy(
