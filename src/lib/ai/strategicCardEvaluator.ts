@@ -38,6 +38,10 @@ import {
   isFaceCard,
 } from './strategies/helpers'
 import { evaluateNapoleonCooperation } from './strategies/napoleonCooperation'
+import {
+  calculateProbabilisticBonus,
+  evaluateCardProbability,
+} from './strategies/probabilisticDecision'
 import { buildSignalHistory } from './strategies/signalDecoder'
 import {
   evaluateNonViableSuit,
@@ -347,23 +351,40 @@ function selectLeadingCard(
 
   // 戦略的スートがない場合、従来のロジックを使用
   // カードを戦略的価値で評価
-  const cardEvaluations = playableCards.map((card) => ({
-    card,
-    strategicValue: evaluateCardStrategicValue(card, gameState, player),
-    leadingStrategy: calculateLeadingStrategy(card, gameState, player),
-  }))
+  const cardEvaluations = playableCards.map((card) => {
+    const strategicValue = evaluateCardStrategicValue(card, gameState, player)
+    const leadingStrategy = calculateLeadingStrategy(card, gameState, player)
+
+    // 🆕 確率的評価: 勝率と期待値を考慮
+    const probabilisticResult = evaluateCardProbability(
+      card,
+      playableCards,
+      gameState,
+      player,
+      cardCounting,
+      requirements
+    )
+    const probabilisticBonus = calculateProbabilisticBonus(
+      probabilisticResult,
+      requirements,
+      player.isNapoleon || player.isAdjutant
+    )
+
+    return {
+      card,
+      strategicValue,
+      leadingStrategy,
+      probabilisticBonus,
+      totalScore: strategicValue + leadingStrategy + probabilisticBonus,
+    }
+  })
 
   // 役割別のリード戦略
   if (player.isNapoleon || player.isAdjutant) {
-    // ナポレオンチーム: 強いカードでトリックを取りに行く
-    return cardEvaluations.sort(
-      (a, b) =>
-        b.strategicValue +
-        b.leadingStrategy -
-        (a.strategicValue + a.leadingStrategy)
-    )[0].card
+    // ナポレオンチーム: 強いカードでトリックを取りに行く（確率的評価含む）
+    return cardEvaluations.sort((a, b) => b.totalScore - a.totalScore)[0].card
   } else {
-    // 連合軍: 相手の強いカードを引き出すか、弱いカードで様子見
+    // 連合軍: 相手の強いカードを引き出すか、弱いカードで様子見（確率的評価含む）
     const weakCards = cardEvaluations.filter(
       (evaluation) => evaluation.strategicValue < 500
     )
@@ -371,15 +392,13 @@ function selectLeadingCard(
       (evaluation) => evaluation.strategicValue >= 500
     )
 
-    // 弱いカードがある場合は弱いカードで探り
+    // 弱いカードがある場合は弱いカードで探り（確率的評価で選択）
     if (weakCards.length > 0) {
-      return weakCards.sort((a, b) => a.strategicValue - b.strategicValue)[0]
-        .card
+      return weakCards.sort((a, b) => b.totalScore - a.totalScore)[0].card
     }
 
-    // 強いカードしかない場合は最強カードで勝負
-    return strongCards.sort((a, b) => b.strategicValue - a.strategicValue)[0]
-      .card
+    // 強いカードしかない場合は最強カードで勝負（確率的評価で選択）
+    return strongCards.sort((a, b) => b.totalScore - a.totalScore)[0].card
   }
 }
 
@@ -410,6 +429,27 @@ function selectFollowingCard(
     currentTrick,
     gameState,
     calculateWinningRequirements
+  )
+
+  // 🆕 確率的評価: 各カードの勝率と期待値を事前計算
+  const cardCounting = trackAllCards(player, gameState)
+  const probabilisticEvaluations = new Map(
+    playableCards.map((card) => {
+      const result = evaluateCardProbability(
+        card,
+        playableCards,
+        gameState,
+        player,
+        cardCounting,
+        requirements
+      )
+      const bonus = calculateProbabilisticBonus(
+        result,
+        requirements,
+        player.isNapoleon || player.isAdjutant
+      )
+      return [card.id, { result, bonus }]
+    })
   )
 
   // 🔧 改善: ボイド（リードスートを持っていない）の判定
@@ -635,8 +675,13 @@ function selectFollowingCard(
         return getLowestWinningCard(playableCards, currentTrick, gameState)
       }
 
-      // 絵札が少ないトリックは諦めて、弱いカードを捨てる
-      return getWeakestCard(playableCards, gameState)
+      // 絵札が少ないトリックは諦めて、確率的評価で最適カードを選択
+      return selectCardWithProbabilisticEvaluation(
+        playableCards,
+        probabilisticEvaluations,
+        gameState,
+        true // ナポレオンチームは高勝率優先
+      )
     }
 
     if (playAggressively) {
@@ -713,9 +758,62 @@ function selectFollowingCard(
       return getLowestWinningCard(playableCards, currentTrick, gameState)
     }
 
-    // 通常: 様子見（弱いカードを出す）
-    return getWeakestCard(playableCards, gameState)
+    // 通常: 様子見（確率的評価で最適カードを選択）
+    return selectCardWithProbabilisticEvaluation(
+      playableCards,
+      probabilisticEvaluations,
+      gameState,
+      false // 連合軍の場合は低リスク優先
+    )
   }
+}
+
+/**
+ * 確率的評価を使用してカードを選択
+ * Select card using probabilistic evaluation
+ */
+function selectCardWithProbabilisticEvaluation(
+  candidates: Card[],
+  probabilisticEvaluations: Map<
+    string,
+    {
+      result: import('./strategies/probabilisticDecision').ProbabilisticResult
+      bonus: number
+    }
+  >,
+  _gameState: GameState,
+  preferHighProbability: boolean = true
+): Card {
+  if (candidates.length === 0) {
+    throw new Error('No candidate cards provided')
+  }
+  if (candidates.length === 1) {
+    return candidates[0]
+  }
+
+  // 確率的評価に基づいてソート
+  const scoredCandidates = candidates
+    .map((card) => {
+      const evaluation = probabilisticEvaluations.get(card.id)
+      if (!evaluation) {
+        return { card, score: 0 }
+      }
+
+      const { result, bonus } = evaluation
+      // スコア = 勝率 × 貢献度 + ボーナス
+      const score = result.winProbability * result.contributionScore + bonus
+
+      return { card, score }
+    })
+    .sort((a, b) => {
+      if (preferHighProbability) {
+        return b.score - a.score // 高スコア優先
+      } else {
+        return a.score - b.score // 低スコア優先
+      }
+    })
+
+  return scoredCandidates[0].card
 }
 
 /**
