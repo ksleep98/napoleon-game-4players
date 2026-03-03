@@ -39,6 +39,10 @@ import {
 } from './strategies/helpers'
 import { evaluateNapoleonCooperation } from './strategies/napoleonCooperation'
 import {
+  analyzeOpponents,
+  calculateOpponentModelingBonus,
+} from './strategies/opponentModeling'
+import {
   calculateProbabilisticBonus,
   evaluateCardProbability,
 } from './strategies/probabilisticDecision'
@@ -350,6 +354,9 @@ function selectLeadingCard(
   }
 
   // 戦略的スートがない場合、従来のロジックを使用
+  // 🆕 対戦相手モデリング: 相手の行動パターンを分析
+  const opponentModeling = analyzeOpponents(gameState, player)
+
   // カードを戦略的価値で評価
   const cardEvaluations = playableCards.map((card) => {
     const strategicValue = evaluateCardStrategicValue(card, gameState, player)
@@ -370,12 +377,23 @@ function selectLeadingCard(
       player.isNapoleon || player.isAdjutant
     )
 
+    // 🆕 対戦相手モデリングボーナス: 相手の弱点を突く
+    const opponentBonus = calculateOpponentModelingBonus(
+      card,
+      playableCards,
+      gameState,
+      player,
+      opponentModeling
+    )
+
     return {
       card,
       strategicValue,
       leadingStrategy,
       probabilisticBonus,
-      totalScore: strategicValue + leadingStrategy + probabilisticBonus,
+      opponentBonus,
+      totalScore:
+        strategicValue + leadingStrategy + probabilisticBonus + opponentBonus,
     }
   })
 
@@ -451,6 +469,9 @@ function selectFollowingCard(
       return [card.id, { result, bonus }]
     })
   )
+
+  // 🆕 対戦相手モデリング: 相手の行動パターンを分析
+  const opponentModeling = analyzeOpponents(gameState, player)
 
   // 🔧 改善: ボイド（リードスートを持っていない）の判定
   const leadingSuit = currentTrick.leadingSuit || gameState.leadingSuit
@@ -680,6 +701,8 @@ function selectFollowingCard(
         playableCards,
         probabilisticEvaluations,
         gameState,
+        player,
+        opponentModeling,
         true // ナポレオンチームは高勝率優先
       )
     }
@@ -763,6 +786,8 @@ function selectFollowingCard(
       playableCards,
       probabilisticEvaluations,
       gameState,
+      player,
+      opponentModeling,
       false // 連合軍の場合は低リスク優先
     )
   }
@@ -781,7 +806,9 @@ function selectCardWithProbabilisticEvaluation(
       bonus: number
     }
   >,
-  _gameState: GameState,
+  gameState: GameState,
+  player: Player,
+  opponentModeling: import('./strategies/opponentModeling').OpponentModelingResult,
   preferHighProbability: boolean = true
 ): Card {
   if (candidates.length === 0) {
@@ -800,8 +827,19 @@ function selectCardWithProbabilisticEvaluation(
       }
 
       const { result, bonus } = evaluation
-      // スコア = 勝率 × 貢献度 + ボーナス
-      const score = result.winProbability * result.contributionScore + bonus
+
+      // 🆕 対戦相手モデリングボーナスを追加
+      const opponentBonus = calculateOpponentModelingBonus(
+        card,
+        candidates,
+        gameState,
+        player,
+        opponentModeling
+      )
+
+      // スコア = 勝率 × 貢献度 + ボーナス + 対戦相手ボーナス
+      const score =
+        result.winProbability * result.contributionScore + bonus + opponentBonus
 
       return { card, score }
     })
