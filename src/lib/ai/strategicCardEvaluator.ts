@@ -20,6 +20,10 @@ import {
   trackTrumps,
 } from './strategies/cardCounting'
 import {
+  analyzeCardSequence,
+  calculateSequencingBonus,
+} from './strategies/cardSequencing'
+import {
   analyzeEndgameState,
   shouldPlayAggressively,
   shouldPlayConservatively,
@@ -357,6 +361,15 @@ function selectLeadingCard(
   // 🆕 対戦相手モデリング: 相手の行動パターンを分析
   const opponentModeling = analyzeOpponents(gameState, player)
 
+  // 🆕 カード使用順序戦略: 複数トリックにわたる最適化
+  const sequenceStrategy = analyzeCardSequence(
+    player.hand,
+    gameState,
+    player,
+    cardCounting
+  )
+  const currentTrickNumber = gameState.tricks.length + 1
+
   // カードを戦略的価値で評価
   const cardEvaluations = playableCards.map((card) => {
     const strategicValue = evaluateCardStrategicValue(card, gameState, player)
@@ -386,14 +399,27 @@ function selectLeadingCard(
       opponentModeling
     )
 
+    // 🆕 カード順序ボーナス: 最適タイミングでの使用
+    const sequencingBonus = calculateSequencingBonus(
+      card,
+      currentTrickNumber,
+      sequenceStrategy,
+      gameState
+    )
+
     return {
       card,
       strategicValue,
       leadingStrategy,
       probabilisticBonus,
       opponentBonus,
+      sequencingBonus,
       totalScore:
-        strategicValue + leadingStrategy + probabilisticBonus + opponentBonus,
+        strategicValue +
+        leadingStrategy +
+        probabilisticBonus +
+        opponentBonus +
+        sequencingBonus,
     }
   })
 
@@ -472,6 +498,14 @@ function selectFollowingCard(
 
   // 🆕 対戦相手モデリング: 相手の行動パターンを分析
   const opponentModeling = analyzeOpponents(gameState, player)
+
+  // 🆕 カード使用順序戦略: 複数トリックにわたる最適化
+  const sequenceStrategy = analyzeCardSequence(
+    player.hand,
+    gameState,
+    player,
+    cardCounting
+  )
 
   // 🔧 改善: ボイド（リードスートを持っていない）の判定
   const leadingSuit = currentTrick.leadingSuit || gameState.leadingSuit
@@ -703,6 +737,7 @@ function selectFollowingCard(
         gameState,
         player,
         opponentModeling,
+        sequenceStrategy,
         true // ナポレオンチームは高勝率優先
       )
     }
@@ -788,6 +823,7 @@ function selectFollowingCard(
       gameState,
       player,
       opponentModeling,
+      sequenceStrategy,
       false // 連合軍の場合は低リスク優先
     )
   }
@@ -809,6 +845,7 @@ function selectCardWithProbabilisticEvaluation(
   gameState: GameState,
   player: Player,
   opponentModeling: import('./strategies/opponentModeling').OpponentModelingResult,
+  sequenceStrategy: import('./strategies/cardSequencing').SequenceStrategy,
   preferHighProbability: boolean = true
 ): Card {
   if (candidates.length === 0) {
@@ -817,6 +854,8 @@ function selectCardWithProbabilisticEvaluation(
   if (candidates.length === 1) {
     return candidates[0]
   }
+
+  const currentTrickNumber = gameState.tricks.length + 1
 
   // 確率的評価に基づいてソート
   const scoredCandidates = candidates
@@ -837,9 +876,20 @@ function selectCardWithProbabilisticEvaluation(
         opponentModeling
       )
 
-      // スコア = 勝率 × 貢献度 + ボーナス + 対戦相手ボーナス
+      // 🆕 カード順序ボーナス: 最適タイミングでの使用
+      const sequencingBonus = calculateSequencingBonus(
+        card,
+        currentTrickNumber,
+        sequenceStrategy,
+        gameState
+      )
+
+      // スコア = 勝率 × 貢献度 + ボーナス + 対戦相手ボーナス + 順序ボーナス
       const score =
-        result.winProbability * result.contributionScore + bonus + opponentBonus
+        result.winProbability * result.contributionScore +
+        bonus +
+        opponentBonus +
+        sequencingBonus
 
       return { card, score }
     })
@@ -1015,7 +1065,7 @@ interface SuitTracking {
 /**
  * 🆕 カードカウンティング全体情報
  */
-interface CardCountingInfo {
+export interface CardCountingInfo {
   suitTracking: Map<Suit, SuitTracking> // 各スートの追跡情報
   totalPlayedCards: number // 既に出たカード総数
   totalRemainingCards: number // 残りカード総数
