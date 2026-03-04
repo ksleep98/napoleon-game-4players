@@ -22,16 +22,12 @@ function createMockPlayer(
 ): Player {
   return {
     id,
-    sessionId: 'test-session',
     position: 0,
     name: `Player ${id}`,
     hand: [],
-    tricksWon: 0,
-    faceCardsWon: 0,
     isNapoleon,
     isAdjutant,
-    isReady: true,
-    isConnected: true,
+    isAI: false,
   }
 }
 
@@ -40,10 +36,26 @@ function createMockCard(
   rank: Card['rank'],
   id?: string
 ): Card {
+  const rankValues: Record<Card['rank'], number> = {
+    A: 14,
+    K: 13,
+    Q: 12,
+    J: 11,
+    '10': 10,
+    '9': 9,
+    '8': 8,
+    '7': 7,
+    '6': 6,
+    '5': 5,
+    '4': 4,
+    '3': 3,
+    '2': 2,
+  }
   return {
     id: id || `${suit}-${rank}`,
     suit,
     rank,
+    value: rankValues[rank],
   }
 }
 
@@ -53,8 +65,6 @@ function createMockGameState(
 ): GameState {
   return {
     id: 'test-game',
-    sessionId: 'test-session',
-    status: 'in_progress',
     currentPlayerIndex: 0,
     players: [
       createMockPlayer('player1', true),
@@ -62,20 +72,21 @@ function createMockGameState(
       createMockPlayer('player3'),
       createMockPlayer('player4'),
     ],
-    deck: [],
-    trump,
-    almightyEnabled: true,
+    trumpSuit: trump,
     currentTrick: {
+      id: 'current-trick',
       cards: [],
       leadingSuit: undefined,
+      completed: false,
     },
     tricks,
-    napoleon: {
-      playerId: 'player1',
-      declaration: { faceCardsNeeded: 11, adjutantCard: null },
-    },
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    phase: 'playing',
+    hiddenCards: [],
+    passedPlayers: [],
+    declarationTurn: 0,
+    needsRedeal: false,
+    createdAt: new Date(),
+    updatedAt: new Date(),
   }
 }
 
