@@ -43,6 +43,10 @@ import {
 } from './strategies/helpers'
 import { evaluateNapoleonCooperation } from './strategies/napoleonCooperation'
 import {
+  analyzeOpeningStrategy,
+  calculateOpeningBonus,
+} from './strategies/openingStrategy'
+import {
   analyzeOpponents,
   calculateOpponentModelingBonus,
 } from './strategies/opponentModeling'
@@ -382,6 +386,14 @@ function selectLeadingCard(
     cardCounting
   )
 
+  // 🆕 序盤戦略: 序盤フェーズの最適化
+  const openingStrategy = analyzeOpeningStrategy(
+    player.hand,
+    gameState,
+    player,
+    cardCounting
+  )
+
   // カードを戦略的価値で評価
   const cardEvaluations = playableCards.map((card) => {
     const strategicValue = evaluateCardStrategicValue(card, gameState, player)
@@ -426,6 +438,14 @@ function selectLeadingCard(
       gameState
     )
 
+    // 🆕 序盤ボーナス: 序盤フェーズの最適化
+    const openingBonus = calculateOpeningBonus(
+      card,
+      openingStrategy,
+      gameState,
+      player.hand
+    )
+
     return {
       card,
       strategicValue,
@@ -434,13 +454,15 @@ function selectLeadingCard(
       opponentBonus,
       sequencingBonus,
       voidCreationBonus,
+      openingBonus,
       totalScore:
         strategicValue +
         leadingStrategy +
         probabilisticBonus +
         opponentBonus +
         sequencingBonus +
-        voidCreationBonus,
+        voidCreationBonus +
+        openingBonus,
     }
   })
 
@@ -530,6 +552,14 @@ function selectFollowingCard(
 
   // 🆕 ボイド作成戦略: 戦略的なボイド作成計画
   const voidStrategy = analyzeVoidCreation(
+    player.hand,
+    gameState,
+    player,
+    cardCounting
+  )
+
+  // 🆕 序盤戦略: 序盤フェーズの最適化
+  const openingStrategy = analyzeOpeningStrategy(
     player.hand,
     gameState,
     player,
@@ -768,6 +798,8 @@ function selectFollowingCard(
         opponentModeling,
         sequenceStrategy,
         voidStrategy,
+        openingStrategy,
+        player.hand,
         true // ナポレオンチームは高勝率優先
       )
     }
@@ -855,6 +887,8 @@ function selectFollowingCard(
       opponentModeling,
       sequenceStrategy,
       voidStrategy,
+      openingStrategy,
+      player.hand,
       false // 連合軍の場合は低リスク優先
     )
   }
@@ -878,6 +912,8 @@ function selectCardWithProbabilisticEvaluation(
   opponentModeling: import('./strategies/opponentModeling').OpponentModelingResult,
   sequenceStrategy: import('./strategies/cardSequencing').SequenceStrategy,
   voidStrategy: import('./strategies/voidCreation').VoidCreationStrategy,
+  openingStrategy: import('./strategies/openingStrategy').OpeningStrategy,
+  hand: Card[],
   preferHighProbability: boolean = true
 ): Card {
   if (candidates.length === 0) {
@@ -923,13 +959,22 @@ function selectCardWithProbabilisticEvaluation(
         gameState
       )
 
-      // スコア = 勝率 × 貢献度 + ボーナス + 対戦相手ボーナス + 順序ボーナス + ボイドボーナス
+      // 🆕 序盤ボーナス: 序盤フェーズの最適化
+      const openingBonus = calculateOpeningBonus(
+        card,
+        openingStrategy,
+        gameState,
+        hand
+      )
+
+      // スコア = 勝率 × 貢献度 + ボーナス + 対戦相手ボーナス + 順序ボーナス + ボイドボーナス + 序盤ボーナス
       const score =
         result.winProbability * result.contributionScore +
         bonus +
         opponentBonus +
         sequencingBonus +
-        voidCreationBonus
+        voidCreationBonus +
+        openingBonus
 
       return { card, score }
     })
