@@ -43,6 +43,10 @@ import {
 } from './strategies/helpers'
 import { evaluateNapoleonCooperation } from './strategies/napoleonCooperation'
 import {
+  analyzeOpeningStrategy,
+  calculateOpeningBonus,
+} from './strategies/openingStrategy'
+import {
   analyzeOpponents,
   calculateOpponentModelingBonus,
 } from './strategies/opponentModeling'
@@ -65,6 +69,10 @@ import {
   shouldLeadWithTrump,
 } from './strategies/trumps'
 import type { HandComposition } from './strategies/types'
+import {
+  analyzeVoidCreation,
+  calculateVoidCreationBonus,
+} from './strategies/voidCreation'
 
 /**
  * カードの戦略的価値を評価
@@ -370,6 +378,22 @@ function selectLeadingCard(
   )
   const currentTrickNumber = gameState.tricks.length + 1
 
+  // 🆕 ボイド作成戦略: 戦略的なボイド作成計画
+  const voidStrategy = analyzeVoidCreation(
+    player.hand,
+    gameState,
+    player,
+    cardCounting
+  )
+
+  // 🆕 序盤戦略: 序盤フェーズの最適化
+  const openingStrategy = analyzeOpeningStrategy(
+    player.hand,
+    gameState,
+    player,
+    cardCounting
+  )
+
   // カードを戦略的価値で評価
   const cardEvaluations = playableCards.map((card) => {
     const strategicValue = evaluateCardStrategicValue(card, gameState, player)
@@ -407,6 +431,21 @@ function selectLeadingCard(
       gameState
     )
 
+    // 🆕 ボイド作成ボーナス: 戦略的ボイド作成支援
+    const voidCreationBonus = calculateVoidCreationBonus(
+      card,
+      voidStrategy,
+      gameState
+    )
+
+    // 🆕 序盤ボーナス: 序盤フェーズの最適化
+    const openingBonus = calculateOpeningBonus(
+      card,
+      openingStrategy,
+      gameState,
+      player.hand
+    )
+
     return {
       card,
       strategicValue,
@@ -414,12 +453,16 @@ function selectLeadingCard(
       probabilisticBonus,
       opponentBonus,
       sequencingBonus,
+      voidCreationBonus,
+      openingBonus,
       totalScore:
         strategicValue +
         leadingStrategy +
         probabilisticBonus +
         opponentBonus +
-        sequencingBonus,
+        sequencingBonus +
+        voidCreationBonus +
+        openingBonus,
     }
   })
 
@@ -501,6 +544,22 @@ function selectFollowingCard(
 
   // 🆕 カード使用順序戦略: 複数トリックにわたる最適化
   const sequenceStrategy = analyzeCardSequence(
+    player.hand,
+    gameState,
+    player,
+    cardCounting
+  )
+
+  // 🆕 ボイド作成戦略: 戦略的なボイド作成計画
+  const voidStrategy = analyzeVoidCreation(
+    player.hand,
+    gameState,
+    player,
+    cardCounting
+  )
+
+  // 🆕 序盤戦略: 序盤フェーズの最適化
+  const openingStrategy = analyzeOpeningStrategy(
     player.hand,
     gameState,
     player,
@@ -738,6 +797,9 @@ function selectFollowingCard(
         player,
         opponentModeling,
         sequenceStrategy,
+        voidStrategy,
+        openingStrategy,
+        player.hand,
         true // ナポレオンチームは高勝率優先
       )
     }
@@ -824,6 +886,9 @@ function selectFollowingCard(
       player,
       opponentModeling,
       sequenceStrategy,
+      voidStrategy,
+      openingStrategy,
+      player.hand,
       false // 連合軍の場合は低リスク優先
     )
   }
@@ -846,6 +911,9 @@ function selectCardWithProbabilisticEvaluation(
   player: Player,
   opponentModeling: import('./strategies/opponentModeling').OpponentModelingResult,
   sequenceStrategy: import('./strategies/cardSequencing').SequenceStrategy,
+  voidStrategy: import('./strategies/voidCreation').VoidCreationStrategy,
+  openingStrategy: import('./strategies/openingStrategy').OpeningStrategy,
+  hand: Card[],
   preferHighProbability: boolean = true
 ): Card {
   if (candidates.length === 0) {
@@ -884,12 +952,29 @@ function selectCardWithProbabilisticEvaluation(
         gameState
       )
 
-      // スコア = 勝率 × 貢献度 + ボーナス + 対戦相手ボーナス + 順序ボーナス
+      // 🆕 ボイド作成ボーナス: 戦略的ボイド作成支援
+      const voidCreationBonus = calculateVoidCreationBonus(
+        card,
+        voidStrategy,
+        gameState
+      )
+
+      // 🆕 序盤ボーナス: 序盤フェーズの最適化
+      const openingBonus = calculateOpeningBonus(
+        card,
+        openingStrategy,
+        gameState,
+        hand
+      )
+
+      // スコア = 勝率 × 貢献度 + ボーナス + 対戦相手ボーナス + 順序ボーナス + ボイドボーナス + 序盤ボーナス
       const score =
         result.winProbability * result.contributionScore +
         bonus +
         opponentBonus +
-        sequencingBonus
+        sequencingBonus +
+        voidCreationBonus +
+        openingBonus
 
       return { card, score }
     })
