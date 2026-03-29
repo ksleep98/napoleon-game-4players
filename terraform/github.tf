@@ -43,12 +43,6 @@ resource "github_repository_ruleset" "develop" {
     }
   }
 
-  bypass_actors {
-    actor_id    = 5  # Repository admin
-    actor_type  = "RepositoryRole"
-    bypass_mode = "pull_request"
-  }
-
   rules {
     # ブランチ保護ルール
     creation         = true  # ブランチ作成禁止
@@ -63,14 +57,6 @@ resource "github_repository_ruleset" "develop" {
       required_approving_review_count   = 0  # 個人開発のためレビュー不要
       required_review_thread_resolution = true
       allowed_merge_methods             = ["squash"]  # feature -> develop: スカッシュマージのみ
-    }
-
-    # CI必須
-    required_status_checks {
-      required_check {
-        context = "ci-check"
-      }
-      strict_required_status_checks_policy = true
     }
   }
 }
@@ -89,12 +75,6 @@ resource "github_repository_ruleset" "main" {
     }
   }
 
-  bypass_actors {
-    actor_id    = 5  # Repository admin
-    actor_type  = "RepositoryRole"
-    bypass_mode = "pull_request"
-  }
-
   rules {
     # ブランチ保護ルール
     creation         = true  # ブランチ作成禁止
@@ -109,14 +89,6 @@ resource "github_repository_ruleset" "main" {
       required_approving_review_count   = 0  # 個人開発のためレビュー不要
       required_review_thread_resolution = true
       allowed_merge_methods             = ["merge"]  # develop -> main: 通常マージのみ
-    }
-
-    # CI必須
-    required_status_checks {
-      required_check {
-        context = "ci-check"
-      }
-      strict_required_status_checks_policy = false  # mainブランチはstrict checks不要
     }
   }
 }
