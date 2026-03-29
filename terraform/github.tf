@@ -43,12 +43,6 @@ resource "github_repository_ruleset" "develop" {
     }
   }
 
-  bypass_actors {
-    actor_id    = 5  # Repository admin
-    actor_type  = "RepositoryRole"
-    bypass_mode = "pull_request"
-  }
-
   rules {
     # ブランチ保護ルール
     creation         = true  # ブランチ作成禁止
@@ -87,12 +81,6 @@ resource "github_repository_ruleset" "main" {
       include = ["refs/heads/${var.production_branch}"]
       exclude = []
     }
-  }
-
-  bypass_actors {
-    actor_id    = 5  # Repository admin
-    actor_type  = "RepositoryRole"
-    bypass_mode = "pull_request"
   }
 
   rules {
