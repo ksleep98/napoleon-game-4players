@@ -16,6 +16,7 @@
 - **Testing**: Jest + React Testing Library
 - **Code Quality**: Biome (Linter + Formatter)
 - **Pre-commit**: Husky + lint-staged
+- **Infrastructure**: Terraform + Terraform Cloud (GitHub管理)
 
 ## ブランチ戦略
 
@@ -123,6 +124,10 @@ docker-compose up -d
 - [セキュリティ設定](./docs/security/RLS_SETUP.md) - Supabase RLS・Server Actions・認証
 - [開発環境セキュリティ](./docs/security/DEVELOPMENT_SECURITY.md) - セキュリティベストプラクティス・チェック手順
 
+### 🏗️ インフラ管理
+
+- [Terraform README](./terraform/README.md) - GitHub管理・Terraform Cloud設定・運用ガイド
+
 ### 🎮 ゲーム実装
 
 - [実装状況](./docs/game-logic/IMPLEMENTATION_STATUS.md) - Napoleon Game機能・UI・データ管理・セキュリティ強化
@@ -147,6 +152,7 @@ docker-compose up -d
 - **エラー修正**: 404/PGRST202エラー解消・RLS設定最適化・プレイヤーID不一致修正
 - **Post-merge自動化**: ブランチクリーンアップ自動化・developブランチ自動移行・GitHub CLI連携・Git hooks統合
 - **パフォーマンス最適化**: PostgreSQL関数統合・50-120ms改善・Vercel日本リージョン対応
+- **Infrastructure as Code**: Terraform + Terraform Cloud・GitHub Repository Ruleset管理・VCS-driven workflow
 
 ### 🚧 進行中
 
@@ -169,6 +175,91 @@ docker-compose up -d
 - ❌ `.env`, `.env.local`, `.env.production` はGit追跡禁止
 - 本番環境の認証情報は**Vercel環境変数のみ**で管理
 - 詳細: [環境変数セキュリティガイド](./docs/security/ENVIRONMENT_VARIABLES.md)
+
+## インフラ管理（Infrastructure as Code）
+
+### Terraform による GitHub 管理
+
+GitHubリポジトリの設定をTerraformで管理し、VCS-driven workflowで自動適用します。
+
+#### 設定ファイル構成
+
+- `terraform/` - Terraform設定ディレクトリ
+  - `terraform.tf` - Terraform Cloud設定・GitHub Provider
+  - `variables.tf` - 変数定義
+  - `github.tf` - リポジトリ・Ruleset・ラベル設定
+  - `terraform.tfvars` - 変数値（Git追跡禁止）
+  - `terraform.tfvars.example` - 変数値のテンプレート
+
+#### Terraform Cloud 設定
+
+- **Organization**: ksleep98
+- **Workspace**: napoleon-game-4players
+- **Working Directory**: `terraform`
+- **Execution Mode**: Remote（VCS-driven）
+- **Auto Apply**: ON（developマージで自動適用）
+- **VCS Branch**: develop
+
+#### Repository Ruleset 設定
+
+**develop ブランチ:**
+
+- ブランチ作成・削除・Force push禁止
+- Pull Request必須
+- スカッシュマージのみ許可（feature → develop）
+- レビュー要件: 不要（個人開発）
+
+**main ブランチ:**
+
+- ブランチ作成・削除・Force push禁止
+- Pull Request必須
+- 通常マージのみ許可（develop → main）
+- レビュー要件: 不要（個人開発）
+
+**重要な設計決定:**
+
+- ✅ CI必須チェック: 無効（pre-commit hooksで品質担保）
+- ✅ Strict Status Checks: 無効（"Update branch" 不要）
+- ✅ Bypass Actors: 無効（"Merge without waiting..." チェックボックス非表示）
+
+#### 運用フロー
+
+1. `terraform/` 内のファイルを編集
+2. feature ブランチで作業・PRを作成
+3. develop にマージ
+4. Terraform Cloud が自動的に `terraform plan` → `terraform apply` を実行
+5. GitHub設定が自動更新される
+
+**注意事項:**
+
+- `terraform.tfvars` は絶対にコミットしない（GitHub PAT含む）
+- Terraform Cloud の環境変数で `github_token` を管理（Sensitive設定）
+- 手動で `terraform apply` を実行しない（VCS-driven workflowに任せる）
+
+#### 認証情報管理
+
+**GitHub Personal Access Token (PAT):**
+
+- Fine-grained PAT 推奨（`github_pat_` で始まる）
+- 必要なスコープ: `Administration: Read and write`, `Metadata: Read-only`
+- Terraform Cloud Variables で `github_token` として設定（Sensitive: true）
+
+#### トラブルシューティング
+
+**Terraform Cloud でエラーが出る場合:**
+
+1. Working Directory が `terraform` に設定されているか確認
+2. `github_token` 変数が設定されているか確認
+3. Execution Mode が Remote になっているか確認
+
+**ローカルで動作確認したい場合:**
+
+```bash
+cd terraform
+terraform init
+terraform plan  # 変更内容を確認
+# terraform apply は実行しない（Terraform Cloudに任せる）
+```
 
 ## 開発ルール
 
