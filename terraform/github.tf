@@ -60,7 +60,7 @@ resource "github_repository_ruleset" "develop" {
       dismiss_stale_reviews_on_push     = true
       require_code_owner_review         = false
       require_last_push_approval        = false
-      required_approving_review_count   = 1
+      required_approving_review_count   = 0  # 個人開発のためレビュー不要
       required_review_thread_resolution = true
       allowed_merge_methods             = ["squash"]  # feature -> develop: スカッシュマージのみ
     }
@@ -106,7 +106,7 @@ resource "github_repository_ruleset" "main" {
       dismiss_stale_reviews_on_push     = true
       require_code_owner_review         = false
       require_last_push_approval        = false
-      required_approving_review_count   = 1
+      required_approving_review_count   = 0  # 個人開発のためレビュー不要
       required_review_thread_resolution = true
       allowed_merge_methods             = ["merge"]  # develop -> main: 通常マージのみ
     }
