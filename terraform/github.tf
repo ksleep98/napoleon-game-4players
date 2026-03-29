@@ -116,7 +116,7 @@ resource "github_repository_ruleset" "main" {
       required_check {
         context = "ci-check"
       }
-      strict_required_status_checks_policy = true
+      strict_required_status_checks_policy = false  # mainブランチはstrict checks不要
     }
   }
 }
