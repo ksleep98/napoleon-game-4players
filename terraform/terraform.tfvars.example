@@ -1,0 +1,21 @@
+# Terraform Variables Example
+# Copy this file to terraform.tfvars and fill in your values
+# terraform.tfvars is git-ignored for security
+
+# GitHub Owner (username or organization)
+github_owner = "ksleep98"
+
+# GitHub Personal Access Token
+# Fine-grained PAT (recommended): starts with github_pat_
+# Classic PAT: starts with ghp_
+github_token = "github_pat_YOUR_TOKEN_HERE"
+
+# Repository name (optional, defaults to napoleon-game-4players)
+# repository_name = "napoleon-game-4players"
+
+# Repository description (optional)
+# repository_description = "Napoleon card game for 4 players - Next.js + TypeScript + Supabase"
+
+# Branch names (optional)
+# default_branch = "develop"
+# production_branch = "main"
