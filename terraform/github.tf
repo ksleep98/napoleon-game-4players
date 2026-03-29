@@ -64,7 +64,7 @@ resource "github_repository_ruleset" "develop" {
       required_check {
         context = "ci-check"
       }
-      strict_required_status_checks_policy = true
+      strict_required_status_checks_policy = false  # developブランチもstrict checks不要
     }
   }
 }
