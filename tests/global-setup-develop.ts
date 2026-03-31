@@ -47,9 +47,14 @@ async function globalSetup(_config: FullConfig) {
       console.log(`🔍 Current URL: ${page.url()}`)
       console.log(`🔍 Page title: ${await page.title()}`)
 
-      // Vercel認証画面の検出
+      // Vercel認証画面の検出（厳密なドメイン検証）
+      const currentUrl = new URL(page.url())
+      const isVercelDomain =
+        currentUrl.hostname.endsWith('.vercel.app') ||
+        currentUrl.hostname === 'vercel.com'
+
       if (
-        page.url().includes('vercel.com') ||
+        isVercelDomain ||
         (await page.title()).includes('Login') ||
         (await page
           .locator(
@@ -100,9 +105,15 @@ async function globalSetup(_config: FullConfig) {
             )
           })
 
-        if (page.url().includes('github.com')) {
+        // GitHub認証ページかどうかを厳密に検証
+        const authUrl = new URL(page.url())
+        const isGitHubDomain =
+          authUrl.hostname === 'github.com' ||
+          authUrl.hostname.endsWith('.github.com')
+
+        if (isGitHubDomain) {
           console.log('🔑 Performing GitHub authentication...')
-          console.log(`🔍 GitHub URL: ${page.url()}`)
+          console.log(`🔍 GitHub URL: ${authUrl.hostname}`)
 
           // ページが完全に読み込まれるまで待機
           await page.waitForLoadState('networkidle', { timeout: 10000 })
@@ -152,21 +163,17 @@ async function globalSetup(_config: FullConfig) {
               const field = page.locator(selector)
               if (await field.isVisible({ timeout: 2000 })) {
                 passwordField = field
-                console.log(
-                  `🔑 Found password field with selector: ${selector}`
-                )
+                console.log('🔑 Found authentication credential field')
                 break
               }
-            } catch (_error) {
-              console.log(`⚠️ Password selector ${selector} not found`)
-            }
+            } catch (_error) {}
           }
 
           if (passwordField) {
             await passwordField.fill(githubPassword)
-            console.log('🔑 Password filled')
+            console.log('🔑 Authentication credentials filled')
           } else {
-            console.log('❌ No password field found')
+            console.log('❌ No credential field found')
           }
 
           // ログインボタンクリック
