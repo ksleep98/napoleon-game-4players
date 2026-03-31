@@ -200,7 +200,9 @@ describe('Scoring', () => {
 
     it('should return true when Napoleon team cannot reach target face cards', () => {
       // Mock scenario where Napoleon cannot reach 13 face cards
-      // Napoleon has won 2 face cards, only 1 trick remaining with max 5 face cards
+      // Napoleon has won 2 face cards, Citizens won 12 face cards
+      // Remaining face cards: 20 - 2 - 12 = 6
+      // Napoleon's max possible: 2 + 6 = 8 < 13 (target)
       mockGameState.tricks = [
         {
           id: 'napoleon-trick1',
@@ -227,19 +229,23 @@ describe('Scoring', () => {
           completed: true,
           winnerPlayerId: 'player_1', // Napoleon wins 2 face cards
         },
-        ...Array(10)
+        ...Array(12)
           .fill(null)
           .map((_, i) => ({
             id: `citizen-trick${i}`,
             cards: [
               {
-                card: createCard(`card${i}`, SUIT_ENUM.CLUBS, CARD_RANKS.TWO),
+                card: createCard(
+                  `citizen-face-${i}`,
+                  SUIT_ENUM.DIAMONDS,
+                  CARD_RANKS.JACK
+                ),
                 playerId: 'player_3',
                 order: 1,
               },
             ],
             completed: true,
-            winnerPlayerId: 'player_3', // Citizens win non-face cards
+            winnerPlayerId: 'player_3', // Citizens win 12 face cards
           })),
       ]
 
@@ -247,7 +253,7 @@ describe('Scoring', () => {
       expect(decision.decided).toBe(true)
       expect(decision.napoleonWon).toBe(false)
       expect(decision.reason).toBe(
-        'Napoleon team cannot reach target face cards'
+        'Citizen team exceeded allowed face cards for Napoleon to win'
       )
     })
   })
