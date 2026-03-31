@@ -37,10 +37,8 @@ jobs:
           echo "Found $changes_count changes between main and develop"
           echo "has_changes=true" >> $GITHUB_OUTPUT
 
-          # Check if there's already an open PR from develop to main
-          existing_pr=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls?base=main&head=${{ github.repository_owner }}:develop&state=open" \
-            | jq -r 'if type == "array" then .[0].number // empty else empty end')
+          # Check if there's already an open PR from develop to main using gh CLI
+          existing_pr=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number // empty')
 
           if [ -n "$existing_pr" ]; then
             echo "pr_exists=true" >> $GITHUB_OUTPUT
@@ -51,8 +49,7 @@ jobs:
             echo "No existing release PR found"
           fi
         env:
-          # yamllint disable-line rule:truthy
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get changes since last release
         id: changes
@@ -84,56 +81,28 @@ jobs:
         if: steps.check-changes.outputs.has_changes == 'true' && steps.check-changes.outputs.pr_exists == 'false'
         env:
           RELEASE_BODY: ${{ steps.changes.outputs.release_body }}
-          # yamllint disable-line rule:truthy
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Create label if it doesn't exist
-          curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/${{ github.repository }}/labels" \
-            -d '{"name":"release","description":"Release PR","color":"0366d6"}' || true
+          # Create PR using gh CLI
+          pr_url=$(gh pr create \
+            --base main \
+            --head develop \
+            --title "🚀 Release" \
+            --body "$RELEASE_BODY" \
+            --label "release")
 
-          # Create PR from develop to main
-          # Prepare JSON payload with proper escaping
-          release_body_json=$(echo "$RELEASE_BODY" | jq -Rs .)
-
-          pr_response=$(curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls" \
-            -d "{
-              \"title\": \"🚀 Release\",
-              \"head\": \"develop\",
-              \"base\": \"main\",
-              \"body\": $release_body_json
-            }")
-
-          pr_number=$(echo "$pr_response" | jq -r '.number')
-
-          # Add release label to PR
-          curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/${{ github.repository }}/issues/$pr_number/labels" \
-            -d '["release"]' || true
-
-          echo "✅ Release PR #$pr_number created successfully!"
+          pr_number=$(echo "$pr_url" | grep -o '[0-9]*$')
+          echo "✅ Release PR #$pr_number created successfully: $pr_url"
 
       - name: Update existing release PR
         if: steps.check-changes.outputs.has_changes == 'true' && steps.check-changes.outputs.pr_exists == 'true'
         env:
           RELEASE_BODY: ${{ steps.changes.outputs.release_body }}
           PR_NUMBER: ${{ steps.check-changes.outputs.pr_number }}
-          # yamllint disable-line rule:truthy
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Update existing PR description with proper JSON escaping
-          release_body_json=$(echo "$RELEASE_BODY" | jq -Rs .)
-
-          curl -s -X PATCH -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER" \
-            -d "{
-              \"body\": $release_body_json
-            }"
+          # Update existing PR description using gh CLI
+          gh pr edit $PR_NUMBER --body "$RELEASE_BODY"
 
           # Add comment about the update with latest changes summary
           latest_commit=$(git log --oneline --no-merges main..develop | head -n1)
@@ -150,13 +119,6 @@ jobs:
 
           _Updated: $(date '+%Y-%m-%d %H:%M:%S UTC')_"
 
-          comment_body_json=$(echo "$comment_body" | jq -Rs .)
-
-          curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/${{ github.repository }}/issues/$PR_NUMBER/comments" \
-            -d "{
-              \"body\": $comment_body_json
-            }"
+          gh pr comment $PR_NUMBER --body "$comment_body"
 
           echo "✅ Release PR #$PR_NUMBER updated successfully!"

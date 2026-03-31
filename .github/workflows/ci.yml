@@ -13,6 +13,8 @@ jobs:
     # Optimized CI pipeline for fast feedback
     # Skip CI for release PRs since they already run on push to develop
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && !contains(github.event.pull_request.title, '🚀 Release'))
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
@@ -142,6 +144,8 @@ jobs:
     # Run E2E tests on push to main/develop or PRs to any branch
     if: |
       github.event_name == 'push' || github.event_name == 'pull_request'
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
