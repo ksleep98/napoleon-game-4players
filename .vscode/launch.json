@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "GitHub Actions Validation",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/@actions/core/lib/core.js",
+      "skipFiles": ["<node_internals>/**"],
+      "env": {
+        "NODE_ENV": "development",
+        "GITHUB_ACTIONS": "true"
+      }
+    }
+  ]
+}
