@@ -1,21 +1,92 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useParams, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AdjutantSelector } from '@/components/game/AdjutantSelector'
 import { AIDifficultyBadge } from '@/components/game/AIDifficultyBadge'
 import { Card } from '@/components/game/Card'
-import { CardExchangeSelector } from '@/components/game/CardExchangeSelector'
-import { GameBoard } from '@/components/game/GameBoard'
 import { CompactGameProgress, GameStatus } from '@/components/game/GameStatus'
-import { NapoleonSelector } from '@/components/game/NapoleonSelector'
 import { PlayerHand } from '@/components/game/PlayerHand'
-import { TrickResult } from '@/components/game/TrickResult'
 import { GameProvider, useGame } from '@/contexts/GameContext'
 import { GAME_PHASES } from '@/lib/constants'
 import { getNextDeclarationPlayer } from '@/lib/napoleonRules'
 import { calculateGameResult, getPlayerFaceCardCount } from '@/lib/scoring'
 import type { Card as CardType, NapoleonDeclaration } from '@/types/game'
+
+// 動的インポート - 初期バンドルサイズを削減
+const GameBoard = dynamic(
+  () =>
+    import('@/components/game/GameBoard').then((mod) => ({
+      default: mod.GameBoard,
+    })),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center h-64 bg-white rounded-lg shadow-lg">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-2"></div>
+          <p className="text-sm text-gray-600">Loading game board...</p>
+        </div>
+      </div>
+    ),
+    ssr: false, // GameBoardはクライアント専用
+  }
+)
+
+const TrickResult = dynamic(
+  () =>
+    import('@/components/game/TrickResult').then((mod) => ({
+      default: mod.TrickResult,
+    })),
+  {
+    loading: () => null, // TrickResultはオーバーレイなのでローディング表示不要
+    ssr: false,
+  }
+)
+
+const NapoleonSelector = dynamic(
+  () =>
+    import('@/components/game/NapoleonSelector').then((mod) => ({
+      default: mod.NapoleonSelector,
+    })),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center h-32 bg-white rounded-lg shadow-lg">
+        <p className="text-sm text-gray-600">Loading Napoleon selection...</p>
+      </div>
+    ),
+    ssr: false,
+  }
+)
+
+const AdjutantSelector = dynamic(
+  () =>
+    import('@/components/game/AdjutantSelector').then((mod) => ({
+      default: mod.AdjutantSelector,
+    })),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center h-32 bg-white rounded-lg shadow-lg">
+        <p className="text-sm text-gray-600">Loading Adjutant selection...</p>
+      </div>
+    ),
+    ssr: false,
+  }
+)
+
+const CardExchangeSelector = dynamic(
+  () =>
+    import('@/components/game/CardExchangeSelector').then((mod) => ({
+      default: mod.CardExchangeSelector,
+    })),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center h-32 bg-white rounded-lg shadow-lg">
+        <p className="text-sm text-gray-600">Loading card exchange...</p>
+      </div>
+    ),
+    ssr: false,
+  }
+)
 
 function GamePageContent() {
   const searchParams = useSearchParams()

@@ -13,6 +13,7 @@
     "jsx": "react-jsx",
     "incremental": true,
     "types": ["jest", "@testing-library/jest-dom"],
+    "ignoreDeprecations": "6.0",
     "plugins": [
       {
         "name": "next"
