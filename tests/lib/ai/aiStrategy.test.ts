@@ -80,9 +80,9 @@ describe('AI Strategy', () => {
       expect(config.mctsConfig).toBeDefined()
     })
 
-    it('should return hybrid strategy for hard difficulty', () => {
+    it('should return mcts strategy for hard difficulty', () => {
       const config = getStrategyConfigByDifficulty('hard')
-      expect(config.strategy).toBe('hybrid')
+      expect(config.strategy).toBe('mcts')
       expect(config.difficulty).toBe('hard')
       expect(config.mctsConfig).toBeDefined()
     })
