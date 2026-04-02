@@ -145,6 +145,12 @@ SELECT * FROM ml_training_ai_stats;
 - [ ] 環境変数設定
   - `SUPABASE_URL`
   - `SUPABASE_ANON_KEY`
+- [ ] **セキュリティ対策実装** ⚠️
+  - [ ] requirements.txtに具体的バージョン指定
+  - [ ] pip-auditで脆弱性スキャン実行
+  - [ ] Dependabotにpipエコシステム追加
+  - [ ] Python Security Audit workflow作成
+  - [ ] uvまたはpipのクールダウン機能設定
 
 #### 3.2 Fast API + Gradio実装
 
@@ -164,16 +170,33 @@ napoleon-ml-trainer/  (Hugging Face Space)
 
 **requirements.txt**:
 
+⚠️ **セキュリティ重要**: 具体的なバージョンを指定すること！
+
 ```txt
-fastapi
-gradio
-uvicorn
-supabase
-pandas
-numpy
-scikit-learn
-joblib
+# ⚠️ セキュリティ対策: 具体的なバージョンを指定
+# 参考: docs/security/SUPPLY_CHAIN_SECURITY.md（Pythonセクション）
+
+fastapi==0.104.1
+gradio==4.8.0
+uvicorn[standard]==0.24.0
+supabase==2.1.0
+pandas==2.1.3
+numpy==1.26.2
+scikit-learn==1.3.2
+joblib==1.3.2
+
+# セキュリティチェック済み（2026-04-03時点）
+# 導入前に pip-audit で脆弱性スキャン必須
 ```
+
+**セキュリティチェックリスト**:
+
+- [ ] `pip install pip-audit && pip-audit` でスキャン実行
+- [ ] 各パッケージのバージョンを最新の安全版に固定
+- [ ] Dependabotで自動監視設定（`.github/dependabot.yml`）
+- [ ] クールダウン機能設定（uv使用時: `exclude-newer = "1 week"`）
+
+**参考**: [サプライチェーン攻撃対策ガイド](../security/SUPPLY_CHAIN_SECURITY.md#-python導入時の対策todo)
 
 **app.py 実装内容**:
 
@@ -449,6 +472,11 @@ grid_search.fit(X_train, y_train)
 - [ ] Fast API + Gradio実装
 - [ ] カード予測モデル訓練
 - [ ] REST API動作確認
+- [ ] **Pythonセキュリティ対策実装** ⚠️
+  - [ ] requirements.txt バージョン固定
+  - [ ] pip-audit 脆弱性スキャン
+  - [ ] Dependabot Python設定追加
+  - [ ] Python Security Audit workflow
 
 ### Phase 4: Next.js統合
 

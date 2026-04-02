@@ -1,0 +1,62 @@
+# Dependabot設定
+# GitHubが自動的に依存関係の更新PRを作成
+# 参考: https://docs.github.com/en/code-security/dependabot
+
+version: 2
+updates:
+  # npm/pnpm パッケージの監視
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly" # 毎週チェック
+      day: "monday" # 月曜日
+      time: "09:00" # JST 18:00
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "ksleep98" # レビュー担当者（あなたのGitHubユーザー名）
+    labels:
+      - "dependencies"
+      - "security"
+    # 脆弱性のみPR作成（通常の更新は手動）
+    # open-pull-requests-limit を 0 にすると脆弱性のみ
+    commit-message:
+      prefix: "fix"
+      prefix-development: "chore"
+      include: "scope"
+    # バージョニング戦略
+    versioning-strategy: increase-if-necessary
+    # グループ化（関連するパッケージをまとめる）
+    groups:
+      next-dependencies:
+        patterns:
+          - "next"
+          - "react*"
+      supabase-dependencies:
+        patterns:
+          - "@supabase/*"
+      testing-dependencies:
+        patterns:
+          - "@testing-library/*"
+          - "jest*"
+          - "@playwright/*"
+      dev-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # GitHub Actions の監視
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    labels:
+      - "github-actions"
+      - "dependencies"
+    commit-message:
+      prefix: "ci"
