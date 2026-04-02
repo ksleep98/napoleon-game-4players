@@ -58,6 +58,10 @@
     "develop:protect": "node scripts/setup-develop-protection.js enable",
     "develop:unprotect": "node scripts/setup-develop-protection.js disable",
     "develop:status": "node scripts/setup-develop-protection.js status",
+    "security:audit": "pnpm audit --audit-level=moderate",
+    "security:audit:fix": "pnpm audit --fix",
+    "security:outdated": "pnpm outdated",
+    "security:check": "pnpm audit --audit-level=moderate && pnpm outdated",
     "prepare": "husky"
   },
   "dependencies": {
