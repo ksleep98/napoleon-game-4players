@@ -29,7 +29,7 @@ jobs:
           version: latest
 
       - name: Setup Node.js with cache
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "22.14.0"
           cache: "pnpm"
@@ -157,7 +157,7 @@ jobs:
           version: latest
 
       - name: Setup Node.js with cache
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "22.14.0"
           cache: "pnpm"
