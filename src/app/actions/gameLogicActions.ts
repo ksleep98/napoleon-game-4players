@@ -16,16 +16,14 @@ import {
   redealCards,
   setAdjutant,
 } from '@/lib/gameLogic'
+import { extractMLTrainingData } from '@/lib/ml/dataExtractor'
 import type { Card, GameState, NapoleonDeclaration } from '@/types/game'
 import {
   loadGameStateAction,
   saveGameStateAction,
   validateSessionAction,
 } from './gameActions'
-import {
-  extractMLTrainingData,
-  recordGameMove,
-} from './mlDataCollectionActions'
+import { recordGameMove } from './mlDataCollectionActions'
 
 export interface GameActionResult<T = GameState> {
   success: boolean
