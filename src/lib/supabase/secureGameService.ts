@@ -257,7 +257,7 @@ export function secureSubscribeToGameState(
           }
         }
       )
-      .subscribe((status) => {
+      .subscribe((status, err) => {
         console.log('📡 Subscription status:', status)
 
         if (status === CONNECTION_STATES.SUBSCRIBED) {
@@ -269,6 +269,9 @@ export function secureSubscribeToGameState(
           status === CONNECTION_STATES.TIMED_OUT
         ) {
           console.error('❌ Subscription failed with status:', status)
+          if (err) {
+            console.error('❌ Subscription error details:', err)
+          }
 
           // 購読解除されていない場合のみ再接続を試みる
           if (!isUnsubscribed && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
