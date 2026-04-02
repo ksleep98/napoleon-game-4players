@@ -364,9 +364,224 @@ pnpm build
 
 ---
 
+## 🐍 Python導入時の対策（TODO）
+
+**注意**: 現在はTypeScript/Node.jsのみですが、将来Pythonを導入する際は以下の対策を実装してください。
+
+### ML実装予定（Phase 3）
+
+- **予定時期**: Phase 3（Hugging Face Spaces）
+- **パッケージマネージャー**: `uv` または `pip`
+- **参考**: [ML Implementation Roadmap](../ml/ML_IMPLEMENTATION_ROADMAP.md)
+
+---
+
+### Pythonのサプライチェーン攻撃対策
+
+#### 1. クールダウン機能
+
+**uv（推奨）**:
+
+```toml
+# pyproject.toml
+[tool.uv]
+exclude-newer = "1 week"  # 7日間のクールダウン
+```
+
+**pip（代替案）**:
+
+```ini
+# pip.conf または .pip/pip.conf
+[global]
+# 残念ながらpipには標準でクールダウン機能なし
+# 代わりにConstraints fileで手動管理
+```
+
+```txt
+# constraints.txt - 特定バージョンに固定
+package-name==1.2.3  # 安全確認済みバージョン
+```
+
+```bash
+pip install -r requirements.txt --constraint constraints.txt
+```
+
+---
+
+#### 2. ロックファイルの厳密な運用
+
+**uv**:
+
+```bash
+# ロックファイル生成
+uv lock
+
+# CI/CD: ロックファイル厳守
+uv sync --frozen
+```
+
+**pip**:
+
+```bash
+# requirements.txtを厳密に固定
+pip freeze > requirements.lock
+
+# CI/CD: 完全一致でインストール
+pip install -r requirements.lock --require-hashes
+```
+
+**poetry**:
+
+```bash
+# ロックファイル生成
+poetry lock
+
+# CI/CD: ロックファイル厳守
+poetry install --no-root
+```
+
+---
+
+#### 3. ハッシュ検証（pip）
+
+```txt
+# requirements.txt with hashes
+package-name==1.2.3 \
+    --hash=sha256:abcdef123456...
+```
+
+```bash
+# ハッシュ検証付きインストール
+pip install -r requirements.txt --require-hashes
+```
+
+---
+
+#### 4. Dependabot設定の追加
+
+**.github/dependabot.yml に追加**:
+
+```yaml
+updates:
+  # Python パッケージの監視
+  - package-ecosystem: 'pip'
+    directory: '/python' # Pythonプロジェクトのディレクトリ
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'Asia/Tokyo'
+    open-pull-requests-limit: 10
+    reviewers:
+      - 'ksleep98'
+    labels:
+      - 'dependencies'
+      - 'python'
+    commit-message:
+      prefix: 'fix'
+      prefix-development: 'chore'
+```
+
+---
+
+#### 5. GitHub Actions: Python Security Audit
+
+**.github/workflows/python-security-audit.yml**:
+
+```yaml
+name: Python Security Audit
+
+on:
+  schedule:
+    - cron: '0 0 * * 1' # 毎週月曜
+  workflow_dispatch:
+
+jobs:
+  python-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install Dependencies
+        run: uv sync --frozen
+
+      - name: Security Audit
+        run: |
+          # pip-audit または safety
+          pip install pip-audit
+          pip-audit
+
+      - name: Check Outdated
+        run: uv pip list --outdated
+```
+
+---
+
+#### 6. セキュリティツール
+
+| ツール        | 用途           | コマンド                             |
+| ------------- | -------------- | ------------------------------------ |
+| **pip-audit** | 脆弱性スキャン | `pip install pip-audit && pip-audit` |
+| **safety**    | 脆弱性スキャン | `pip install safety && safety check` |
+| **bandit**    | コード静的解析 | `pip install bandit && bandit -r .`  |
+
+---
+
+### Hugging Face Spaces特有の注意点
+
+**requirements.txt の管理**:
+
+```txt
+# requirements.txt - Hugging Face Spacesで使用
+fastapi==0.104.1  # 具体的なバージョンを指定
+gradio==4.8.0
+uvicorn==0.24.0
+supabase==2.1.0
+pandas==2.1.3
+numpy==1.26.2
+scikit-learn==1.3.2
+```
+
+**セキュリティチェックリスト**:
+
+- [ ] `requirements.txt` に具体的なバージョンを指定
+- [ ] ローカルで `pip-audit` 実行済み
+- [ ] Dependabotで自動監視設定済み
+- [ ] GitHub Actions で週次監査設定済み
+- [ ] クールダウン機能設定済み（uvの場合）
+
+---
+
+### Python導入時のTODOリスト
+
+```markdown
+- [ ] パッケージマネージャー選定（uv推奨）
+- [ ] pyproject.toml または requirements.txt 作成
+- [ ] クールダウン機能設定（exclude-newer = "1 week"）
+- [ ] ロックファイル生成（uv.lock または requirements.lock）
+- [ ] Dependabot設定追加（.github/dependabot.yml）
+- [ ] Python Security Audit workflow 作成
+- [ ] pip-audit または safety インストール
+- [ ] CI/CDにセキュリティチェック追加
+- [ ] このドキュメントを更新（実装内容を反映）
+```
+
+---
+
 ## 🔗 参考リンク
 
 - [Zenn: サプライチェーン攻撃が怖いので真面目に対策してみた](https://zenn.dev/dely_jp/articles/supply-chain-kowai)
 - [GitHub: Dependency Review Action](https://github.com/actions/dependency-review-action)
 - [pnpm: Security](https://pnpm.io/cli/audit)
 - [npm: package.json overrides](https://docs.npmjs.com/cli/v10/configuring-npm/package-json#overrides)
+- [uv: Python package installer](https://github.com/astral-sh/uv)
+- [pip-audit: PyPA security audit tool](https://pypi.org/project/pip-audit/)
+- [safety: Python dependency security](https://pypi.org/project/safety/)
