@@ -137,12 +137,12 @@ drawio -x -f png -o game-flow.drawio.png game-flow.drawio
 
 #### 共通ゲームフロー（青色のセクション）
 
-1. **INITIALIZATION**: ゲーム開始、カード配布（各プレイヤー13枚）
+1. **INITIALIZATION**: ゲーム開始、カード配布（各プレイヤー12枚）
 2. **NAPOLEON DECLARATION**: ナポレオン宣言フェーズ
    - 全員パス → カード再配布
 3. **ADJUTANT SELECTION**: 副官選択フェーズ
 4. **CARD EXCHANGE**: カード交換フェーズ（ナポレオンと副官）
-5. **PLAYING**: トリックプレイフェーズ（13回繰り返し）
+5. **PLAYING**: トリックプレイフェーズ（12回繰り返し）
 6. **FINISHED**: ゲーム終了、スコア計算
 
 各フェーズには、使用される主要ファイル・関数・コンポーネントが記載されています。
