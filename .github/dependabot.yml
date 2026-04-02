@@ -41,7 +41,13 @@ updates:
           - "jest*"
           - "@playwright/*"
       dev-dependencies:
-        dependency-type: "development"
+        patterns:
+          - "@biomejs/*"
+          - "@types/*"
+          - "typescript"
+          - "prettier"
+          - "husky"
+          - "lint-staged"
         update-types:
           - "minor"
           - "patch"
