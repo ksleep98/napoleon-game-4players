@@ -15,6 +15,7 @@ vercel-auth-state.json
 # Next.js
 .next/
 out/
+next-env.d.ts
 
 # Vercel & Cloudflare Pages build output
 .vercel/
