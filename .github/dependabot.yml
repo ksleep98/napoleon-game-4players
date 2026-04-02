@@ -64,3 +64,8 @@ updates:
       - "dependencies"
     commit-message:
       prefix: "ci"
+    # グループ化（全てのGitHub Actionsを1つのPRにまとめる）
+    groups:
+      github-actions:
+        patterns:
+          - "*"
