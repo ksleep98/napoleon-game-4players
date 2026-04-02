@@ -22,6 +22,10 @@ import {
   saveGameStateAction,
   validateSessionAction,
 } from './gameActions'
+import {
+  extractMLTrainingData,
+  recordGameMove,
+} from './mlDataCollectionActions'
 
 export interface GameActionResult<T = GameState> {
   success: boolean
@@ -418,6 +422,34 @@ export async function playCardAction(
         'Not your turn',
         GAME_ACTION_ERROR_CODES.UNAUTHORIZED
       )
+    }
+
+    // カードをプレイする前に、選択されたカードを取得
+    const selectedCard = player.hand.find((c) => c.id === cardId)
+    if (!selectedCard) {
+      throw new GameActionError(
+        'Card not found in hand',
+        GAME_ACTION_ERROR_CODES.INVALID_INPUT
+      )
+    }
+
+    // 機械学習用データ収集（非同期・エラーは無視）
+    // プレイ前の状態を記録するため、playCard実行前に実行
+    if (currentGameState.phase === GAME_PHASES.PLAYING) {
+      const mlData = extractMLTrainingData(
+        currentGameState,
+        playerId,
+        selectedCard
+      )
+      if (mlData) {
+        // 非同期実行してエラーは無視（ゲームプレイを妨げない）
+        recordGameMove(mlData).catch((error) => {
+          console.error(
+            '[ML Data Collection] Failed to record move (non-blocking):',
+            error
+          )
+        })
+      }
     }
 
     // ゲームロジック実行
