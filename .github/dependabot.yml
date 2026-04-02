@@ -13,8 +13,6 @@ updates:
       time: "09:00" # JST 18:00
       timezone: "Asia/Tokyo"
     open-pull-requests-limit: 10
-    reviewers:
-      - "ksleep98" # レビュー担当者（あなたのGitHubユーザー名）
     labels:
       - "dependencies"
       - "security"
@@ -41,7 +39,13 @@ updates:
           - "jest*"
           - "@playwright/*"
       dev-dependencies:
-        dependency-type: "development"
+        patterns:
+          - "@biomejs/*"
+          - "@types/*"
+          - "typescript"
+          - "prettier"
+          - "husky"
+          - "lint-staged"
         update-types:
           - "minor"
           - "patch"
