@@ -6,7 +6,7 @@
 
 ### 1. システム構成図 (System Architecture)
 
-- **ファイル**: `system-architecture.drawio`
+- **ファイル**: `system-architecture.drawio.png`
 - **内容**:
   - Frontend (Next.js + Vercel)
   - Backend (Supabase PostgreSQL)
@@ -16,7 +16,7 @@
 
 ### 2. ゲームフロー図 (Game Flow)
 
-- **ファイル**: `game-flow.drawio`
+- **ファイル**: `game-flow.drawio.png`
 - **内容**:
   - **マルチプレイヤーモード**:
     - ルーム作成・参加フロー
