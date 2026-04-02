@@ -58,6 +58,16 @@ resource "github_repository_ruleset" "develop" {
       required_review_thread_resolution = true
       allowed_merge_methods             = ["squash"]  # feature -> develop: スカッシュマージのみ
     }
+
+    # Status Checks必須 + 最新のdevelopブランチでCIが通過していることを要求
+    required_status_checks {
+      strict_required_status_checks_policy = true  # Require branches to be up to date before merging
+
+      required_check {
+        context        = "ci-pipeline"
+        integration_id = 15368  # GitHub Actions
+      }
+    }
   }
 }
 
@@ -89,6 +99,16 @@ resource "github_repository_ruleset" "main" {
       required_approving_review_count   = 0  # 個人開発のためレビュー不要
       required_review_thread_resolution = true
       allowed_merge_methods             = ["merge"]  # develop -> main: 通常マージのみ
+    }
+
+    # Status Checks必須 + 最新のmainブランチでCIが通過していることを要求
+    required_status_checks {
+      strict_required_status_checks_policy = true  # Require branches to be up to date before merging
+
+      required_check {
+        context        = "ci-pipeline"
+        integration_id = 15368  # GitHub Actions
+      }
     }
   }
 }
