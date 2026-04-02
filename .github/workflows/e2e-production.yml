@@ -26,15 +26,15 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
         with:
           version: latest
 
       - name: Setup Node.js with cache
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "22.14.0"
           cache: "pnpm"
@@ -58,7 +58,7 @@ jobs:
           pnpm test:e2e:ci:local
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: production-e2e-results

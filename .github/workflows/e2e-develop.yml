@@ -40,18 +40,18 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: develop
           fetch-depth: 0
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
         with:
           version: latest
 
       - name: Setup Node.js with cache
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "22.14.0"
           cache: "pnpm"
@@ -161,7 +161,7 @@ jobs:
           echo "" >> e2e_summary.md
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: develop-e2e-results
@@ -185,13 +185,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: develop
           fetch-depth: 0
 
       - name: Download E2E test results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: develop-e2e-results
           path: ./e2e-results
