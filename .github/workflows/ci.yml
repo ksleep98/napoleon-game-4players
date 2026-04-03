@@ -7,6 +7,7 @@ on:
     branches: [main, develop]
     types: [opened, synchronize, reopened]
     # Skip when only docs/config files changed (e2e-tests will be skipped)
+    # Note: .github/workflows/** is NOT ignored (workflow changes must run CI)
     paths-ignore:
       - "**.md"
       - "docs/**"
@@ -14,10 +15,19 @@ on:
       - ".husky/**"
       - "scripts/**"
       - "**.json" # Includes package.json, tsconfig.json, etc.
-      - "**.yaml"
-      - "**.yml"
       - "LICENSE"
       - ".gitignore"
+      # YAML config files (but NOT .github/workflows/**)
+      - ".github/dependabot.yml"
+      - "docker-compose.yml"
+      - "*.config.yml"
+
+# Prevent duplicate runs for the same commit
+# For PRs: use PR number to group
+# For pushes: use branch ref to group
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   ci-pipeline:
