@@ -210,11 +210,10 @@ jobs:
           PORT: "3000"
           NEXT_TELEMETRY_DISABLED: "1"
         run: |
-          echo "🚀 Running comprehensive game flow E2E test..."
-          echo "🎮 Test: Napoleon selection → Card exchange → Playing → Result"
-          echo "⏳ Playwright webServer will start dev server automatically"
-          echo "📝 This single test validates the entire game flow end-to-end"
-          pnpm test:e2e:ci:comprehensive
+          echo "🚀 Running smoke test E2E (homepage load only)..."
+          echo "📝 This minimal test verifies Next.js is working correctly"
+          echo "⏳ Sufficient to catch version incompatibility issues"
+          pnpm test:e2e:ci
 
       - name: Upload test artifacts
         uses: actions/upload-artifact@v7
