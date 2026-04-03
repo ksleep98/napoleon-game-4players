@@ -6,6 +6,18 @@ on:
   pull_request:
     branches: [main, develop]
     types: [opened, synchronize, reopened]
+    # Skip when only docs/config files changed (e2e-tests will be skipped)
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".vscode/**"
+      - ".husky/**"
+      - "scripts/**"
+      - "**.json" # Includes package.json, tsconfig.json, etc.
+      - "**.yaml"
+      - "**.yml"
+      - "LICENSE"
+      - ".gitignore"
 
 jobs:
   ci-pipeline:
