@@ -3,6 +3,9 @@ name: Auto PR Description
 on:
   pull_request:
     types: [opened, synchronize]
+    branches:
+      - develop
+      # main は除外: develop → main PR (リリースPR) には専用の説明を使用
 
 permissions:
   pull-requests: write
