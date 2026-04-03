@@ -19,6 +19,13 @@ on:
       - "LICENSE"
       - ".gitignore"
 
+# Prevent duplicate runs for the same commit
+# For PRs: use PR number to group
+# For pushes: use branch ref to group
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ci-pipeline:
     runs-on: ubuntu-latest
