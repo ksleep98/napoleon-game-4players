@@ -6,8 +6,8 @@ name: Dependency Review
 on:
   pull_request:
     branches:
-      - main
       - develop
+      # main は除外: develop → main PR では、developで既にチェック済みのため不要
 
 permissions:
   contents: read
