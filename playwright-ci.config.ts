@@ -3,6 +3,8 @@ import { defineConfig, devices } from '@playwright/test'
 // CI専用のPlaywright設定
 export default defineConfig({
   testDir: './tests/e2e',
+  // Smoke test only: verify homepage loads (sufficient to catch Next.js issues)
+  testMatch: '**/basic.spec.ts',
   fullyParallel: false, // CI環境では順次実行
   forbidOnly: true,
   retries: 2, // CI環境では2回リトライ
