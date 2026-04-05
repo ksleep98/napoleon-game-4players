@@ -11,6 +11,10 @@ export type Environment = 'local' | 'vercel-develop' | 'vercel-main' | 'unknown'
 export function getEnvironment(): Environment {
   // サーバーサイドレンダリング時
   if (typeof window === 'undefined') {
+    // vercel dev（ローカル実行）はlocal扱い
+    if (process.env.VERCEL_ENV === 'development') {
+      return 'local'
+    }
     if (process.env.VERCEL) {
       // Vercel環境での分岐判定
       if (process.env.VERCEL_GIT_COMMIT_REF === 'main') {

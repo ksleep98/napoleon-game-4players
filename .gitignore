@@ -28,7 +28,6 @@ dist/
 .env
 .env*.local
 .env.production
-!.env.production.example  # Track safe template only
 !.env.docker.example      # Track Docker environment template
 
 # Database

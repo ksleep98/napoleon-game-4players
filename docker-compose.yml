@@ -1,33 +1,10 @@
 version: "3.8"
 
-services:
-  # Next.js Application
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    container_name: napoleon-game-app
-    ports:
-      - "3000:3000"
-    volumes:
-      # Hot-reload support - mount source code
-      - .:/app
-      - /app/node_modules
-      - /app/.next
-    environment:
-      - NODE_ENV=development
-      - NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-      - NEXT_PUBLIC_APP_ENV=development
-      - NEXT_PUBLIC_ENABLE_PERF_MONITOR=true
-    depends_on:
-      - supabase-db
-      - supabase-auth
-      - supabase-rest
-    networks:
-      - napoleon-network
+# Infrastructure-only Docker Compose
+# Next.js app は vercel dev でホスト上で実行
+# このファイルはローカルSupabaseインフラ + 将来のサービス（Flask等）用
 
+services:
   # Supabase PostgreSQL Database
   supabase-db:
     image: supabase/postgres:15.1.0.117
@@ -36,7 +13,7 @@ services:
       - "54322:5432"
     environment:
       POSTGRES_HOST: /var/run/postgresql
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-your-super-secret-and-long-postgres-password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-dev-password-change-me}
       POSTGRES_DB: postgres
       POSTGRES_USER: postgres
     volumes:
@@ -61,7 +38,7 @@ services:
       GOTRUE_API_PORT: 9999
       API_EXTERNAL_URL: http://localhost:54321
       GOTRUE_DB_DRIVER: postgres
-      GOTRUE_DB_DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-your-super-secret-and-long-postgres-password}@supabase-db:5432/postgres?search_path=auth
+      GOTRUE_DB_DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-local-dev-password-change-me}@supabase-db:5432/postgres?search_path=auth
       GOTRUE_SITE_URL: http://localhost:3000
       GOTRUE_URI_ALLOW_LIST: "*"
       GOTRUE_DISABLE_SIGNUP: false
@@ -69,7 +46,7 @@ services:
       GOTRUE_JWT_AUD: authenticated
       GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
       GOTRUE_JWT_EXP: 3600
-      GOTRUE_JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-token-with-at-least-32-characters-long}
+      GOTRUE_JWT_SECRET: ${JWT_SECRET:-local-dev-jwt-secret-at-least-32-characters-long}
       GOTRUE_EXTERNAL_EMAIL_ENABLED: true
       GOTRUE_MAILER_AUTOCONFIRM: true
     depends_on:
@@ -85,12 +62,12 @@ services:
     ports:
       - "54323:3000"
     environment:
-      PGRST_DB_URI: postgres://postgres:${POSTGRES_PASSWORD:-your-super-secret-and-long-postgres-password}@supabase-db:5432/postgres
+      PGRST_DB_URI: postgres://postgres:${POSTGRES_PASSWORD:-local-dev-password-change-me}@supabase-db:5432/postgres
       PGRST_DB_SCHEMAS: public,storage,graphql_public
       PGRST_DB_ANON_ROLE: anon
-      PGRST_JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-token-with-at-least-32-characters-long}
+      PGRST_JWT_SECRET: ${JWT_SECRET:-local-dev-jwt-secret-at-least-32-characters-long}
       PGRST_DB_USE_LEGACY_GUCS: false
-      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-token-with-at-least-32-characters-long}
+      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET:-local-dev-jwt-secret-at-least-32-characters-long}
       PGRST_APP_SETTINGS_JWT_EXP: 3600
     depends_on:
       supabase-db:
@@ -98,21 +75,36 @@ services:
     networks:
       - napoleon-network
 
-  # Supabase Studio (Optional - for database management UI)
+  # Supabase Studio (Database management UI)
   supabase-studio:
     image: supabase/studio:20231123-64a766a
     container_name: napoleon-supabase-studio
     ports:
-      - "54323:3000"
+      - "54325:3000"
     environment:
       SUPABASE_URL: http://localhost:54321
-      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
-      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
       STUDIO_PG_META_URL: http://supabase-rest:3000
     depends_on:
       - supabase-rest
     networks:
       - napoleon-network
+
+  # --- 将来のサービス ---
+  # Python Flask API (example)
+  # flask-api:
+  #   build:
+  #     context: ./flask
+  #     dockerfile: Dockerfile
+  #   container_name: napoleon-flask-api
+  #   ports:
+  #     - "5000:5000"
+  #   environment:
+  #     - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD:-local-dev-password-change-me}@supabase-db:5432/postgres
+  #   depends_on:
+  #     supabase-db:
+  #       condition: service_healthy
+  #   networks:
+  #     - napoleon-network
 
 networks:
   napoleon-network:
