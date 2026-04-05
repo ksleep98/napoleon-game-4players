@@ -129,21 +129,4 @@ jobs:
           # Update existing PR description using gh CLI
           gh pr edit $PR_NUMBER --body "$RELEASE_BODY"
 
-          # Add comment about the update with latest changes summary
-          latest_commit=$(git log --oneline --no-merges main..develop | head -n1)
-          total_commits=$(git rev-list --count main..develop)
-
-          comment_body="🔄 **Release PR Updated**
-
-          New changes have been merged to develop branch:
-
-          **Latest commit**: \`$latest_commit\`
-          **Total commits ready for release**: $total_commits
-
-          The release notes above have been updated to reflect all latest changes.
-
-          _Updated: $(date '+%Y-%m-%d %H:%M:%S UTC')_"
-
-          gh pr comment $PR_NUMBER --body "$comment_body"
-
           echo "✅ Release PR #$PR_NUMBER updated successfully!"
