@@ -1,15 +1,18 @@
 #!/bin/bash
 # Napoleon Game - Docker Development Helper Script
+#
+# Docker Compose はインフラ（Supabase DB等）のみを管理
+# Next.js アプリは vercel dev でホスト上で実行
+#
 # Usage:
-#   ./docker-dev.sh build  - Build the Docker image
-#   ./docker-dev.sh run    - Run container and start pnpm dev
-#   ./docker-dev.sh shell  - Enter container shell (bash)
-#   ./docker-dev.sh exec   - Execute custom command in container
+#   ./docker-dev.sh up      - Start infrastructure services
+#   ./docker-dev.sh down    - Stop infrastructure services
+#   ./docker-dev.sh status  - Show service status
+#   ./docker-dev.sh logs    - Show service logs
+#   ./docker-dev.sh reset   - Reset database (delete volumes)
+#   ./docker-dev.sh dev     - Start infra + vercel dev
 
 set -e
-
-IMAGE_NAME="napoleon-game-dev"
-CONTAINER_NAME="napoleon-game-container"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -34,146 +37,61 @@ print_error() {
     echo -e "${RED}✗ ${1}${NC}"
 }
 
-# Function to build Docker image
-build_image() {
-    print_info "Building Docker image: ${IMAGE_NAME}..."
-    docker build -t "${IMAGE_NAME}" .
-    print_success "Docker image built successfully!"
+# Start infrastructure services
+start_infra() {
+    print_info "Starting infrastructure services (Supabase DB, Auth, REST, Studio)..."
+    docker-compose up -d
+    print_success "Infrastructure services started!"
+    echo ""
+    print_info "Services:"
+    echo "  - PostgreSQL:     localhost:54322"
+    echo "  - Supabase Auth:  localhost:54324"
+    echo "  - Supabase REST:  localhost:54323"
+    echo "  - Supabase Studio: localhost:54325"
+    echo ""
+    print_info "Next.js app: run 'vercel dev' separately"
 }
 
-# Function to stop and remove existing container
-cleanup_container() {
-    if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-        print_warning "Stopping and removing existing container..."
-        docker stop "${CONTAINER_NAME}" 2>/dev/null || true
-        docker rm "${CONTAINER_NAME}" 2>/dev/null || true
-    fi
+# Stop infrastructure services
+stop_infra() {
+    print_info "Stopping infrastructure services..."
+    docker-compose down
+    print_success "Infrastructure services stopped!"
 }
 
-# Function to run container with pnpm dev
-run_dev() {
-    cleanup_container
+# Show service status
+show_status() {
+    print_info "Service status:"
+    docker-compose ps
+}
 
-    print_info "Starting container with pnpm dev (Hot Reload enabled)..."
-    print_info "Access the application at: http://localhost:3000"
-    print_info "Press Ctrl+C to stop the server"
+# Show service logs
+show_logs() {
+    docker-compose logs -f "${2:-}"
+}
 
-    # Check if .env.local exists
-    if [ -f .env.local ]; then
-        print_success "Found .env.local, loading environment variables..."
-        docker run -it --rm \
-            --name "${CONTAINER_NAME}" \
-            -p 3000:3000 \
-            -v "$(pwd)/src:/app/src" \
-            -v "$(pwd)/public:/app/public" \
-            -v "$(pwd)/next.config.js:/app/next.config.js" \
-            -v "$(pwd)/tailwind.config.ts:/app/tailwind.config.ts" \
-            -v "$(pwd)/tsconfig.json:/app/tsconfig.json" \
-            -v "$(pwd)/.env.local:/app/.env.local:ro" \
-            -e NODE_ENV=development \
-            -e WATCHPACK_POLLING=true \
-            -e CHOKIDAR_USEPOLLING=true \
-            "${IMAGE_NAME}" \
-            pnpm dev
+# Reset database
+reset_db() {
+    print_warning "This will delete all local database data!"
+    read -p "Are you sure? (y/N) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        docker-compose down -v
+        print_success "Database reset complete!"
     else
-        print_warning ".env.local not found, running without environment variables..."
-        docker run -it --rm \
-            --name "${CONTAINER_NAME}" \
-            -p 3000:3000 \
-            -v "$(pwd)/src:/app/src" \
-            -v "$(pwd)/public:/app/public" \
-            -v "$(pwd)/next.config.js:/app/next.config.js" \
-            -v "$(pwd)/tailwind.config.ts:/app/tailwind.config.ts" \
-            -v "$(pwd)/tsconfig.json:/app/tsconfig.json" \
-            -e NODE_ENV=development \
-            -e WATCHPACK_POLLING=true \
-            -e CHOKIDAR_USEPOLLING=true \
-            "${IMAGE_NAME}" \
-            pnpm dev
+        print_info "Cancelled."
     fi
 }
 
-# Function to enter container shell
-run_shell() {
-    cleanup_container
-
-    print_info "Starting container with bash shell (Hot Reload enabled)..."
-    print_info "Type 'pnpm dev' to start the development server"
-    print_info "Type 'exit' to leave the container"
-
-    # Check if .env.local exists
-    if [ -f .env.local ]; then
-        print_success "Found .env.local, loading environment variables..."
-        docker run -it --rm \
-            --name "${CONTAINER_NAME}" \
-            -p 3000:3000 \
-            -v "$(pwd)/src:/app/src" \
-            -v "$(pwd)/public:/app/public" \
-            -v "$(pwd)/next.config.js:/app/next.config.js" \
-            -v "$(pwd)/tailwind.config.ts:/app/tailwind.config.ts" \
-            -v "$(pwd)/tsconfig.json:/app/tsconfig.json" \
-            -v "$(pwd)/.env.local:/app/.env.local:ro" \
-            -e NODE_ENV=development \
-            -e WATCHPACK_POLLING=true \
-            -e CHOKIDAR_USEPOLLING=true \
-            "${IMAGE_NAME}" \
-            bash
-    else
-        print_warning ".env.local not found, running without environment variables..."
-        docker run -it --rm \
-            --name "${CONTAINER_NAME}" \
-            -p 3000:3000 \
-            -v "$(pwd)/src:/app/src" \
-            -v "$(pwd)/public:/app/public" \
-            -v "$(pwd)/next.config.js:/app/next.config.js" \
-            -v "$(pwd)/tailwind.config.ts:/app/tailwind.config.ts" \
-            -v "$(pwd)/tsconfig.json:/app/tsconfig.json" \
-            -e NODE_ENV=development \
-            -e WATCHPACK_POLLING=true \
-            -e CHOKIDAR_USEPOLLING=true \
-            "${IMAGE_NAME}" \
-            bash
-    fi
+# Start infra + vercel dev
+start_dev() {
+    start_infra
+    echo ""
+    print_info "Starting Next.js via vercel dev..."
+    vercel dev
 }
 
-# Function to execute custom command
-run_exec() {
-    if [ -z "$2" ]; then
-        print_error "Please provide a command to execute"
-        print_info "Example: ./docker-dev.sh exec 'pnpm test'"
-        exit 1
-    fi
-
-    cleanup_container
-
-    print_info "Executing command: $2"
-
-    # Check if .env.local exists
-    if [ -f .env.local ]; then
-        print_success "Found .env.local, loading environment variables..."
-        docker run -it --rm \
-            --name "${CONTAINER_NAME}" \
-            -p 3000:3000 \
-            -v "$(pwd)/src:/app/src" \
-            -v "$(pwd)/public:/app/public" \
-            -v "$(pwd)/.env.local:/app/.env.local:ro" \
-            -e NODE_ENV=development \
-            "${IMAGE_NAME}" \
-            bash -c "$2"
-    else
-        print_warning ".env.local not found, running without environment variables..."
-        docker run -it --rm \
-            --name "${CONTAINER_NAME}" \
-            -p 3000:3000 \
-            -v "$(pwd)/src:/app/src" \
-            -v "$(pwd)/public:/app/public" \
-            -e NODE_ENV=development \
-            "${IMAGE_NAME}" \
-            bash -c "$2"
-    fi
-}
-
-# Function to show usage
+# Show usage
 show_usage() {
     cat << EOF
 Napoleon Game - Docker Development Helper
@@ -182,52 +100,49 @@ Usage:
   ./docker-dev.sh [command]
 
 Commands:
-  build   Build the Docker image
-  run     Run container and start pnpm dev (default)
-  shell   Enter container shell (bash)
-  exec    Execute custom command in container
+  up      Start infrastructure services (Supabase DB, Auth, REST, Studio)
+  down    Stop infrastructure services
+  status  Show service status
+  logs    Show service logs (optionally specify service name)
+  reset   Reset database (delete volumes)
+  dev     Start infra + vercel dev (all-in-one)
 
 Examples:
-  ./docker-dev.sh build
-  ./docker-dev.sh run
-  ./docker-dev.sh shell
-  ./docker-dev.sh exec 'pnpm test'
-  ./docker-dev.sh exec 'pnpm lint'
+  ./docker-dev.sh up              # Start Supabase infra
+  ./docker-dev.sh dev             # Start infra + Next.js
+  ./docker-dev.sh logs supabase-db  # Show DB logs
+  ./docker-dev.sh reset           # Reset database
+
+Architecture:
+  Docker Compose → Supabase infrastructure only
+  vercel dev     → Next.js app (reads keys from Vercel)
 
 Options:
   -h, --help    Show this help message
-
-Note: The 'src' and 'public' directories are mounted as volumes for hot-reload.
 EOF
 }
 
 # Main script logic
-case "${1:-run}" in
-    build)
-        build_image
+case "${1:-}" in
+    up)
+        start_infra
         ;;
-    run)
-        if ! docker images | grep -q "${IMAGE_NAME}"; then
-            print_warning "Image not found. Building first..."
-            build_image
-        fi
-        run_dev
+    down)
+        stop_infra
         ;;
-    shell)
-        if ! docker images | grep -q "${IMAGE_NAME}"; then
-            print_warning "Image not found. Building first..."
-            build_image
-        fi
-        run_shell
+    status)
+        show_status
         ;;
-    exec)
-        if ! docker images | grep -q "${IMAGE_NAME}"; then
-            print_warning "Image not found. Building first..."
-            build_image
-        fi
-        run_exec "$@"
+    logs)
+        show_logs "$@"
         ;;
-    -h|--help)
+    reset)
+        reset_db
+        ;;
+    dev)
+        start_dev
+        ;;
+    -h|--help|"")
         show_usage
         ;;
     *)

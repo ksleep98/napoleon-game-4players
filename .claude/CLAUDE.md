@@ -41,7 +41,7 @@
 
 ## クイック スタート
 
-### 通常の開発環境
+### 通常の開発環境（推奨: vercel dev）
 
 ```bash
 # 1. リポジトリクローン
@@ -51,11 +51,15 @@ cd napoleon-game-4players
 # 2. 依存関係インストール
 pnpm install
 
-# 3. 開発サーバー起動
-pnpm dev
-# → http://localhost:3000
+# 3. Vercel CLIでログイン（初回のみ）
+vercel login
 
-# 4. マージ後の自動クリーンアップ
+# 4. 開発サーバー起動（Vercel環境変数が自動注入）
+vercel dev
+# → http://localhost:3000
+# ※ .env / .env.local が存在すると競合するため削除しておくこと
+
+# 5. マージ後の自動クリーンアップ
 pnpm setup:auto-cleanup enable  # 自動実行を有効化
 pnpm cleanup        # 手動インタラクティブ版
 pnpm cleanup:smart  # 手動スマート版（GitHub CLI連携）
@@ -169,11 +173,19 @@ docker-compose up -d
 
 ### 環境変数管理
 
-**⚠️ 重要**: 本番環境の認証情報は絶対にGitにコミットしないでください。
+**⚠️ 重要**: 認証情報は絶対にGitにコミットしないでください。
 
-- ✅ `.env.example`, `.env.production.example` のみGit追跡
+**推奨: `vercel dev` による開発**
+
+- ローカルに `.env` / `.env.local` を持たず、Vercel上の環境変数を直接使用
+- `vercel dev` で開発サーバーを起動するだけでキーが自動注入される
+- 全環境（Production / Preview / Development）の値はVercel Dashboardで一元管理
+
+**ファイル管理:**
+
+- ✅ `.env.example`, `.env.docker.example` のみGit追跡
 - ❌ `.env`, `.env.local`, `.env.production` はGit追跡禁止
-- 本番環境の認証情報は**Vercel環境変数のみ**で管理
+- `.env.production` ファイルは作成しない（Vercel管理）
 - 詳細: [環境変数セキュリティガイド](./docs/security/ENVIRONMENT_VARIABLES.md)
 
 ## インフラ管理（Infrastructure as Code）
