@@ -14,7 +14,9 @@ on:
       - ".vscode/**"
       - ".husky/**"
       - "scripts/**"
-      - "**.json" # Includes package.json, tsconfig.json, etc.
+      - ".claude/**"
+      - ".vscode/*.json"
+      - "renovate.json"
       - "LICENSE"
       - ".gitignore"
       # YAML config files (but NOT .github/workflows/**)
