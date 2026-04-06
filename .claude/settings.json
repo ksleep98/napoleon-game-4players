@@ -1,5 +1,5 @@
 {
-  "$schema": "https://claude.ai/schema/settings.json",
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "description": "Napoleon Game (4 Players) - Team shared Claude Code settings",
   "permissions": {
     "allow": [
