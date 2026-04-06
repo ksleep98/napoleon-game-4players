@@ -230,7 +230,7 @@ GitHubリポジトリの設定をTerraformで管理し、VCS-driven workflowで�
 
 **重要な設計決定:**
 
-- ✅ CI必須チェック: 無効（pre-commit hooksで品質担保）
+- ✅ CI必須チェック: 有効（`ci-pipeline` ステータスチェック必須）
 - ✅ Strict Status Checks: 無効（"Update branch" 不要）
 - ✅ Bypass Actors: 無効（"Merge without waiting..." チェックボックス非表示）
 
