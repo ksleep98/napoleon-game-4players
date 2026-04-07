@@ -78,7 +78,7 @@ jobs:
             fi
           done
 
-          total_files=${{ steps.changed-files.outputs.all_changed_files_count }}
+          total_files=${{ steps.changed-files.outputs.all_changed_files_count || 0 }}
           echo "**Total files changed: $total_files**" >> pr_description.md
           echo "" >> pr_description.md
 
@@ -107,7 +107,7 @@ jobs:
           # Tests
           echo "#### 🧪 Tests" >> pr_description.md
           echo "" >> pr_description.md
-          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -E '^tests/|\.test\.|\.spec\.' | while read -r file; do
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | { grep -E '^tests/|\.test\.|\.spec\.' || true; } | while read -r file; do
             [ -n "$file" ] && echo "- \`$file\`" >> pr_description.md
           done
           echo "" >> pr_description.md
@@ -115,7 +115,7 @@ jobs:
           # Documentation
           echo "#### 📚 Documentation" >> pr_description.md
           echo "" >> pr_description.md
-          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep '\.md$' | while read -r file; do
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | { grep '\.md$' || true; } | while read -r file; do
             [ -n "$file" ] && echo "- \`$file\`" >> pr_description.md
           done
           echo "" >> pr_description.md
@@ -123,7 +123,7 @@ jobs:
           # Source Code
           echo "#### 🔧 Source Code" >> pr_description.md
           echo "" >> pr_description.md
-          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -E '\.(ts|tsx|js|jsx)$' | grep -v -E '^tests/|\.test\.|\.spec\.' | while read -r file; do
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | { grep -E '\.(ts|tsx|js|jsx)$' || true; } | { grep -v -E '^tests/|\.test\.|\.spec\.' || true; } | while read -r file; do
             [ -n "$file" ] && echo "- \`$file\`" >> pr_description.md
           done
           echo "" >> pr_description.md
@@ -131,7 +131,7 @@ jobs:
           # Configuration
           echo "#### ⚙️ Configuration" >> pr_description.md
           echo "" >> pr_description.md
-          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -E '\.(json|yml|yaml|lock)$|config' | while read -r file; do
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | { grep -E '\.(json|yml|yaml|lock)$|config' || true; } | while read -r file; do
             [ -n "$file" ] && echo "- \`$file\`" >> pr_description.md
           done
           echo "" >> pr_description.md
@@ -139,7 +139,7 @@ jobs:
           # Other Files
           echo "#### 📄 Other Files" >> pr_description.md
           echo "" >> pr_description.md
-          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -v -E '\.(ts|tsx|js|jsx|md|json|yml|yaml|lock)$|config|^tests/|\.test\.|\.spec\.' | while read -r file; do
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | { grep -v -E '\.(ts|tsx|js|jsx|md|json|yml|yaml|lock)$|config|^tests/|\.test\.|\.spec\.' || true; } | while read -r file; do
             [ -n "$file" ] && echo "- \`$file\`" >> pr_description.md
           done
           echo "" >> pr_description.md
