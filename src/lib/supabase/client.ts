@@ -10,8 +10,12 @@ const supabaseAnonKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   (isTestEnv ? 'mock_anon_key' : '')
 
-// Fail fast if Supabase credentials are missing in non-test environments
-if (!isTestEnv && (!supabaseUrl || !supabaseAnonKey)) {
+// Fail fast at runtime if Supabase credentials are missing (skip during build)
+if (
+  typeof window !== 'undefined' &&
+  !isTestEnv &&
+  (!supabaseUrl || !supabaseAnonKey)
+) {
   throw new Error(
     'Missing required environment variables: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY'
   )
