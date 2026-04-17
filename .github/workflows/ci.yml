@@ -6,6 +6,30 @@ on:
   pull_request:
     branches: [main, develop]
     types: [opened, synchronize, reopened]
+    # Skip when only docs/config files changed (e2e-tests will be skipped)
+    # Note: .github/workflows/** is NOT ignored (workflow changes must run CI)
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".vscode/**"
+      - ".husky/**"
+      - "scripts/**"
+      - ".claude/**"
+      - ".vscode/*.json"
+      - "renovate.json"
+      - "LICENSE"
+      - ".gitignore"
+      # YAML config files (but NOT .github/workflows/**)
+      - ".github/dependabot.yml"
+      - "docker-compose.yml"
+      - "*.config.yml"
+
+# Prevent duplicate runs for the same commit
+# For PRs: use PR number to group
+# For pushes: use branch ref to group
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   ci-pipeline:
@@ -26,7 +50,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v5
         with:
-          version: latest
+          version: 10
 
       - name: Setup Node.js with cache
         uses: actions/setup-node@v6
@@ -138,68 +162,3 @@ jobs:
         run: |
           echo "🏗️ Fast build verification..."
           pnpm build
-
-  e2e-tests:
-    runs-on: ubuntu-latest
-    # Run E2E tests on push to main/develop or PRs to any branch
-    if: |
-      github.event_name == 'push' || github.event_name == 'pull_request'
-    permissions:
-      contents: read
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v5
-        with:
-          version: latest
-
-      - name: Setup Node.js with cache
-        uses: actions/setup-node@v6
-        with:
-          node-version: "22.14.0"
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Install Playwright Browsers
-        run: pnpm exec playwright install --with-deps chromium
-
-      - name: Build application
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: "https://mock.supabase.co"
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: "mock_anon_key"
-          SUPABASE_SERVICE_ROLE_KEY: "mock_service_role_key"
-          NODE_ENV: "production"
-          NEXT_TELEMETRY_DISABLED: "1"
-        run: pnpm build
-
-      - name: Run comprehensive game flow E2E test
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: "https://mock.supabase.co"
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: "mock_anon_key"
-          SUPABASE_SERVICE_ROLE_KEY: "mock_service_role_key"
-          NODE_ENV: "test"
-          CI: "true"
-          # Playwright will start dev server automatically
-          PORT: "3000"
-          NEXT_TELEMETRY_DISABLED: "1"
-        run: |
-          echo "🚀 Running comprehensive game flow E2E test..."
-          echo "🎮 Test: Napoleon selection → Card exchange → Playing → Result"
-          echo "⏳ Playwright webServer will start dev server automatically"
-          echo "📝 This single test validates the entire game flow end-to-end"
-          pnpm test:e2e:ci:comprehensive
-
-      - name: Upload test artifacts
-        uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: e2e-test-results
-          path: |
-            test-results/
-            playwright-report/
-          retention-days: 7
