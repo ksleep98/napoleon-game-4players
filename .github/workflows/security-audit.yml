@@ -47,7 +47,7 @@ jobs:
 
       - name: Create Issue if Vulnerabilities Found
         if: steps.audit.outputs.vulnerabilities > 0
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
