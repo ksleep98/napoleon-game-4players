@@ -4,19 +4,18 @@ import type { GameState, PlayerScore } from '@/types/game'
 const isTestEnv = process.env.NODE_ENV === 'test'
 
 const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  (isTestEnv ? 'https://mock.supabase.co' : '')
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
 const supabaseAnonKey =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  (isTestEnv ? 'mock_anon_key' : '')
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder'
 
-// Fail fast at runtime if Supabase credentials are missing (skip during build)
+// Warn at runtime if Supabase credentials are missing (skip during build/test)
 if (
   typeof window !== 'undefined' &&
   !isTestEnv &&
-  (!supabaseUrl || !supabaseAnonKey)
+  (!process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
 ) {
-  throw new Error(
+  console.error(
     'Missing required environment variables: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY'
   )
 }

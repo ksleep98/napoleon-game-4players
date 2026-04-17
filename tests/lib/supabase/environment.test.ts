@@ -32,31 +32,29 @@ describe('Supabase Environment Configuration', () => {
       expect(supabase.supabaseKey).toBe('test_anon_key_123456789')
     })
 
-    test('テスト環境で環境変数が未設定の場合はモック値が使用される', () => {
-      // 環境変数を削除（NODE_ENV=testはjest実行時にデフォルト設定）
+    test('環境変数が未設定の場合はプレースホルダー値が使用される', () => {
+      // 環境変数を削除
       delete process.env.NEXT_PUBLIC_SUPABASE_URL
       delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      ;(process.env as Record<string, string>).NODE_ENV = 'test'
 
       // 動的インポートでクライアントを再読み込み
       const { supabase } = require('@/lib/supabase/client')
 
       expect(supabase).toBeDefined()
-      expect(supabase.supabaseUrl).toBe('https://mock.supabase.co')
-      expect(supabase.supabaseKey).toBe('mock_anon_key')
+      expect(supabase.supabaseUrl).toBe('https://placeholder.supabase.co')
+      expect(supabase.supabaseKey).toBe('placeholder')
     })
 
-    test('テスト環境で部分的に環境変数が設定されている場合', () => {
+    test('部分的に環境変数が設定されている場合', () => {
       // URLのみ設定
       process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://partial.supabase.co'
       delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      ;(process.env as Record<string, string>).NODE_ENV = 'test'
 
       const { supabase } = require('@/lib/supabase/client')
 
       expect(supabase).toBeDefined()
       expect(supabase.supabaseUrl).toBe('https://partial.supabase.co')
-      expect(supabase.supabaseKey).toBe('mock_anon_key')
+      expect(supabase.supabaseKey).toBe('placeholder')
     })
   })
 
