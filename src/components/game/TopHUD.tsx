@@ -74,15 +74,26 @@ export const TopHUD = memo(function TopHUD({
         </div>
       </div>
 
-      {/* Trump suit chip */}
+      {/* Trump suit chip + adjutant card */}
       {trumpSuit && (
-        <div className="flex items-center gap-2 bg-white/10 border border-white/15 rounded-[10px] px-3 py-1.5 font-bold text-white">
-          <span className="text-[10px] tracking-widest uppercase opacity-70">
-            Trump
-          </span>
-          <span className="text-[22px] leading-none">
-            {SUIT_SYMBOLS[trumpSuit]}
-          </span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-white/10 border border-white/15 rounded-[10px] px-3 py-1.5 font-bold text-white">
+            <span className="text-[10px] tracking-widest uppercase opacity-70">
+              Trump
+            </span>
+            <span className="text-[22px] leading-none">
+              {SUIT_SYMBOLS[trumpSuit]}
+            </span>
+          </div>
+          {gameState.napoleonCard && (
+            <div className="flex items-center gap-1.5 text-[11px] text-white/60">
+              <span>Adj:</span>
+              <span className="font-bold text-white/90">
+                {gameState.napoleonCard.rank}
+                {SUIT_SYMBOLS[gameState.napoleonCard.suit]}
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>

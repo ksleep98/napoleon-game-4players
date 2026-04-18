@@ -143,8 +143,8 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
         </div>
       )}
 
-      {/* 切り札スート表示 - ゲーム中のみ */}
-      {gameState.phase === GAME_PHASES.PLAYING && gameState.trumpSuit && (
+      {/* 切り札スート表示 - 非PLAYINGフェーズのみ（PLAYING中はTopHUDに表示） */}
+      {gameState.phase !== GAME_PHASES.PLAYING && gameState.trumpSuit && (
         <div className="border-b pb-3">
           <h4 className="font-semibold text-gray-800 mb-2">Trump Suit</h4>
           <div className="flex items-center justify-center bg-red-50 border border-red-200 p-3 rounded-lg">
