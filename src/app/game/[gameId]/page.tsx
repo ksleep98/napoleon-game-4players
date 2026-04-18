@@ -7,6 +7,7 @@ import { AIDifficultyBadge } from '@/components/game/AIDifficultyBadge'
 import { Card } from '@/components/game/Card'
 import { CompactGameProgress, GameStatus } from '@/components/game/GameStatus'
 import { PlayerHand } from '@/components/game/PlayerHand'
+import { TopHUD } from '@/components/game/TopHUD'
 import { GameProvider, useGame } from '@/contexts/GameContext'
 import { GAME_PHASES } from '@/lib/constants'
 import { getNextDeclarationPlayer } from '@/lib/napoleonRules'
@@ -360,15 +361,149 @@ function GamePageContent() {
     )
   }
 
+  // PLAYING phase uses the redesigned felt layout
+  if (gameState.phase === GAME_PHASES.PLAYING) {
+    return (
+      <div
+        className="min-h-screen py-3 md:py-5 px-3 md:px-6"
+        style={{
+          background:
+            'radial-gradient(ellipse at 50% 50%, #1a6a3d 0%, #0f4a2a 70%, #0a3820 100%)',
+        }}
+      >
+        <div className="max-w-[1180px] mx-auto space-y-4">
+          {/* Top HUD bar */}
+          <TopHUD gameState={gameState} currentPlayerId={currentPlayerId} />
+
+          {/* Game table */}
+          <GameBoard gameState={gameState} currentPlayerId={currentPlayerId} />
+
+          {/* Player hand */}
+          {currentPlayer && (
+            <div className="space-y-3">
+              <PlayerHand
+                player={currentPlayer}
+                isCurrentPlayer={isCurrentTurn}
+                onCardClick={handleCardClick}
+                selectedCardId={selectedCardId || undefined}
+                playableCardIds={playableCards}
+              />
+
+              {/* Play button */}
+              {isCurrentTurn && selectedCardId && (
+                <div className="flex justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handlePlayCard}
+                    className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-[10px] transition-colors cursor-pointer"
+                  >
+                    Play Selected Card
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Face cards won grid */}
+          <div className="bg-gray-900/70 backdrop-blur-lg border border-white/10 rounded-[14px] p-3 md:p-4">
+            <h3 className="text-sm md:text-base font-bold text-white mb-2 md:mb-3">
+              Face Cards Won
+            </h3>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
+              {gameState.players.map((player) => {
+                const wonTricks = gameState.tricks.filter(
+                  (trick) => trick.winnerPlayerId === player.id
+                )
+                const faceCards = wonTricks.flatMap((trick) =>
+                  trick.cards
+                    .filter((pc) =>
+                      ['10', 'J', 'Q', 'K', 'A'].includes(pc.card.rank)
+                    )
+                    .map((pc) => pc.card)
+                )
+
+                const isAdjutantRevealed =
+                  gameState.tricks.some((trick) =>
+                    trick.cards.some(
+                      (playedCard) =>
+                        gameState.napoleonCard &&
+                        playedCard.card.id === gameState.napoleonCard.id
+                    )
+                  ) ||
+                  gameState.tricks.some((trick) =>
+                    trick.cards.some((playedCard) => playedCard.revealsAdjutant)
+                  ) ||
+                  gameState.currentTrick.cards.some(
+                    (playedCard) => playedCard.revealsAdjutant
+                  )
+
+                return (
+                  <div
+                    key={player.id}
+                    className="border border-white/10 rounded-lg p-2 md:p-3 bg-white/5"
+                  >
+                    <div className="flex items-center gap-1 md:gap-2 mb-1">
+                      <h4 className="text-xs md:text-sm font-semibold text-white truncate">
+                        {player.name}
+                      </h4>
+                      {player.isNapoleon && (
+                        <span className="px-1 py-0.5 bg-yellow-500/20 text-yellow-400 rounded-full text-[0.6rem] font-bold">
+                          N
+                        </span>
+                      )}
+                      {player.isAdjutant &&
+                        (player.id === currentPlayerId ||
+                          isAdjutantRevealed) && (
+                          <span className="px-1 py-0.5 bg-green-500/20 text-green-400 rounded-full text-[0.6rem] font-bold">
+                            A
+                          </span>
+                        )}
+                    </div>
+                    <div className="text-[0.65rem] text-white/60 mb-1">
+                      Cards: {faceCards.length}
+                    </div>
+                    {faceCards.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {faceCards.map((card, index) => (
+                          <Card
+                            key={`${card.id}-${index}`}
+                            card={card}
+                            size="tiny"
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-white/30 text-xs">
+                        No face cards yet
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Trick result overlay */}
+        {gameState.showingTrickResult && gameState.lastCompletedTrick && (
+          <TrickResult
+            trick={gameState.lastCompletedTrick}
+            players={gameState.players}
+            onContinue={() => actions.closeTrickResult()}
+          />
+        )}
+      </div>
+    )
+  }
+
+  // Non-playing phases use the original layout
   return (
     <div className="min-h-screen bg-gray-100 py-1 md:py-4">
       <div className="max-w-7xl mx-auto px-2 md:px-4">
         <div className="flex justify-between items-center mb-2 md:mb-6 py-1">
           <h1 className="text-lg md:text-2xl font-bold">Napoleon Game</h1>
           <div className="flex items-center gap-2 md:gap-4">
-            {/* AI難易度バッジ */}
             {gameState?.players.some((p) => p.isAI) && <AIDifficultyBadge />}
-            {/* Homeボタン */}
             {gameState?.players.some((p) => p.isAI) && (
               <button
                 type="button"
@@ -384,9 +519,7 @@ function GamePageContent() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-2 md:gap-6">
-          {/* メインゲームエリア */}
           <div className="lg:col-span-3 space-y-2 md:space-y-6">
-            {/* ナポレオン選択フェーズ */}
             {gameState.phase === GAME_PHASES.NAPOLEON && (
               <NapoleonSelector
                 players={gameState.players}
@@ -400,7 +533,6 @@ function GamePageContent() {
               />
             )}
 
-            {/* 副官選択フェーズ */}
             {gameState.phase === GAME_PHASES.ADJUTANT &&
               currentPlayerId &&
               gameState.napoleonDeclaration &&
@@ -412,7 +544,6 @@ function GamePageContent() {
                 />
               )}
 
-            {/* カード交換フェーズ */}
             {gameState.phase === GAME_PHASES.EXCHANGE &&
               currentPlayerId &&
               gameState.napoleonDeclaration &&
@@ -424,20 +555,10 @@ function GamePageContent() {
                 />
               )}
 
-            {/* コンパクトなProgress表示 - モバイルのみ、PLAYINGフェーズ */}
             <div className="lg:hidden">
               <CompactGameProgress gameState={gameState} />
             </div>
 
-            {/* ゲームボード */}
-            {gameState.phase === GAME_PHASES.PLAYING && (
-              <GameBoard
-                gameState={gameState}
-                currentPlayerId={currentPlayerId}
-              />
-            )}
-
-            {/* プレイヤーの手札 - 常に自分の手札のみ表示 */}
             {currentPlayer && (
               <div className="space-y-2 md:space-y-4">
                 <PlayerHand
@@ -448,7 +569,6 @@ function GamePageContent() {
                   playableCardIds={playableCards}
                 />
 
-                {/* プレイボタン */}
                 {isCurrentTurn && selectedCardId && (
                   <div className="text-center py-1">
                     <button
@@ -462,96 +582,8 @@ function GamePageContent() {
                 )}
               </div>
             )}
-
-            {/* 各プレイヤーの取得した絵札表示 */}
-            {gameState.phase === GAME_PHASES.PLAYING && (
-              <div className="bg-white rounded-lg shadow-lg p-2 md:p-4">
-                <h3 className="text-sm md:text-lg font-semibold mb-2 md:mb-4">
-                  Face Cards Won
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
-                  {gameState.players.map((player) => {
-                    // プレイヤーが獲得した絵札を計算
-                    const wonTricks = gameState.tricks.filter(
-                      (trick) => trick.winnerPlayerId === player.id
-                    )
-                    const faceCards = wonTricks.flatMap((trick) =>
-                      trick.cards
-                        .filter((pc) =>
-                          ['10', 'J', 'Q', 'K', 'A'].includes(pc.card.rank)
-                        )
-                        .map((pc) => pc.card)
-                    )
-
-                    // 副官が判明しているかどうかをチェック
-                    const isAdjutantRevealed =
-                      gameState.tricks.some((trick) =>
-                        trick.cards.some(
-                          (playedCard) =>
-                            gameState.napoleonCard &&
-                            playedCard.card.id === gameState.napoleonCard.id
-                        )
-                      ) ||
-                      gameState.tricks.some((trick) =>
-                        trick.cards.some(
-                          (playedCard) => playedCard.revealsAdjutant
-                        )
-                      ) ||
-                      gameState.currentTrick.cards.some(
-                        (playedCard) => playedCard.revealsAdjutant
-                      )
-
-                    return (
-                      <div
-                        key={player.id}
-                        className="border rounded-lg p-1.5 md:p-3"
-                      >
-                        <div className="flex items-center gap-1 md:gap-2 mb-1 md:mb-2">
-                          <h4 className="text-xs md:text-sm font-semibold truncate">
-                            {player.name}
-                          </h4>
-                          {player.isNapoleon && (
-                            <span className="px-1 py-0.5 md:px-2 md:py-1 bg-yellow-200 text-yellow-800 rounded-full text-[0.6rem] md:text-xs font-bold">
-                              N
-                            </span>
-                          )}
-                          {player.isAdjutant &&
-                            (player.id === currentPlayerId ||
-                              isAdjutantRevealed) && (
-                              <span className="px-1 py-0.5 md:px-2 md:py-1 bg-green-200 text-green-800 rounded-full text-[0.6rem] md:text-xs font-bold">
-                                A
-                              </span>
-                            )}
-                        </div>
-
-                        <div className="text-[0.65rem] md:text-sm text-gray-600 mb-1 md:mb-2">
-                          Cards: {faceCards.length}
-                        </div>
-
-                        {faceCards.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {faceCards.map((card, index) => (
-                              <Card
-                                key={`${card.id}-${index}`}
-                                card={card}
-                                size="tiny"
-                              />
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-gray-400 text-sm">
-                            No face cards won yet
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* サイドバー - デスクトップのみ表示 */}
           <div className="hidden lg:block lg:col-span-1">
             <GameStatus
               gameState={gameState}
@@ -560,17 +592,6 @@ function GamePageContent() {
           </div>
         </div>
       </div>
-
-      {/* トリック結果表示（PLAYINGフェーズ用） */}
-      {gameState.phase === GAME_PHASES.PLAYING &&
-        gameState.showingTrickResult &&
-        gameState.lastCompletedTrick && (
-          <TrickResult
-            trick={gameState.lastCompletedTrick}
-            players={gameState.players}
-            onContinue={() => actions.closeTrickResult()}
-          />
-        )}
     </div>
   )
 }
