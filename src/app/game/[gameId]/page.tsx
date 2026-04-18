@@ -396,6 +396,7 @@ function GamePageContent() {
                 onCardClick={handleCardClick}
                 selectedCardId={selectedCardId || undefined}
                 playableCardIds={playableCards}
+                fanLayout
               />
 
               {/* Play button */}

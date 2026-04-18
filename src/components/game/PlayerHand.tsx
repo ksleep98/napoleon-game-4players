@@ -11,6 +11,7 @@ interface PlayerHandProps {
   onCardClick?: (cardId: string) => void
   selectedCardId?: string
   playableCardIds?: string[]
+  fanLayout?: boolean
 }
 
 export function PlayerHand({
@@ -19,8 +20,10 @@ export function PlayerHand({
   onCardClick,
   selectedCardId,
   playableCardIds = [],
+  fanLayout = false,
 }: PlayerHandProps) {
   const sortedHand = sortHand(player.hand)
+  const N = sortedHand.length
 
   return (
     <div className="space-y-2">
@@ -45,18 +48,55 @@ export function PlayerHand({
         </span>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {sortedHand.map((card) => (
-          <Card
-            key={card.id}
-            card={card}
-            isPlayable={isCurrentPlayer && playableCardIds.includes(card.id)}
-            isSelected={selectedCardId === card.id}
-            size="medium"
-            onClick={onCardClick}
-          />
-        ))}
-      </div>
+      {fanLayout && N > 0 ? (
+        <div className="relative h-[140px] md:h-[180px] max-w-[900px] mx-auto flex items-end justify-center">
+          {sortedHand.map((card, i) => {
+            const spread = 50
+            const xRadius = 140
+            const yRadius = 25
+            const t = N === 1 ? 0 : i / (N - 1)
+            const deg = -spread / 2 + t * spread
+            const rad = (deg * Math.PI) / 180
+            const x = Math.sin(rad) * xRadius
+            const y = -Math.cos(rad) * yRadius + yRadius
+            const isSelected = selectedCardId === card.id
+
+            return (
+              <div
+                key={card.id}
+                className="absolute bottom-0 origin-bottom transition-transform duration-200"
+                style={{
+                  transform: `translate(${x}px, ${y}px) rotate(${deg}deg)${isSelected ? ' translateY(-14px)' : ''}`,
+                  zIndex: isSelected ? 50 : i,
+                }}
+              >
+                <Card
+                  card={card}
+                  isPlayable={
+                    isCurrentPlayer && playableCardIds.includes(card.id)
+                  }
+                  isSelected={isSelected}
+                  size="medium"
+                  onClick={onCardClick}
+                />
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {sortedHand.map((card) => (
+            <Card
+              key={card.id}
+              card={card}
+              isPlayable={isCurrentPlayer && playableCardIds.includes(card.id)}
+              isSelected={selectedCardId === card.id}
+              size="medium"
+              onClick={onCardClick}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
