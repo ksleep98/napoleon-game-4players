@@ -49,11 +49,11 @@ export function PlayerHand({
       </div>
 
       {fanLayout && N > 0 ? (
-        <div className="relative h-[140px] md:h-[180px] max-w-[900px] mx-auto flex items-end justify-center">
+        <div className="relative h-[160px] md:h-[200px] w-full max-w-[900px] mx-auto flex items-end justify-center overflow-visible">
           {sortedHand.map((card, i) => {
-            const spread = 50
-            const xRadius = 140
-            const yRadius = 25
+            const spread = 65
+            const xRadius = 340
+            const yRadius = 40
             const t = N === 1 ? 0 : i / (N - 1)
             const deg = -spread / 2 + t * spread
             const rad = (deg * Math.PI) / 180
