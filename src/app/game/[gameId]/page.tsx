@@ -8,6 +8,7 @@ import { Card } from '@/components/game/Card'
 import { CompactGameProgress, GameStatus } from '@/components/game/GameStatus'
 import { PlayerHand } from '@/components/game/PlayerHand'
 import { TopHUD } from '@/components/game/TopHUD'
+import { TurnCue } from '@/components/game/TurnCue'
 import { GameProvider, useGame } from '@/contexts/GameContext'
 import { GAME_PHASES } from '@/lib/constants'
 import { getNextDeclarationPlayer } from '@/lib/napoleonRules'
@@ -378,6 +379,13 @@ function GamePageContent() {
 
           {/* Game table */}
           <GameBoard gameState={gameState} currentPlayerId={currentPlayerId} />
+
+          {/* Turn cue line */}
+          <TurnCue
+            gameState={gameState}
+            currentPlayerId={currentPlayerId}
+            isCurrentTurn={isCurrentTurn}
+          />
 
           {/* Player hand */}
           {currentPlayer && (
