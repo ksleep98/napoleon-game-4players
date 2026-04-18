@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useId, useReducer } from 'react'
+import { useEffect, useReducer } from 'react'
 import {
   ACTION_TYPES,
   SUIT_DISPLAY_COLORS,
@@ -93,8 +93,7 @@ export function NapoleonSelector({
         : SUIT_ENUM.CLUBS,
   })
 
-  const tricksSelectId = useId()
-  const suitSelectId = useId()
+  const maxTricks = 20
   const currentPlayer = currentPlayerId
     ? players.find((p) => p.id === currentPlayerId)
     : null
@@ -298,59 +297,85 @@ export function NapoleonSelector({
         </div>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-5">
+        {/* Stepper for face card count */}
         <div>
-          <label
-            htmlFor={tricksSelectId}
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
+          <div className="block text-sm font-medium text-gray-700 mb-2">
             Target Face Cards (絵札数)
-          </label>
-          <select
-            id={tricksSelectId}
-            value={state.selectedTricks}
-            onChange={(e) =>
-              dispatch({
-                type: ACTION_TYPES.NAPOLEON_SELECTOR.SET_SELECTED_TRICKS,
-                payload: { tricks: Number(e.target.value) },
-              })
-            }
-            className="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-          >
-            {availableTricks.map((tricks) => (
-              <option key={tricks} value={tricks}>
-                {tricks} Face Cards
-              </option>
-            ))}
-          </select>
+          </div>
+          <div className="flex justify-center">
+            <div className="inline-flex items-stretch rounded-xl overflow-hidden bg-white shadow-md">
+              <button
+                type="button"
+                className="w-12 bg-gray-100 hover:bg-gray-200 text-2xl font-bold text-gray-900 border-0 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                onClick={() =>
+                  dispatch({
+                    type: ACTION_TYPES.NAPOLEON_SELECTOR.SET_SELECTED_TRICKS,
+                    payload: { tricks: state.selectedTricks - 1 },
+                  })
+                }
+                disabled={state.selectedTricks <= availableTricks[0]}
+              >
+                −
+              </button>
+              <div className="px-6 py-3 text-3xl font-extrabold text-gray-900 min-w-[80px] text-center leading-none flex items-center justify-center">
+                {state.selectedTricks}
+              </div>
+              <button
+                type="button"
+                className="w-12 bg-gray-100 hover:bg-gray-200 text-2xl font-bold text-gray-900 border-0 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                onClick={() =>
+                  dispatch({
+                    type: ACTION_TYPES.NAPOLEON_SELECTOR.SET_SELECTED_TRICKS,
+                    payload: { tricks: state.selectedTricks + 1 },
+                  })
+                }
+                disabled={state.selectedTricks >= maxTricks}
+              >
+                +
+              </button>
+            </div>
+          </div>
         </div>
 
+        {/* Suit picker: 4 large buttons */}
         <div>
-          <label
-            htmlFor={suitSelectId}
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
+          <div className="block text-sm font-medium text-gray-700 mb-2">
             Trump Suit (切り札)
-          </label>
-          <select
-            id={suitSelectId}
-            value={state.selectedSuit}
-            onChange={(e) =>
-              dispatch({
-                type: ACTION_TYPES.NAPOLEON_SELECTOR.SET_SELECTED_SUIT,
-                payload: { suit: e.target.value as Suit },
-              })
-            }
-            className="w-full p-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-          >
-            {availableSuits.map((suit) => (
-              <option key={suit} value={suit}>
-                {getSuitDisplayForOption(suit)}
-              </option>
-            ))}
-          </select>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {SUITS.map((suit) => {
+              const isAvailable = availableSuits.includes(suit)
+              const isActive = state.selectedSuit === suit
+              return (
+                <button
+                  key={suit}
+                  type="button"
+                  className={`flex flex-col items-center gap-1 p-3.5 rounded-xl border-2 text-3xl font-bold transition-all cursor-pointer
+                    ${isActive ? 'border-blue-500 bg-blue-50 shadow-[0_0_0_3px_rgba(59,130,246,0.15)]' : 'border-gray-200 bg-white hover:border-gray-400'}
+                    ${!isAvailable ? 'opacity-40 cursor-not-allowed' : ''}
+                  `}
+                  disabled={!isAvailable}
+                  onClick={() =>
+                    dispatch({
+                      type: ACTION_TYPES.NAPOLEON_SELECTOR.SET_SELECTED_SUIT,
+                      payload: { suit },
+                    })
+                  }
+                >
+                  <span className={SUIT_DISPLAY_COLORS[suit]}>
+                    {SUIT_SYMBOLS[suit]}
+                  </span>
+                  <span className="text-[10px] text-gray-500 font-semibold tracking-wide">
+                    {SUIT_NAME_PARTS[suit]}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         </div>
 
+        {/* Declaration preview */}
         <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
           <h4 className="font-medium text-blue-800 mb-2">Your Declaration:</h4>
           <div className="text-sm text-blue-700">
