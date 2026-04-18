@@ -34,14 +34,28 @@ export function PlayerHand({
           isCurrentTurn={isCurrentPlayer}
           size="sm"
         />
-        <h3 className="font-semibold text-lg text-white">{player.name}</h3>
+        <h3
+          className={`font-semibold text-lg ${fanLayout ? 'text-white' : 'text-gray-900'}`}
+        >
+          {player.name}
+        </h3>
         {isCurrentPlayer && (
-          <span className="px-2 py-1 bg-yellow-400/20 text-yellow-300 rounded-full text-xs font-bold">
+          <span
+            className={`px-2 py-1 rounded-full text-xs font-bold ${fanLayout ? 'bg-yellow-400/20 text-yellow-300' : 'bg-blue-200 text-blue-800'}`}
+          >
             Your Turn
           </span>
         )}
         <span
-          className={`px-2 py-1 rounded-full text-xs font-bold ${player.hand.length !== 12 ? 'bg-red-500/20 text-red-300' : 'bg-white/10 text-white/60'}`}
+          className={`px-2 py-1 rounded-full text-xs font-bold ${
+            player.hand.length !== 12
+              ? fanLayout
+                ? 'bg-red-500/20 text-red-300'
+                : 'bg-red-200 text-red-800'
+              : fanLayout
+                ? 'bg-white/10 text-white/60'
+                : 'bg-gray-200 text-gray-600'
+          }`}
         >
           {player.hand.length} cards
           {player.hand.length !== 12 && ' ⚠️'}
