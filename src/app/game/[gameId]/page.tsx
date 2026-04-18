@@ -13,6 +13,7 @@ import { GAME_PHASES } from '@/lib/constants'
 import { getNextDeclarationPlayer } from '@/lib/napoleonRules'
 import { calculateGameResult, getPlayerFaceCardCount } from '@/lib/scoring'
 import type { Card as CardType, NapoleonDeclaration } from '@/types/game'
+import { checkAdjutantRevealed } from '@/utils/gameUtils'
 
 // 動的インポート - 初期バンドルサイズを削減
 const GameBoard = dynamic(
@@ -422,20 +423,7 @@ function GamePageContent() {
                     .map((pc) => pc.card)
                 )
 
-                const isAdjutantRevealed =
-                  gameState.tricks.some((trick) =>
-                    trick.cards.some(
-                      (playedCard) =>
-                        gameState.napoleonCard &&
-                        playedCard.card.id === gameState.napoleonCard.id
-                    )
-                  ) ||
-                  gameState.tricks.some((trick) =>
-                    trick.cards.some((playedCard) => playedCard.revealsAdjutant)
-                  ) ||
-                  gameState.currentTrick.cards.some(
-                    (playedCard) => playedCard.revealsAdjutant
-                  )
+                const isAdjutantRevealed = checkAdjutantRevealed(gameState)
 
                 return (
                   <div

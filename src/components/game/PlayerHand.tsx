@@ -3,6 +3,7 @@
 import type { Player } from '@/types/game'
 import { sortHand } from '@/utils/cardUtils'
 import { Card } from './Card'
+import { PlayerAvatar } from './PlayerAvatar'
 
 interface PlayerHandProps {
   player: Player
@@ -23,25 +24,21 @@ export function PlayerHand({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <h3 className="font-semibold text-lg">{player.name}</h3>
-        {player.isNapoleon && (
-          <span className="px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs font-bold">
-            Napoleon
-          </span>
-        )}
-        {player.isAdjutant && (
-          <span className="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs font-bold">
-            Adjutant
-          </span>
-        )}
+      <div className="flex items-center gap-3">
+        <PlayerAvatar
+          player={player}
+          isCurrentUser
+          isCurrentTurn={isCurrentPlayer}
+          size="sm"
+        />
+        <h3 className="font-semibold text-lg text-white">{player.name}</h3>
         {isCurrentPlayer && (
-          <span className="px-2 py-1 bg-blue-200 text-blue-800 rounded-full text-xs font-bold">
+          <span className="px-2 py-1 bg-yellow-400/20 text-yellow-300 rounded-full text-xs font-bold">
             Your Turn
           </span>
         )}
         <span
-          className={`px-2 py-1 rounded-full text-xs font-bold ${player.hand.length !== 12 ? 'bg-red-200 text-red-800' : 'bg-gray-200 text-gray-600'}`}
+          className={`px-2 py-1 rounded-full text-xs font-bold ${player.hand.length !== 12 ? 'bg-red-500/20 text-red-300' : 'bg-white/10 text-white/60'}`}
         >
           {player.hand.length} cards
           {player.hand.length !== 12 && ' ⚠️'}
