@@ -1,10 +1,8 @@
 name: E2E Tests
 
 on:
-  push:
-    branches: [main, develop]
   pull_request:
-    branches: [main, develop]
+    branches: [develop]
     types: [opened, synchronize, reopened]
     # Skip when only docs/config files changed
     # Note: .github/workflows/** is NOT ignored (workflow changes must run E2E)
