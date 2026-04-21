@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [develop]
   pull_request:
-    branches: [main, develop]
+    branches: [develop]
     types: [opened, synchronize, reopened]
     # Skip when only docs/config files changed (e2e-tests will be skipped)
     # Note: .github/workflows/** is NOT ignored (workflow changes must run CI)
