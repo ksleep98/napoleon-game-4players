@@ -3,6 +3,9 @@
   "description": "Napoleon Game (4 Players) - Team shared Claude Code settings",
   "permissions": {
     "allow": [
+      "Edit",
+      "Write",
+      "NotebookEdit",
       "Bash(pnpm:*)",
       "Bash(npm:*)",
       "Bash(git:*)",
@@ -17,6 +20,10 @@
     ],
     "deny": ["Bash(rm -rf /)", "Bash(sudo rm:*)", "Bash(git push --force:*)"],
     "ask": [
+      "Bash(rm:*)",
+      "Bash(rmdir:*)",
+      "Bash(unlink:*)",
+      "Bash(find * -delete*)",
       "Bash(git push origin main)",
       "Bash(git push origin develop)",
       "Bash(pnpm publish:*)",
