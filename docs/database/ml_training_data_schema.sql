@@ -7,8 +7,8 @@
 -- ML訓練データテーブル
 CREATE TABLE IF NOT EXISTS ml_training_data (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  game_id UUID NOT NULL,
-  player_id UUID NOT NULL,
+  game_id TEXT NOT NULL,
+  player_id TEXT NOT NULL,
   trick_number INT NOT NULL CHECK (trick_number >= 0 AND trick_number <= 12),
 
   -- ゲーム状態（特徴量）
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS ml_training_data (
   selected_card JSONB NOT NULL,  -- 選択したカード (Card)
 
   -- ゲームコンテキスト
-  game_phase TEXT NOT NULL CHECK (game_phase IN ('PLAYING')),  -- 現在はPLAYINGのみ
+  game_phase TEXT NOT NULL CHECK (game_phase IN ('playing')),  -- 現在はplayingのみ
   role TEXT NOT NULL CHECK (role IN ('napoleon', 'adjutant', 'allied')),
   is_napoleon_team BOOLEAN NOT NULL,
 
@@ -60,7 +60,8 @@ CREATE INDEX IF NOT EXISTS idx_ml_training_game_trick
 -- ========================================
 
 -- データ収集統計ビュー
-CREATE OR REPLACE VIEW ml_training_stats AS
+CREATE OR REPLACE VIEW ml_training_stats
+WITH (security_invoker = true) AS
 SELECT
   COUNT(*) as total_records,
   COUNT(DISTINCT game_id) as total_games,
@@ -73,7 +74,8 @@ SELECT
 FROM ml_training_data;
 
 -- 役割別統計ビュー
-CREATE OR REPLACE VIEW ml_training_role_stats AS
+CREATE OR REPLACE VIEW ml_training_role_stats
+WITH (security_invoker = true) AS
 SELECT
   role,
   game_result,
@@ -86,7 +88,8 @@ GROUP BY role, game_result
 ORDER BY role, game_result;
 
 -- AI難易度別統計ビュー
-CREATE OR REPLACE VIEW ml_training_ai_stats AS
+CREATE OR REPLACE VIEW ml_training_ai_stats
+WITH (security_invoker = true) AS
 SELECT
   ai_difficulty,
   COUNT(*) as move_count,
@@ -118,11 +121,13 @@ CREATE POLICY "Anyone can read training data"
   FOR SELECT
   USING (TRUE);
 
--- 更新は許可しない（データ整合性保持）
-CREATE POLICY "No updates allowed"
+-- 更新を許可（ゲーム終了時の game_result / player_final_score 更新のため）
+-- Server Actions 経由でのみ呼ばれるため、WITH CHECK (TRUE) で許可
+CREATE POLICY "Server can update game results"
   ON ml_training_data
   FOR UPDATE
-  USING (FALSE);
+  USING (TRUE)
+  WITH CHECK (TRUE);
 
 -- 削除は管理者のみ（必要に応じて）
 CREATE POLICY "No deletes allowed"
