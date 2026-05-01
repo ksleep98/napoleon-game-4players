@@ -19,6 +19,7 @@ import {
   saveGameStateAction,
   validateSessionAction,
 } from './gameActions'
+import { updateGameResult } from './mlDataCollectionActions'
 
 export interface GameResultActionResult<T = GameResult> {
   success: boolean
@@ -73,6 +74,21 @@ export async function calculateGameResultAction(
 
     // サーバーサイドで安全にゲーム結果を計算
     const result = calculateGameResult(gameState)
+
+    // 機械学習用データベースにゲーム結果を更新（非同期・エラーは無視）
+    const mlGameResult = result.napoleonWon ? 'napoleon_win' : 'allied_win'
+    const playerScores: Record<string, number> = {}
+    result.scores.forEach((score) => {
+      playerScores[score.playerId] = score.points
+    })
+
+    // 非同期実行してエラーは無視（ゲームプレイを妨げない）
+    updateGameResult(gameId, mlGameResult, playerScores).catch((error) => {
+      console.error(
+        '[ML Data Collection] Failed to update game result (non-blocking):',
+        error
+      )
+    })
 
     return {
       success: true,

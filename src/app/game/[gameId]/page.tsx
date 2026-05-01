@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic'
 import { useParams, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { calculateGameResultAction } from '@/app/actions/gameResultActions'
 import { AIDifficultyBadge } from '@/components/game/AIDifficultyBadge'
 import { Card } from '@/components/game/Card'
 import { CompactGameProgress, GameStatus } from '@/components/game/GameStatus'
@@ -144,6 +145,26 @@ function GamePageContent() {
       setCurrentPlayerId(playerConfig.firstPlayerId)
     }
   }, [playerConfig, currentPlayerId, isMultiplayer])
+
+  // ゲーム終了時にML用データのgame_resultを更新（1ゲームに1回のみ実行）
+  const mlResultRecordedRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (
+      gameState?.phase === GAME_PHASES.FINISHED &&
+      gameState.id &&
+      mlResultRecordedRef.current !== gameState.id
+    ) {
+      mlResultRecordedRef.current = gameState.id
+      calculateGameResultAction(gameState.id, currentPlayerId ?? '').catch(
+        (error) => {
+          console.error(
+            '[ML Data Collection] Failed to update game result (non-blocking):',
+            error
+          )
+        }
+      )
+    }
+  }, [gameState?.phase, gameState?.id, currentPlayerId])
 
   // 配り直しの自動検出と実行
   useEffect(() => {
