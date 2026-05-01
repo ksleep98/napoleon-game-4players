@@ -81,7 +81,9 @@
       "Bash(git push origin main)",
       "Bash(git push origin develop)",
       "Bash(pnpm publish:*)",
-      "Bash(vercel --prod:*)"
+      "Bash(vercel --prod:*)",
+      "Bash(gh workflow run:*)",
+      "Bash(gh run rerun:*)"
     ]
   },
   "rules": {
