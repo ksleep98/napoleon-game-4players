@@ -32,7 +32,7 @@ describe('Supabase Environment Configuration', () => {
       expect(supabase.supabaseKey).toBe('test_anon_key_123456789')
     })
 
-    test('環境変数が未設定の場合はモック値が使用される', () => {
+    test('環境変数が未設定の場合はプレースホルダー値が使用される', () => {
       // 環境変数を削除
       delete process.env.NEXT_PUBLIC_SUPABASE_URL
       delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -41,8 +41,8 @@ describe('Supabase Environment Configuration', () => {
       const { supabase } = require('@/lib/supabase/client')
 
       expect(supabase).toBeDefined()
-      expect(supabase.supabaseUrl).toBe('https://mock.supabase.co')
-      expect(supabase.supabaseKey).toBe('mock_anon_key')
+      expect(supabase.supabaseUrl).toBe('https://placeholder.supabase.co')
+      expect(supabase.supabaseKey).toBe('placeholder')
     })
 
     test('部分的に環境変数が設定されている場合', () => {
@@ -54,7 +54,7 @@ describe('Supabase Environment Configuration', () => {
 
       expect(supabase).toBeDefined()
       expect(supabase.supabaseUrl).toBe('https://partial.supabase.co')
-      expect(supabase.supabaseKey).toBe('mock_anon_key')
+      expect(supabase.supabaseKey).toBe('placeholder')
     })
   })
 

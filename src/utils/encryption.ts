@@ -12,8 +12,15 @@ import {
 } from 'node:crypto'
 
 // 暗号化キー（環境変数から取得、32バイト必須）
-const ENCRYPTION_KEY =
-  process.env.ENCRYPTION_KEY || 'napoleon-game-secure-key-2024-32bytes!!'
+const ENCRYPTION_KEY = (() => {
+  const key = process.env.ENCRYPTION_KEY
+  if (key) return key
+  if (process.env.NODE_ENV === 'test')
+    return 'test-only-encryption-key-32bytes!!'
+  throw new Error(
+    'ENCRYPTION_KEY environment variable is required. Generate a secure random 32-byte key.'
+  )
+})()
 
 // キーを32バイトに正規化（AES-256要件）
 const NORMALIZED_KEY = createHash('sha256').update(ENCRYPTION_KEY).digest()

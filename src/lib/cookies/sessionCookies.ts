@@ -25,7 +25,7 @@ const COOKIE_MAX_AGE = 86400 // 24時間（秒）
  */
 const getCookieOptions = () => ({
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
+  secure: true,
   sameSite: 'strict' as const,
   maxAge: COOKIE_MAX_AGE,
   path: '/',

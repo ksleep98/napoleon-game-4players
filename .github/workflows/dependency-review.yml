@@ -1,0 +1,50 @@
+name: Dependency Review
+
+# PRで新規・更新される依存関係をスキャンし、既知の脆弱性があればブロック
+# 参考: https://zenn.dev/dely_jp/articles/supply-chain-kowai
+
+on:
+  pull_request:
+    branches:
+      - develop
+      # main は除外: develop → main PR では、developで既にチェック済みのため不要
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4
+        with:
+          # 脆弱性の重要度がこのレベル以上の場合は失敗
+          # low, moderate, high, critical
+          fail-on-severity: moderate
+
+          # ライセンスポリシー
+          # 許可しないライセンスを含む依存関係があれば失敗
+          deny-licenses: GPL-2.0, LGPL-2.0
+
+          # 許可するライセンスのみを指定（オプション）
+          # allow-licenses: MIT, Apache-2.0, BSD-3-Clause
+
+          # スコープ制限（dev依存関係も含める）
+          fail-on-scopes: runtime, development
+
+          # コメント投稿（脆弱性の詳細をPRに表示）
+          comment-summary-in-pr: always
+
+          # 依存関係の変更内容を詳細に表示
+          show-openssf-scorecard: true
+
+          # GitHub Advisory Databaseの脆弱性チェック
+          vulnerability-check: true
+
+          # 設定ファイル（カスタムポリシー）
+          # config-file: .github/dependency-review-config.yml

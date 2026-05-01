@@ -1,18 +1,23 @@
 import { createClient } from '@supabase/supabase-js'
 import type { GameState, PlayerScore } from '@/types/game'
 
-const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mock.supabase.co'
-const supabaseAnonKey =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'mock_anon_key'
+const isTestEnv = process.env.NODE_ENV === 'test'
 
-// Only throw error in production runtime (not during build)
+const supabaseUrl =
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
+const supabaseAnonKey =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder'
+
+// Warn at runtime if Supabase credentials are missing (skip during build/test)
 if (
   typeof window !== 'undefined' &&
+  !isTestEnv &&
   (!process.env.NEXT_PUBLIC_SUPABASE_URL ||
     !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
 ) {
-  console.warn('Missing Supabase environment variables - using mock values')
+  console.error(
+    'Missing required environment variables: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY'
+  )
 }
 
 // クライアント設定（リアルタイム機能有効化）
