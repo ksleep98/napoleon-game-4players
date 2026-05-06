@@ -4,6 +4,7 @@
   "description": "A web-based Napoleon card game for 4 players",
   "main": "index.js",
   "license": "MIT",
+  "packageManager": "pnpm@10.15.1",
   "engines": {
     "node": ">=22.22.0",
     "pnpm": ">=10.0.0"
