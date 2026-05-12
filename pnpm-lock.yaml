@@ -84,7 +84,7 @@ importers:
         version: 3.8.1
       tailwindcss:
         specifier: ^4.2.2
-        version: 4.2.2
+        version: 4.3.0
       typescript:
         specifier: ^6.0.2
         version: 6.0.2
@@ -2221,9 +2221,6 @@ packages:
   synckit@0.11.12:
     resolution: {integrity: sha512-Bh7QjT8/SuKUIfObSXNHNSK6WHo6J1tHCqJsuaFDP7gP0fkzSfTxI8y85JrppZ0h8l0maIgc2tfuZQ6/t3GtnQ==}
     engines: {node: ^14.18.0 || >=16.0.0}
-
-  tailwindcss@4.2.2:
-    resolution: {integrity: sha512-KWBIxs1Xb6NoLdMVqhbhgwZf2PGBpPEiwOqgI4pFIYbNTfBXiKYyWoTsXgBQ9WFg/OlhnvHaY+AEpW7wSmFo2Q==}
 
   tailwindcss@4.3.0:
     resolution: {integrity: sha512-y6nxMGB1nMW9R6k96e5gdIFzcfL/gTJRNaqGes1YvkLnPVXzWgbqFF2yLC0T8G774n24cx3Pe8XrKoniCOAH+Q==}
@@ -4714,8 +4711,6 @@ snapshots:
   synckit@0.11.12:
     dependencies:
       '@pkgr/core': 0.2.9
-
-  tailwindcss@4.2.2: {}
 
   tailwindcss@4.3.0: {}
 
