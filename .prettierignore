@@ -1,0 +1,17 @@
+# Lockfile is managed by pnpm and uses pnpm's own formatting.
+# Prettier and pnpm disagree on quote style, which causes format:check to fail
+# every time pnpm regenerates the lockfile.
+pnpm-lock.yaml
+
+# Build / auto-generated output (also in .gitignore but listed here so prettier
+# does not need both --ignore-path flags).
+.next/
+out/
+build/
+dist/
+coverage/
+node_modules/
+
+# Terraform local state and downloaded providers.
+**/.terraform/
+terraform/.terraform.lock.hcl

@@ -1,28 +1,14 @@
 name: CI
 
 on:
-  push:
-    branches: [main, develop]
   pull_request:
-    branches: [main, develop]
+    branches: [develop]
     types: [opened, synchronize, reopened]
-    # Skip when only docs/config files changed (e2e-tests will be skipped)
-    # Note: .github/workflows/** is NOT ignored (workflow changes must run CI)
-    paths-ignore:
-      - "**.md"
-      - "docs/**"
-      - ".vscode/**"
-      - ".husky/**"
-      - "scripts/**"
-      - ".claude/**"
-      - ".vscode/*.json"
-      - "renovate.json"
-      - "LICENSE"
-      - ".gitignore"
-      # YAML config files (but NOT .github/workflows/**)
-      - ".github/dependabot.yml"
-      - "docker-compose.yml"
-      - "*.config.yml"
+    # NOTE: paths-ignore is intentionally NOT set here.
+    # The workflow must always trigger so the required `ci-pipeline` status
+    # check is reported (otherwise a PR touching only ignored paths would
+    # be unmergeable). Path-based work skipping is handled below in the
+    # "Detect changes" step.
 
 # Prevent duplicate runs for the same commit
 # For PRs: use PR number to group
@@ -39,26 +25,66 @@ jobs:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && !contains(github.event.pull_request.title, '🚀 Release'))
     permissions:
       contents: read
+      pull-requests: read
 
     steps:
+      - name: Detect changes
+        id: changes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          CHANGED=$(gh pr diff "$PR_NUMBER" --name-only)
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          # Workflow file changes always require full CI.
+          if echo "$CHANGED" | grep -q '^\.github/workflows/'; then
+            echo "→ workflow file changed; running full CI"
+            echo "needs=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Files matching this regex don't need CI work.
+          # Mirrors the original paths-ignore list.
+          IGNORE='^(.+\.md|docs/.+|\.vscode/.+|\.husky/.+|scripts/.+|\.claude/.+|renovate\.json|LICENSE|\.gitignore|\.github/dependabot\.yml|docker-compose\.yml|.+\.config\.yml)$'
+
+          NEEDS=false
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            if ! [[ $f =~ $IGNORE ]]; then
+              NEEDS=true
+              break
+            fi
+          done <<< "$CHANGED"
+
+          if [ "$NEEDS" = "false" ]; then
+            echo "✅ Only ignored paths changed — reporting ci-pipeline success without running checks"
+          fi
+          echo "needs=$NEEDS" >> "$GITHUB_OUTPUT"
+
       - name: Checkout code
+        if: steps.changes.outputs.needs == 'true'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           # Only fetch current commit for speed
           fetch-depth: 1
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@a8198c4bff370c8506180b035930dea56dbd5288 # v5
-        with:
-          version: 10
+        if: steps.changes.outputs.needs == 'true'
+        uses: pnpm/action-setup@91ab88e2619ed1f46221f0ba42d1492c02baf788 # v6.0.6
 
       - name: Setup Node.js with cache
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        if: steps.changes.outputs.needs == 'true'
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: "22.14.0"
           cache: "pnpm"
 
       - name: Install dependencies and fix Biome
+        if: steps.changes.outputs.needs == 'true'
         run: |
           echo "📦 Installing dependencies..."
           pnpm install --frozen-lockfile
@@ -79,6 +105,7 @@ jobs:
           fi
 
       - name: Run quality checks in parallel
+        if: steps.changes.outputs.needs == 'true'
         run: |
           # Run multiple checks in parallel using background processes
           echo "🚀 Starting parallel quality checks..."
@@ -152,6 +179,7 @@ jobs:
           fi
 
       - name: Fast build check
+        if: steps.changes.outputs.needs == 'true'
         env:
           NEXT_PUBLIC_SUPABASE_URL: "https://mock.supabase.co"
           NEXT_PUBLIC_SUPABASE_ANON_KEY: "mock_anon_key"

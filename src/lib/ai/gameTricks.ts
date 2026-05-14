@@ -1,4 +1,6 @@
+import { recordGameMove } from '@/app/actions/mlDataCollectionActions'
 import { GAME_PHASES } from '@/lib/constants'
+import { extractMLTrainingData } from '@/lib/ml/dataExtractor'
 import type { Card, GameState } from '@/types/game'
 import {
   declareNapoleon,
@@ -211,6 +213,23 @@ export async function processAIPlayingPhase(
   const cardToPlay = await selectAICard(currentPlayer.hand, updatedState)
 
   if (cardToPlay) {
+    // 機械学習用データ収集（playCard前の状態を記録）
+    if (updatedState.phase === GAME_PHASES.PLAYING) {
+      const mlData = extractMLTrainingData(
+        updatedState,
+        currentPlayer.id,
+        cardToPlay
+      )
+      if (mlData) {
+        recordGameMove(mlData).catch((error) => {
+          console.error(
+            '[ML Data Collection] Failed to record AI move (non-blocking):',
+            error
+          )
+        })
+      }
+    }
+
     updatedState = playCard(updatedState, currentPlayer.id, cardToPlay.id)
   }
 

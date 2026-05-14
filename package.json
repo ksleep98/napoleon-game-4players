@@ -4,8 +4,9 @@
   "description": "A web-based Napoleon card game for 4 players",
   "main": "index.js",
   "license": "MIT",
+  "packageManager": "pnpm@10.15.1",
   "engines": {
-    "node": ">=22.22.0",
+    "node": "22.x",
     "pnpm": ">=10.0.0"
   },
   "scripts": {
@@ -49,8 +50,8 @@
     "ci-check": "pnpm lint && pnpm type-check && pnpm format:check && pnpm format:other:check && pnpm test && pnpm build",
     "ci-check:full": "pnpm ci-check && pnpm test:e2e:auto:full",
     "ci-fix": "pnpm lint:fix && pnpm format && pnpm format:other && pnpm type-check && pnpm test",
-    "format:other": "npx prettier --write \"**/*.{yml,yaml,md}\" --ignore-path .gitignore",
-    "format:other:check": "npx prettier --check \"**/*.{yml,yaml,md}\" --ignore-path .gitignore",
+    "format:other": "npx prettier --write \"**/*.{yml,yaml,md}\"",
+    "format:other:check": "npx prettier --check \"**/*.{yml,yaml,md}\"",
     "cleanup": "./scripts/post-merge-cleanup.sh",
     "cleanup:smart": "./scripts/smart-cleanup.sh",
     "cleanup:polling": "node scripts/auto-polling-cleanup.js",
@@ -67,7 +68,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.101.1",
     "crypto-js": "^4.2.0",
-    "next": "16.2.4",
+    "next": "16.2.6",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
@@ -87,8 +88,8 @@
     "husky": "^9.1.7",
     "jest": "^30.3.0",
     "jest-environment-jsdom": "^30.3.0",
-    "lint-staged": "^16.4.0",
-    "postcss": "^8.5.8",
+    "lint-staged": "^17.0.4",
+    "postcss": "^8.5.13",
     "prettier": "^3.8.1",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2"
@@ -104,7 +105,8 @@
   },
   "pnpm": {
     "overrides": {
-      "glob@>=10.2.0 <10.5.0": ">=10.5.0"
+      "glob@>=10.2.0 <10.5.0": ">=10.5.0",
+      "postcss@<8.5.10": ">=8.5.10"
     }
   }
 }
