@@ -188,7 +188,7 @@ storage3==0.12.1
     # via supabase
 strenum==0.4.15
     # via supabase-functions
-supabase==2.18.1
+supabase==2.30.0
     # via napoleon-ml-trainer
 supabase-auth==2.12.3
     # via supabase
