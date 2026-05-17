@@ -43,11 +43,16 @@ def class_index_to_card_id(idx: int) -> str:
 
 
 def _row_features(row: pd.Series) -> np.ndarray:
-    hand = row["hand"] or []
-    table_cards = row["table_cards"] or []
-    current_suit = row["current_suit"]
-    trump_suit = row["trump_suit"]
-    role = row["role"]
+    # Materialize as a plain dict so downstream values are `Any`, not pandas
+    # union types (Series | ndarray | ...) that confuse the type checker.
+    data = row.to_dict()
+    hand: list[dict] = data.get("hand") or []
+    table_cards: list[dict] = data.get("table_cards") or []
+    current_suit: str | None = data.get("current_suit")
+    trump_suit: str | None = data.get("trump_suit")
+    role: str = data["role"]
+    is_napoleon_team_flag: bool = bool(data.get("is_napoleon_team"))
+    trick_number_value: int = int(data["trick_number"])
 
     hand_size = len(hand)
     suit_counts = [0, 0, 0, 0]
@@ -83,7 +88,7 @@ def _row_features(row: pd.Series) -> np.ndarray:
         has_lead_suit_in_hand = 1 if any(c["suit"] == current_suit for c in hand) else 0
 
     role_one_hot = [1 if role == r else 0 for r in ROLES]
-    is_napoleon_team = 1 if row["is_napoleon_team"] else 0
+    is_napoleon_team = 1 if is_napoleon_team_flag else 0
 
     return np.array(
         [
@@ -102,7 +107,7 @@ def _row_features(row: pd.Series) -> np.ndarray:
             has_lead_suit_in_hand,
             *role_one_hot,
             is_napoleon_team,
-            int(row["trick_number"]),
+            trick_number_value,
         ],
         dtype=np.float32,
     )

@@ -67,7 +67,8 @@ def summarize(df: pd.DataFrame) -> None:
     logger.info("Players: %d", df["player_id"].nunique())
     logger.info("Role breakdown:\n%s", df["role"].value_counts())
     logger.info("Game results:\n%s", df["game_result"].value_counts(dropna=False))
-    ai_only = df[df["is_ai_player"]]
+    # .loc[bool_mask] returns DataFrame (not ambiguous DataFrame | Series).
+    ai_only: pd.DataFrame = df.loc[df["is_ai_player"].astype(bool)]
     logger.info(
         "AI difficulty (AI rows only):\n%s",
         ai_only["ai_difficulty"].value_counts(dropna=False),
