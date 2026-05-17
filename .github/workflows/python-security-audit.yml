@@ -31,19 +31,20 @@ jobs:
           python-version: "3.12"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@a08be8be39c2d8e2efb3ad3a30c3b6736fc40df3 # v6.0.1
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           enable-cache: true
 
-      - name: Sync dependencies (frozen)
-        run: uv sync --frozen
+      - name: Sync dependencies (frozen, with dev group)
+        run: uv sync --frozen --group dev
 
-      - name: Run pip-audit
+      - name: Run pip-audit (against installed env)
         id: audit
         continue-on-error: true
         run: |
+          # Audit the resolved environment (matches local workflow).
+          # --requirement flag spawns a temp venv which fails on some runners.
           uv run --group dev pip-audit \
-            --requirement requirements.txt \
             --format json \
             --output audit-result.json || true
           VULN_COUNT=$(jq '[.dependencies[]? | select(.vulns | length > 0)] | length' audit-result.json 2>/dev/null || echo 0)

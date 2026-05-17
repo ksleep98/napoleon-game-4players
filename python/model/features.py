@@ -10,8 +10,19 @@ HIGH_RANKS = ("J", "Q", "K", "A")
 ROLES = ("napoleon", "adjutant", "allied")
 SUIT_TO_IDX = {suit: i for i, suit in enumerate(SUITS)}
 RANK_TO_IDX = {
-    "2": 0, "3": 1, "4": 2, "5": 3, "6": 4, "7": 5, "8": 6, "9": 7,
-    "10": 8, "J": 9, "Q": 10, "K": 11, "A": 12,
+    "2": 0,
+    "3": 1,
+    "4": 2,
+    "5": 3,
+    "6": 4,
+    "7": 5,
+    "8": 6,
+    "9": 7,
+    "10": 8,
+    "J": 9,
+    "Q": 10,
+    "K": 11,
+    "A": 12,
 }
 
 
@@ -97,26 +108,24 @@ def _row_features(row: pd.Series) -> np.ndarray:
     )
 
 
-FEATURE_NAMES = (
-    [
-        "hand_size",
-        *[f"hand_count_{s}" for s in SUITS],
-        *[f"hand_count_{r}" for r in HIGH_RANKS],
-        "hand_max_value",
-        "hand_min_value",
-        "table_size",
-        "table_max_value",
-        "table_lead_max_value",
-        *[f"current_suit_{s}" for s in SUITS],
-        "current_suit_null",
-        *[f"trump_suit_{s}" for s in SUITS],
-        "trump_suit_null",
-        "has_lead_suit_in_hand",
-        *[f"role_{r}" for r in ROLES],
-        "is_napoleon_team",
-        "trick_number",
-    ]
-)
+FEATURE_NAMES = [
+    "hand_size",
+    *[f"hand_count_{s}" for s in SUITS],
+    *[f"hand_count_{r}" for r in HIGH_RANKS],
+    "hand_max_value",
+    "hand_min_value",
+    "table_size",
+    "table_max_value",
+    "table_lead_max_value",
+    *[f"current_suit_{s}" for s in SUITS],
+    "current_suit_null",
+    *[f"trump_suit_{s}" for s in SUITS],
+    "trump_suit_null",
+    "has_lead_suit_in_hand",
+    *[f"role_{r}" for r in ROLES],
+    "is_napoleon_team",
+    "trick_number",
+]
 
 
 def build_feature_matrix(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:

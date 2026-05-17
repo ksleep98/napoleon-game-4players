@@ -19,6 +19,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+  "black>=25",
   "pip-audit>=2.7.3",
   "ruff>=0.8.4",
 ]
@@ -29,8 +30,15 @@ dev = [
 exclude-newer = "2026-05-10T00:00:00Z"
 
 [tool.ruff]
+# Formatting is delegated to black; ruff handles lint only.
 line-length = 100
 target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
+# Disable lint rules that conflict with black's formatting choices.
+ignore = ["E501"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311", "py312"]
