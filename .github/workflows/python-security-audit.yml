@@ -1,0 +1,103 @@
+name: Python Security Audit
+
+on:
+  schedule:
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "python/pyproject.toml"
+      - "python/uv.lock"
+      - "python/requirements.txt"
+      - ".github/workflows/python-security-audit.yml"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  python-security:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies (frozen, with dev group)
+        run: uv sync --frozen --group dev
+
+      - name: Run pip-audit (against installed env)
+        id: audit
+        continue-on-error: true
+        run: |
+          # Audit the resolved environment (matches local workflow).
+          # --requirement flag spawns a temp venv which fails on some runners.
+          uv run --group dev pip-audit \
+            --format json \
+            --output audit-result.json || true
+          VULN_COUNT=$(jq '[.dependencies[]? | select(.vulns | length > 0)] | length' audit-result.json 2>/dev/null || echo 0)
+          echo "vulnerabilities=$VULN_COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Create issue if vulnerabilities found
+        if: steps.audit.outputs.vulnerabilities > 0 && github.event_name != 'pull_request'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        with:
+          script: |
+            const fs = require('fs')
+            const result = JSON.parse(fs.readFileSync('python/audit-result.json', 'utf8'))
+            let body = '## Python Security Vulnerabilities Detected\n\n'
+            body += '**Date**: ' + new Date().toISOString().split('T')[0] + '\n\n'
+            body += '## Vulnerabilities\n\n'
+            for (const dep of result.dependencies || []) {
+              if (!dep.vulns || dep.vulns.length === 0) continue
+              for (const v of dep.vulns) {
+                body += '### ' + dep.name + '@' + dep.version + '\n'
+                body += '- ID: ' + v.id + '\n'
+                body += '- Fix: ' + (v.fix_versions?.join(', ') || 'n/a') + '\n'
+                body += '- Description: ' + (v.description || '') + '\n\n'
+              }
+            }
+            body += '## Action Required\n\n'
+            body += '1. Review vulnerabilities above\n'
+            body += '2. Update affected packages in `python/pyproject.toml`\n'
+            body += '3. Run `cd python && uv lock && uv export --no-hashes --no-dev --format requirements-txt -o requirements.txt`\n'
+            body += '4. Verify with `uv run --group dev pip-audit`\n'
+            body += '5. Create PR with fixes\n\n'
+            body += '## Reference\n\n'
+            body += '- [Supply Chain Security Guide](./docs/security/SUPPLY_CHAIN_SECURITY.md)\n'
+            body += '- [Python Security Checklist](./docs/ml/PYTHON_SECURITY_CHECKLIST.md)\n'
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Python Security Audit: Vulnerabilities Found (' + new Date().toISOString().split('T')[0] + ')',
+              body,
+              labels: ['security', 'dependencies', 'python']
+            })
+
+      - name: Fail PR if vulnerabilities found
+        if: steps.audit.outputs.vulnerabilities > 0 && github.event_name == 'pull_request'
+        run: |
+          echo "Found ${{ steps.audit.outputs.vulnerabilities }} vulnerable package(s)."
+          exit 1
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Python Security Audit Summary"
+            echo ""
+            echo "- Vulnerable packages: ${{ steps.audit.outputs.vulnerabilities }}"
+          } >> "$GITHUB_STEP_SUMMARY"
