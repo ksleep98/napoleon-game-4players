@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import sys
 import time
 from pathlib import Path
@@ -18,6 +19,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from data.fetch_data import fetch_training_data  # noqa: E402
 from model.features import FEATURE_NAMES, build_feature_matrix  # noqa: E402
 
+logger = logging.getLogger(__name__)
+
 MODEL_DIR = Path(__file__).resolve().parent / "models"
 MODEL_PATH = MODEL_DIR / "card_predictor.joblib"
 
@@ -32,21 +35,21 @@ def split_by_game(
 
 
 def main() -> int:
-    print("Fetching training data from Supabase...")
+    logger.info("Fetching training data from Supabase...")
     df = fetch_training_data()
-    print(f"Loaded {len(df)} rows across {df['game_id'].nunique()} games")
+    logger.info("Loaded %d rows across %d games", len(df), df["game_id"].nunique())
     if len(df) < 50:
-        print("ERROR: Not enough data to train (need >= 50 rows)")
+        logger.error("Not enough data to train (need >= 50 rows)")
         return 1
 
     X, y = build_feature_matrix(df)
     groups = df["game_id"].to_numpy()
-    print(f"Feature matrix: shape={X.shape}, classes={len(np.unique(y))}")
+    logger.info("Feature matrix: shape=%s, classes=%d", X.shape, len(np.unique(y)))
 
     # If we only have a handful of games, a group split may not leave any test rows.
     if df["game_id"].nunique() < 5:
-        print(
-            "WARN: Fewer than 5 games — splitting by row instead of by game. "
+        logger.warning(
+            "Fewer than 5 games — splitting by row instead of by game. "
             "Accuracy may be optimistic."
         )
         from sklearn.model_selection import train_test_split
@@ -57,9 +60,9 @@ def main() -> int:
     else:
         X_train, X_test, y_train, y_test = split_by_game(X, y, groups)
 
-    print(f"Train: {X_train.shape[0]} rows, Test: {X_test.shape[0]} rows")
+    logger.info("Train: %d rows, Test: %d rows", X_train.shape[0], X_test.shape[0])
 
-    print("Training RandomForestClassifier(n_estimators=200, max_depth=12)...")
+    logger.info("Training RandomForestClassifier(n_estimators=200, max_depth=12)...")
     t0 = time.perf_counter()
     model = RandomForestClassifier(
         n_estimators=200,
@@ -70,7 +73,7 @@ def main() -> int:
     )
     model.fit(X_train, y_train)
     fit_seconds = time.perf_counter() - t0
-    print(f"Trained in {fit_seconds:.2f}s")
+    logger.info("Trained in %.2fs", fit_seconds)
 
     y_pred = model.predict(X_test)
     accuracy = accuracy_score(y_test, y_pred)
@@ -83,21 +86,19 @@ def main() -> int:
     top3 = top_k_accuracy_score(y_test, proba_full, k=3, labels=labels)
     top5 = top_k_accuracy_score(y_test, proba_full, k=5, labels=labels)
 
-    print("\n=== Evaluation ===")
-    print(f"Accuracy:       {accuracy:.2%}")
-    print(f"Top-3 Accuracy: {top3:.2%}")
-    print(f"Top-5 Accuracy: {top5:.2%}")
-    print(f"Baseline (random over 52): {1 / 52:.2%}")
+    logger.info("=== Evaluation ===")
+    logger.info("Accuracy:       %.2f%%", accuracy * 100)
+    logger.info("Top-3 Accuracy: %.2f%%", top3 * 100)
+    logger.info("Top-5 Accuracy: %.2f%%", top5 * 100)
+    logger.info("Baseline (random over 52): %.2f%%", (1 / 52) * 100)
 
-    # Feature importance
     importances = sorted(
         zip(FEATURE_NAMES, model.feature_importances_, strict=True),
         key=lambda t: t[1],
         reverse=True,
     )
-    print("\nTop 10 features by importance:")
-    for name, score in importances[:10]:
-        print(f"  {name:<28} {score:.4f}")
+    top_importances = "\n".join(f"  {name:<28} {score:.4f}" for name, score in importances[:10])
+    logger.info("Top 10 features by importance:\n%s", top_importances)
 
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
     joblib.dump(
@@ -111,9 +112,10 @@ def main() -> int:
         },
         MODEL_PATH,
     )
-    print(f"\nSaved model -> {MODEL_PATH}")
+    logger.info("Saved model -> %s", MODEL_PATH)
     return 0
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     raise SystemExit(main())

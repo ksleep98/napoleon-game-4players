@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 
 import pandas as pd
 from dotenv import load_dotenv
 from supabase import Client, create_client
+
+logger = logging.getLogger(__name__)
 
 
 def _load_env() -> None:
@@ -57,20 +60,21 @@ def fetch_training_data(
 
 def summarize(df: pd.DataFrame) -> None:
     if df.empty:
-        print("No rows fetched.")
+        logger.info("No rows fetched.")
         return
-    print(f"Rows: {len(df)}")
-    print(f"Games: {df['game_id'].nunique()}")
-    print(f"Players: {df['player_id'].nunique()}")
-    print("\nRole breakdown:")
-    print(df["role"].value_counts())
-    print("\nGame results:")
-    print(df["game_result"].value_counts(dropna=False))
-    print("\nAI difficulty (AI rows only):")
+    logger.info("Rows: %d", len(df))
+    logger.info("Games: %d", df["game_id"].nunique())
+    logger.info("Players: %d", df["player_id"].nunique())
+    logger.info("Role breakdown:\n%s", df["role"].value_counts())
+    logger.info("Game results:\n%s", df["game_result"].value_counts(dropna=False))
     ai_only = df[df["is_ai_player"]]
-    print(ai_only["ai_difficulty"].value_counts(dropna=False))
+    logger.info(
+        "AI difficulty (AI rows only):\n%s",
+        ai_only["ai_difficulty"].value_counts(dropna=False),
+    )
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     df = fetch_training_data()
     summarize(df)
