@@ -75,11 +75,13 @@ class ModelHolder:
                 "`uv run python -m model.train`."
             )
         mtime = MODEL_PATH.stat().st_mtime
-        if self._payload is None or self._mtime != mtime:
+        payload = self._payload
+        if payload is None or self._mtime != mtime:
             logger.info("Loading model from %s", MODEL_PATH)
-            self._payload = joblib.load(MODEL_PATH)
+            payload = joblib.load(MODEL_PATH)
+            self._payload = payload
             self._mtime = mtime
-        return self._payload
+        return payload
 
     def info(self) -> dict:
         if not MODEL_PATH.exists():
