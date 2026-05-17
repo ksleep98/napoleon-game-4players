@@ -125,7 +125,7 @@ pillow==12.2.0
     # via
     #   gradio
     #   napoleon-ml-trainer
-postgrest==1.1.1
+postgrest==2.30.0
     # via supabase
 pydantic==2.13.4
     # via
