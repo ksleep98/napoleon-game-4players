@@ -58,12 +58,13 @@ export function extractMLTrainingData(
   // トリック番号を計算（完了したトリック数）
   const trickNumber = gameState.tricks.filter((t) => t.completed).length
 
-  // AI難易度を判定（プレイヤー名から推定）
+  // AI難易度を判定（env varを参照、コードの 'normal' は DB の 'medium' に正規化）
   let aiDifficulty: 'easy' | 'medium' | 'hard' | undefined
   if (player.isAI) {
-    if (player.name.includes('Easy')) aiDifficulty = 'easy'
-    else if (player.name.includes('Medium')) aiDifficulty = 'medium'
-    else if (player.name.includes('Hard')) aiDifficulty = 'hard'
+    const level = process.env.NEXT_PUBLIC_AI_DIFFICULTY || 'normal'
+    if (level === 'easy') aiDifficulty = 'easy'
+    else if (level === 'hard') aiDifficulty = 'hard'
+    else aiDifficulty = 'medium'
   }
 
   return {
