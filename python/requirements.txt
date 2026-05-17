@@ -190,7 +190,7 @@ strenum==0.4.15
     # via supabase-functions
 supabase==2.30.0
     # via napoleon-ml-trainer
-supabase-auth==2.12.3
+supabase-auth==2.30.0
     # via supabase
 supabase-functions==0.10.1
     # via supabase
