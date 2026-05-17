@@ -2,7 +2,7 @@
 name = "napoleon-ml-trainer"
 version = "0.1.0"
 description = "Machine learning trainer for Napoleon Game card prediction"
-requires-python = ">=3.11,<3.13"
+requires-python = ">=3.13,<3.14"
 dependencies = [
   "fastapi>=0.118",
   "gradio>=6.7.0",
@@ -32,7 +32,7 @@ exclude-newer = "2026-05-10T00:00:00Z"
 [tool.ruff]
 # Formatting is delegated to black; ruff handles lint only.
 line-length = 100
-target-version = "py311"
+target-version = "py313"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
@@ -41,4 +41,4 @@ ignore = ["E501"]
 
 [tool.black]
 line-length = 100
-target-version = ["py311", "py312"]
+target-version = ["py313"]
