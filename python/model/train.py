@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import sys
 import time
 from pathlib import Path
 
@@ -13,11 +12,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, top_k_accuracy_score
 from sklearn.model_selection import GroupShuffleSplit
 
-# Allow `python -m model.train` or `python model/train.py` from python/.
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from data.fetch_data import fetch_training_data  # noqa: E402
-from model.features import FEATURE_NAMES, build_feature_matrix  # noqa: E402
+from data.fetch_data import fetch_training_data
+from model.features import FEATURE_NAMES, build_feature_matrix
 
 logger = logging.getLogger(__name__)
 

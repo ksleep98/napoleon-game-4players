@@ -11,8 +11,6 @@ from __future__ import annotations
 
 import json
 import logging
-import sys
-from pathlib import Path
 from typing import Literal
 
 import gradio as gr
@@ -22,14 +20,12 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from model.features import (  # noqa: E402
+from model.features import (
     SUITS,
     build_feature_matrix,
     class_index_to_card_id,
 )
-from model.train import MODEL_PATH  # noqa: E402
+from model.train import MODEL_PATH
 from model.train import main as train_main
 
 logger = logging.getLogger(__name__)
