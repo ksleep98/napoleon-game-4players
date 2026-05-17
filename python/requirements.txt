@@ -221,7 +221,7 @@ typing-inspection==0.4.2
     #   pydantic
 tzdata==2026.2
     # via pandas
-uvicorn==0.34.0
+uvicorn==0.47.0
     # via
     #   gradio
     #   napoleon-ml-trainer
