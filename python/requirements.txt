@@ -67,7 +67,7 @@ httpcore==1.0.9
     # via httpx
 httptools==0.7.1
     # via uvicorn
-httpx==0.27.2
+httpx==0.28.1
     # via
     #   gradio
     #   gradio-client
