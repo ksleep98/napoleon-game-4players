@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import time
 from pathlib import Path
+from typing import cast
 
 import joblib
 import numpy as np
@@ -23,7 +24,7 @@ MODEL_PATH = MODEL_DIR / "card_predictor.joblib"
 
 def split_by_game(
     X: np.ndarray, y: np.ndarray, groups: np.ndarray, test_size: float = 0.2, seed: int = 42
-):
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Split such that all rows from a given game stay on one side."""
     splitter = GroupShuffleSplit(n_splits=1, test_size=test_size, random_state=seed)
     train_idx, test_idx = next(splitter.split(X, y, groups))
@@ -43,6 +44,10 @@ def main() -> int:
     logger.info("Feature matrix: shape=%s, classes=%d", X.shape, len(np.unique(y)))
 
     # If we only have a handful of games, a group split may not leave any test rows.
+    X_train: np.ndarray
+    X_test: np.ndarray
+    y_train: np.ndarray
+    y_test: np.ndarray
     if df["game_id"].nunique() < 5:
         logger.warning(
             "Fewer than 5 games — splitting by row instead of by game. "
@@ -50,8 +55,10 @@ def main() -> int:
         )
         from sklearn.model_selection import train_test_split
 
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42, stratify=None
+        # train_test_split's stub returns list[Unknown]; narrow to a tuple of ndarrays.
+        X_train, X_test, y_train, y_test = cast(
+            tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
+            train_test_split(X, y, test_size=0.2, random_state=42, stratify=None),
         )
     else:
         X_train, X_test, y_train, y_test = split_by_game(X, y, groups)
@@ -73,7 +80,8 @@ def main() -> int:
 
     y_pred = model.predict(X_test)
     accuracy = accuracy_score(y_test, y_pred)
-    y_proba = model.predict_proba(X_test)
+    # predict_proba's stub returns a union; narrow to ndarray for shape/slice access.
+    y_proba: np.ndarray = np.asarray(model.predict_proba(X_test))
     # top_k_accuracy needs the global label set; pass labels= for safety.
     labels = np.arange(52)
     proba_full = np.zeros((y_proba.shape[0], 52))
