@@ -161,7 +161,7 @@ pyyaml==6.0.3
     #   gradio
     #   huggingface-hub
     #   uvicorn
-realtime==2.7.0
+realtime==2.30.0
     # via supabase
 rich==15.0.0
     # via typer
