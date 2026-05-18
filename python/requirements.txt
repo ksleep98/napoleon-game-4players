@@ -192,7 +192,7 @@ supabase==2.30.0
     # via napoleon-ml-trainer
 supabase-auth==2.30.0
     # via supabase
-supabase-functions==0.10.1
+supabase-functions==2.30.0
     # via supabase
 threadpoolctl==3.6.0
     # via scikit-learn
