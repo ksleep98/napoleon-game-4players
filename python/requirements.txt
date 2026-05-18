@@ -229,7 +229,7 @@ uvloop==0.22.1 ; platform_python_implementation != 'PyPy' and sys_platform != 'c
     # via uvicorn
 watchfiles==1.1.1
     # via uvicorn
-websockets==14.2
+websockets==16.0
     # via
     #   realtime
     #   uvicorn
