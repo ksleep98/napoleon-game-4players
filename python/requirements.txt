@@ -196,7 +196,7 @@ supabase-functions==0.10.1
     # via supabase
 threadpoolctl==3.6.0
     # via scikit-learn
-tomlkit==0.13.3
+tomlkit==0.15.0
     # via gradio
 tqdm==4.67.3
     # via huggingface-hub
