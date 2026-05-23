@@ -30,6 +30,6 @@ Train and serve a card-prediction model for the [Napoleon 4-player game](https:/
 cd python
 cp .env.example .env  # fill in SUPABASE_URL / SUPABASE_ANON_KEY
 uv sync --group dev
-uv run python -m model.train  # train once to produce models/card_predictor.joblib
+uv run python -m model.train  # train once to produce models/card_predictor.skops
 uv run python app.py          # serve on http://localhost:7860
 ```
