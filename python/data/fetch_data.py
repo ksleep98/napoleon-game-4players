@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
+from typing import cast
 
 import pandas as pd
 from dotenv import load_dotenv
@@ -48,7 +49,9 @@ def fetch_training_data(
             query = query.not_.is_("game_result", "null")
         query = query.order("created_at").range(offset, offset + page_size - 1)
         resp = query.execute()
-        batch = resp.data or []
+        # supabase typing for resp.data is List[JSON] (union of dict/list/scalar);
+        # every row of ml_training_data is a dict, so narrow for downstream use.
+        batch = cast(list[dict], resp.data or [])
         rows.extend(batch)
         if len(batch) < page_size:
             break

@@ -17,6 +17,7 @@ import gradio as gr
 import joblib
 import numpy as np
 import pandas as pd
+import uvicorn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
@@ -249,8 +250,6 @@ app = gr.mount_gradio_app(app, ui, path="/")
 
 
 if __name__ == "__main__":
-    import uvicorn
-
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     # Hugging Face Spaces expects 7860; bind 0.0.0.0 for container access.
     uvicorn.run(app, host="0.0.0.0", port=7860)
