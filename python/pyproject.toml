@@ -11,7 +11,7 @@ dependencies = [
   "pandas==2.2.3",
   "numpy==2.2.1",
   "scikit-learn==1.6.0",
-  "joblib==1.4.2",
+  "skops>=0.14.0",
   "python-dotenv>=1.2.2",
   "pillow>=12.2.0",
   "starlette>=0.49.1",
@@ -27,7 +27,7 @@ dev = [
 [tool.uv]
 # Supply chain attack mitigation: skip packages published in the last 7 days.
 # Aligns with the project-wide minimumReleaseAge=10080 policy used by pnpm.
-exclude-newer = "2026-05-10T00:00:00Z"
+exclude-newer = "2026-05-17T00:00:00Z"
 
 [tool.ruff]
 # Formatting is delegated to black; ruff handles lint only.

@@ -7,8 +7,8 @@ import time
 from pathlib import Path
 from typing import cast
 
-import joblib
 import numpy as np
+import skops.io as sio
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, top_k_accuracy_score
 from sklearn.model_selection import GroupShuffleSplit
@@ -19,7 +19,7 @@ from model.features import FEATURE_NAMES, build_feature_matrix
 logger = logging.getLogger(__name__)
 
 MODEL_DIR = Path(__file__).resolve().parent / "models"
-MODEL_PATH = MODEL_DIR / "card_predictor.joblib"
+MODEL_PATH = MODEL_DIR / "card_predictor.skops"
 
 
 def split_by_game(
@@ -105,7 +105,7 @@ def main() -> int:
     logger.info("Top 10 features by importance:\n%s", top_importances)
 
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    joblib.dump(
+    sio.dump(
         {
             "model": model,
             "feature_names": FEATURE_NAMES,
