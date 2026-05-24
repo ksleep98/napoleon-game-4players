@@ -3,6 +3,7 @@
  * ヒューリスティック、MCTS、ハイブリッドの選択
  */
 
+import { predictBestCard, type Role } from '@/lib/ml/mlClient'
 import type { Card, GameState, Player } from '@/types/game'
 import { getPlayableCards } from './gameSimulator'
 import {
@@ -11,6 +12,12 @@ import {
   selectCardWithDeterminization,
 } from './monteCarloAI'
 import { selectBestStrategicCard } from './strategicCardEvaluator'
+
+/**
+ * ML 推論の採用基準。閾値未満は MCTS / heuristic にフォールバックする。
+ * 値の根拠: docs/ml/ML_IMPLEMENTATION_ROADMAP.md Phase 4.2 (信頼度 0.6 以上)
+ */
+const ML_CONFIDENCE_THRESHOLD = 0.6
 
 /**
  * AI戦略タイプ
@@ -159,6 +166,68 @@ function calculateGameProgress(gameState: GameState): number {
   const totalTricks = 12
   const completedTricks = gameState.tricks.length
   return completedTricks / totalTricks
+}
+
+/**
+ * ML 推論を優先するラッパー。信頼度が閾値以上かつ手札のカードを返してきた場合のみ
+ * その手を採用し、そうでなければ既存の selectAICard にフォールバックする。
+ *
+ * NEXT_PUBLIC_ML_API_URL 未設定時は ML を呼ばず、即フォールバックするので
+ * ローカル開発や ML 無効化環境でも追加コストはない。
+ */
+export async function selectAICardWithML(
+  gameState: GameState,
+  player: Player,
+  config: AIStrategyConfig
+): Promise<Card | null> {
+  const playableCards = getPlayableCards(gameState, player.id)
+  if (playableCards.length === 0) return null
+  if (playableCards.length === 1) return playableCards[0]
+
+  const mlPick = await tryMLPick(gameState, player, playableCards)
+  if (mlPick) return mlPick
+
+  return selectAICard(gameState, player, config)
+}
+
+async function tryMLPick(
+  gameState: GameState,
+  player: Player,
+  playableCards: Card[]
+): Promise<Card | null> {
+  const role: Role = player.isNapoleon
+    ? 'napoleon'
+    : player.isAdjutant
+      ? 'adjutant'
+      : 'allied'
+
+  const prediction = await predictBestCard({
+    hand: player.hand,
+    tableCards: gameState.currentTrick.cards.map((pc) => pc.card),
+    currentSuit: gameState.leadingSuit ?? null,
+    trumpSuit: gameState.trumpSuit ?? null,
+    role,
+    isNapoleonTeam: player.isNapoleon || player.isAdjutant,
+    trickNumber: gameState.tricks.filter((t) => t.completed).length,
+  })
+
+  if (!prediction) return null
+  if (prediction.confidence < ML_CONFIDENCE_THRESHOLD) return null
+
+  const playableById = new Map(playableCards.map((c) => [c.id, c]))
+
+  // 第一候補を採用 (playable で閾値以上)
+  const primary = playableById.get(prediction.predictedCardId)
+  if (primary) return primary
+
+  // 第一候補が手札外/フォロー違反の場合は top-k から playable で閾値以上を探す
+  for (const candidate of prediction.topK) {
+    if (candidate.confidence < ML_CONFIDENCE_THRESHOLD) break
+    const match = playableById.get(candidate.cardId)
+    if (match) return match
+  }
+
+  return null
 }
 
 /**
