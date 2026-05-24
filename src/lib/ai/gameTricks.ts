@@ -18,7 +18,7 @@ import {
 import {
   type AIDifficultyLevel,
   getStrategyConfigByDifficulty,
-  selectAICard as selectAICardWithStrategy,
+  selectAICardWithML,
 } from './aiStrategy'
 import { allianceAIStrategy } from './alliance'
 import { getPlayableCards as getPlayableCardsFromSimulator } from './gameSimulator'
@@ -263,10 +263,10 @@ async function selectAICard(
   const difficultyLevel: AIDifficultyLevel =
     (process.env.NEXT_PUBLIC_AI_DIFFICULTY as AIDifficultyLevel) || 'normal'
 
-  // ハイブリッド戦略を使用
+  // ML 推論 → 信頼度不足やエラー時はハイブリッド戦略にフォールバック
   try {
     const strategyConfig = getStrategyConfigByDifficulty(difficultyLevel)
-    const selectedCard = selectAICardWithStrategy(
+    const selectedCard = await selectAICardWithML(
       gameState,
       currentPlayer,
       strategyConfig
