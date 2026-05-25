@@ -16,7 +16,7 @@ audioop-lts==0.2.2
     # via gradio
 brotli==1.2.0
     # via gradio
-cachetools==6.2.6
+cachetools==7.1.1
     # via pyiceberg
 certifi==2026.4.22
     # via
@@ -181,7 +181,7 @@ python-dotenv==1.2.2
     # via
     #   napoleon-ml-trainer
     #   uvicorn
-python-multipart==0.0.28
+python-multipart==0.0.29
     # via gradio
 pytz==2026.2
     # via
@@ -196,7 +196,7 @@ realtime==2.30.0
     # via supabase
 requests==2.34.2
     # via pyiceberg
-rich==14.3.4
+rich==15.0.0
     # via
     #   pyiceberg
     #   typer
@@ -266,7 +266,7 @@ tzdata==2026.2
     # via pandas
 urllib3==2.7.0
     # via requests
-uvicorn==0.34.0
+uvicorn==0.47.0
     # via
     #   gradio
     #   napoleon-ml-trainer
