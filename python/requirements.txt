@@ -181,7 +181,7 @@ python-dotenv==1.2.2
     # via
     #   napoleon-ml-trainer
     #   uvicorn
-python-multipart==0.0.28
+python-multipart==0.0.29
     # via gradio
 pytz==2026.2
     # via
@@ -196,7 +196,7 @@ realtime==2.30.0
     # via supabase
 requests==2.34.2
     # via pyiceberg
-rich==14.3.4
+rich==15.0.0
     # via
     #   pyiceberg
     #   typer
