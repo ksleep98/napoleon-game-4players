@@ -16,7 +16,7 @@ audioop-lts==0.2.2
     # via gradio
 brotli==1.2.0
     # via gradio
-cachetools==6.2.6
+cachetools==7.1.1
     # via pyiceberg
 certifi==2026.4.22
     # via
