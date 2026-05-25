@@ -44,6 +44,7 @@
     "test:e2e:production:full": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --config=playwright-production.config.ts --reporter=html",
     "test:e2e:production:headed": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --config=playwright-production.config.ts --headed",
     "test:e2e:production:ui": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --config=playwright-production.config.ts --ui",
+    "smoke": "tsx scripts/smoke-test.ts",
     "type-check": "tsc --noEmit",
     "type-check:fast": "tsc --noEmit --skipLibCheck",
     "lint:fast": "npx @biomejs/biome check . --reporter=compact",
@@ -92,6 +93,7 @@
     "postcss": "^8.5.13",
     "prettier": "^3.8.1",
     "tailwindcss": "^4.2.2",
+    "tsx": "^4.22.3",
     "typescript": "^6.0.2"
   },
   "lint-staged": {
