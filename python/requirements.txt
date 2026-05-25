@@ -117,7 +117,7 @@ mmh3==5.2.1
     # via pyiceberg
 multidict==6.7.1
     # via yarl
-numpy==2.2.1
+numpy==2.4.5
     # via
     #   gradio
     #   napoleon-ml-trainer
@@ -134,7 +134,7 @@ packaging==26.2
     #   gradio-client
     #   huggingface-hub
     #   skops
-pandas==2.2.3
+pandas==3.0.3
     # via
     #   gradio
     #   napoleon-ml-trainer
@@ -202,7 +202,7 @@ rich==15.0.0
     #   typer
 safehttpx==0.1.7
     # via gradio
-scikit-learn==1.6.0
+scikit-learn==1.8.0
     # via
     #   napoleon-ml-trainer
     #   skops
