@@ -25,6 +25,14 @@ env:
   # Develop environment URL (actual Vercel develop environment)
   DEVELOP_URL: "https://napoleon-game-dev.vercel.app"
 
+# Vercel emits multiple deployment_status events per deploy
+# (queued -> building -> success). Cancel earlier runs in the same deploy
+# group so the PR UI only shows the final outcome instead of 2-3 skipped
+# checks per feature-branch deploy.
+concurrency:
+  group: e2e-develop-${{ github.event.deployment.environment || github.event_name }}-${{ github.event.deployment.ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   e2e-develop:
     runs-on: ubuntu-latest
