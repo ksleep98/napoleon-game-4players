@@ -196,7 +196,7 @@ realtime==2.30.0
     # via supabase
 requests==2.34.2
     # via pyiceberg
-rich==14.3.4
+rich==15.0.0
     # via
     #   pyiceberg
     #   typer
