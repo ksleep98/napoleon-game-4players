@@ -19,6 +19,14 @@ import { selectBestStrategicCard } from './strategicCardEvaluator'
  */
 const ML_CONFIDENCE_THRESHOLD = 0.6
 
+type MLLogEvent = 'adopt' | 'adopt-topk' | 'fallback' | 'skip'
+
+function logML(event: MLLogEvent, detail: string): void {
+  // Tests are noisy enough without this; production/dev keep visibility.
+  if (process.env.NODE_ENV === 'test') return
+  console.log(`[aiStrategy.ml] ${event}: ${detail}`)
+}
+
 /**
  * AI戦略タイプ
  */
@@ -182,7 +190,10 @@ export async function selectAICardWithML(
 ): Promise<Card | null> {
   const playableCards = getPlayableCards(gameState, player.id)
   if (playableCards.length === 0) return null
-  if (playableCards.length === 1) return playableCards[0]
+  if (playableCards.length === 1) {
+    logML('skip', `only-1-playable (${playableCards[0].id})`)
+    return playableCards[0]
+  }
 
   const mlPick = await tryMLPick(gameState, player, playableCards)
   if (mlPick) return mlPick
@@ -211,22 +222,48 @@ async function tryMLPick(
     trickNumber: gameState.tricks.filter((t) => t.completed).length,
   })
 
-  if (!prediction) return null
-  if (prediction.confidence < ML_CONFIDENCE_THRESHOLD) return null
+  if (!prediction) {
+    logML('fallback', 'no-prediction (URL unset or API error)')
+    return null
+  }
+  if (prediction.confidence < ML_CONFIDENCE_THRESHOLD) {
+    logML(
+      'fallback',
+      `low-confidence (${prediction.confidence.toFixed(3)} < ${ML_CONFIDENCE_THRESHOLD}) primary=${prediction.predictedCardId}`
+    )
+    return null
+  }
 
   const playableById = new Map(playableCards.map((c) => [c.id, c]))
 
   // 第一候補を採用 (playable で閾値以上)
   const primary = playableById.get(prediction.predictedCardId)
-  if (primary) return primary
-
-  // 第一候補が手札外/フォロー違反の場合は top-k から playable で閾値以上を探す
-  for (const candidate of prediction.topK) {
-    if (candidate.confidence < ML_CONFIDENCE_THRESHOLD) break
-    const match = playableById.get(candidate.cardId)
-    if (match) return match
+  if (primary) {
+    logML(
+      'adopt',
+      `${primary.id} confidence=${prediction.confidence.toFixed(3)}`
+    )
+    return primary
   }
 
+  // 第一候補が手札外/フォロー違反の場合は top-k から playable で閾値以上を探す
+  for (let i = 0; i < prediction.topK.length; i++) {
+    const candidate = prediction.topK[i]
+    if (candidate.confidence < ML_CONFIDENCE_THRESHOLD) break
+    const match = playableById.get(candidate.cardId)
+    if (match) {
+      logML(
+        'adopt-topk',
+        `${match.id} confidence=${candidate.confidence.toFixed(3)} (rank=${i + 1}, primary=${prediction.predictedCardId} not playable)`
+      )
+      return match
+    }
+  }
+
+  logML(
+    'fallback',
+    `no-playable-candidate (primary=${prediction.predictedCardId} c=${prediction.confidence.toFixed(3)})`
+  )
   return null
 }
 
