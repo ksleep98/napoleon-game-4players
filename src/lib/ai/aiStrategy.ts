@@ -15,9 +15,14 @@ import { selectBestStrategicCard } from './strategicCardEvaluator'
 
 /**
  * ML 推論の採用基準。閾値未満は MCTS / heuristic にフォールバックする。
- * 値の根拠: docs/ml/ML_IMPLEMENTATION_ROADMAP.md Phase 4.2 (信頼度 0.6 以上)
+ *
+ * ロードマップ (docs/ml/ML_IMPLEMENTATION_ROADMAP.md Phase 4.2) の初期値は 0.6。
+ * ただし accuracy ~22%・データ ~420 ゲーム時点で top-1 confidence は最大
+ * 0.58 程度に留まり、0.6 では実質採用ゼロだった。実プレイで ML が「ほぼ確信
+ * している」ケースを採用させて挙動を観察するため、当面 0.5 に下げる。
+ * データ蓄積で confidence が全体的に上がってきたら 0.6 に戻す予定。
  */
-const ML_CONFIDENCE_THRESHOLD = 0.6
+const ML_CONFIDENCE_THRESHOLD = 0.5
 
 type MLLogEvent = 'adopt' | 'adopt-topk' | 'fallback' | 'skip'
 
