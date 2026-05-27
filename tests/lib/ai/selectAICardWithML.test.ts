@@ -104,8 +104,8 @@ describe('selectAICardWithML', () => {
   it('falls back to local strategy when ML confidence is below threshold', async () => {
     predictMock.mockResolvedValue({
       predictedCardId: 'hearts-K',
-      confidence: 0.4,
-      topK: [{ cardId: 'hearts-K', confidence: 0.4 }],
+      confidence: 0.15,
+      topK: [{ cardId: 'hearts-K', confidence: 0.15 }],
     })
 
     const result = await selectAICardWithML(baseState, napoleonPlayer, config)
@@ -164,7 +164,7 @@ describe('selectAICardWithML', () => {
       topK: [
         { cardId: 'spades-7', confidence: 0.9 },
         { cardId: 'clubs-2', confidence: 0.7 }, // not in hand
-        { cardId: 'hearts-A', confidence: 0.3 }, // below threshold
+        { cardId: 'hearts-A', confidence: 0.1 }, // below threshold
       ],
     })
     const result = await selectAICardWithML(state, napoleonPlayer, config)
