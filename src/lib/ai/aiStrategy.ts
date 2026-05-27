@@ -17,12 +17,19 @@ import { selectBestStrategicCard } from './strategicCardEvaluator'
  * ML 推論の採用基準。閾値未満は MCTS / heuristic にフォールバックする。
  *
  * ロードマップ (docs/ml/ML_IMPLEMENTATION_ROADMAP.md Phase 4.2) の初期値は 0.6。
- * ただし accuracy ~22%・データ ~420 ゲーム時点で top-1 confidence は最大
- * 0.58 程度に留まり、0.6 では実質採用ゼロだった。実プレイで ML が「ほぼ確信
- * している」ケースを採用させて挙動を観察するため、当面 0.5 に下げる。
- * データ蓄積で confidence が全体的に上がってきたら 0.6 に戻す予定。
+ * しかし 526 ゲーム/accuracy 26%・top-3 52% の時点でも、実プレイの top-1
+ * confidence は概ね 0.10〜0.25 に分布し、ゲームによって max が 0.24〜0.58
+ * と大きく振れる。これは Random Forest を 52 クラス分類で使う構造上の制約
+ * (200本の木の票が複数候補に分散) であり、データ追加では緩やかにしか
+ * 改善しない。
+ *
+ * 一方 top-3 accuracy は 52% に達しており、信頼度が低めでも「正解に近い
+ * 手」が選ばれている可能性は高い。実プレイで ML を実際に発火させて挙動
+ * を観察するため、当面 0.2 まで下げる(全 ML 判断のうち 20-40% が採用
+ * される想定)。データ拡充・キャリブレーション・別モデル等で confidence
+ * 分布が改善したら段階的に 0.3 → 0.5 → 0.6 に戻す。
  */
-const ML_CONFIDENCE_THRESHOLD = 0.5
+const ML_CONFIDENCE_THRESHOLD = 0.2
 
 type MLLogEvent = 'adopt' | 'adopt-topk' | 'fallback' | 'skip'
 
