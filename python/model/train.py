@@ -98,7 +98,8 @@ def main() -> int:
     # top_k_accuracy needs the global label set; pass labels= for safety.
     labels = np.arange(52)
     proba_full = np.zeros((y_proba.shape[0], 52))
-    for col_idx, cls in enumerate(model.classes_):
+    # model.classes_ は sklearn stub 上 Optional だが fit 後は常に ndarray。
+    for col_idx, cls in enumerate(model.classes_):  # pyright: ignore[reportArgumentType]
         proba_full[:, cls] = y_proba[:, col_idx]
     top3 = top_k_accuracy_score(y_test, proba_full, k=3, labels=labels)
     top5 = top_k_accuracy_score(y_test, proba_full, k=5, labels=labels)
