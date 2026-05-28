@@ -122,9 +122,13 @@ def main() -> int:
     )
 
     # CalibratedClassifierCV は feature_importances_ を持たないので、cv 分割した各
-    # base RF の importances を平均する。
+    # base RF の importances を平均する。cc.estimator は型上 BaseEstimator | None だが、
+    # fit 後は必ず RandomForestClassifier がセットされているため cast で narrow する。
     importance_vec = np.mean(
-        [cc.estimator.feature_importances_ for cc in model.calibrated_classifiers_],
+        [
+            cast(RandomForestClassifier, cc.estimator).feature_importances_
+            for cc in model.calibrated_classifiers_
+        ],
         axis=0,
     )
     importances = sorted(
