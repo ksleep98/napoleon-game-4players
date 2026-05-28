@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import time
 from pathlib import Path
-from typing import Any, cast
+from typing import cast
 
 import numpy as np
 import skops.io as sio
@@ -122,12 +122,15 @@ def main() -> int:
     )
 
     # CalibratedClassifierCV は feature_importances_ を持たないので、cv 分割した各
-    # base RF の importances を平均する。sklearn の型スタブでは calibrated_classifiers_
-    # の要素や .estimator が Optional 扱いになっており pyright が attribute access で
-    # 文句を言うため、ランタイム上は常にセット済みであることを利用して Any で受ける。
-    fitted_classifiers: Any = model.calibrated_classifiers_
+    # base RF の importances を平均する。sklearn の型スタブは fit 前提の Optional に
+    # なっており pyright が None アクセスを警告するが、fit 後のここでは常にセット済み
+    # のためその行に限り pyright suppress を入れる (Any で受けるとタイポ検出を失うので
+    # ピンポイント抑制を選ぶ)。
     importance_vec = np.mean(
-        [cc.estimator.feature_importances_ for cc in fitted_classifiers],
+        [
+            cc.estimator.feature_importances_  # pyright: ignore[reportOptionalMemberAccess]
+            for cc in model.calibrated_classifiers_
+        ],
         axis=0,
     )
     importances = sorted(
