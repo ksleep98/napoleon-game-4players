@@ -121,7 +121,8 @@ def _predict(request: PredictRequest, top_k: int = 5) -> PredictResponse:
 
     proba = model.predict_proba(X)[0]
     full = np.zeros(52)
-    for col_idx, cls in enumerate(model.classes_):
+    # model.classes_ は sklearn stub 上 Optional だが fit 後は常に ndarray。
+    for col_idx, cls in enumerate(model.classes_):  # pyright: ignore[reportArgumentType]
         full[cls] = proba[col_idx]
 
     # Restrict to cards actually in hand (model may suggest cards player doesn't hold).
