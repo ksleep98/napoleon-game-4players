@@ -44,18 +44,7 @@ jobs:
         run: |
           # Audit the resolved environment (matches local workflow).
           # --requirement flag spawns a temp venv which fails on some runners.
-          #
-          # Mitigated CVEs (kept ignored because the application code blocks
-          # the attack at a higher layer — re-check whenever the ignore list
-          # grows, but no expiry is required):
-          #   PYSEC-2026-161: starlette <=1.0.0 Host-header validation gap.
-          #     Mitigation: python/app.py registers TrustedHostMiddleware with
-          #     an explicit allow list (ALLOWED_HOSTS env var overrideable),
-          #     so a tampered Host header is rejected before it can poison
-          #     `request.url.path`. The starlette upgrade path stays gated by
-          #     the supply-chain cooldown policy (exclude-newer).
           uv run --group dev pip-audit \
-            --ignore-vuln PYSEC-2026-161 \
             --format json \
             --output audit-result.json || true
           VULN_COUNT=$(jq '[.dependencies[]? | select(.vulns | length > 0)] | length' audit-result.json 2>/dev/null || echo 0)
