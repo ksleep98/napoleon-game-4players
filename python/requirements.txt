@@ -43,7 +43,7 @@ deprecation==2.1.0
     # via
     #   postgrest
     #   storage3
-fastapi==0.136.1
+fastapi==0.136.3
     # via
     #   gradio
     #   napoleon-ml-trainer
@@ -266,7 +266,7 @@ tzdata==2026.2
     # via pandas
 urllib3==2.7.0
     # via requests
-uvicorn==0.47.0
+uvicorn==0.48.0
     # via
     #   gradio
     #   napoleon-ml-trainer
