@@ -18,7 +18,7 @@ brotli==1.2.0
     # via gradio
 cachetools==7.1.1
     # via pyiceberg
-certifi==2026.4.22
+certifi==2026.5.20
     # via
     #   httpcore
     #   httpx
