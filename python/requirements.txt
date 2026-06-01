@@ -16,7 +16,7 @@ audioop-lts==0.2.2
     # via gradio
 brotli==1.2.0
     # via gradio
-cachetools==7.1.4
+cachetools==6.2.6
     # via pyiceberg
 certifi==2026.5.20
     # via
@@ -43,7 +43,7 @@ deprecation==2.1.0
     # via
     #   postgrest
     #   storage3
-fastapi==0.136.1
+fastapi==0.136.3
     # via
     #   gradio
     #   napoleon-ml-trainer
@@ -89,7 +89,7 @@ httpx==0.28.1
     #   supabase
     #   supabase-auth
     #   supabase-functions
-huggingface-hub==1.15.0
+huggingface-hub==1.16.1
     # via
     #   gradio
     #   gradio-client
@@ -159,7 +159,7 @@ pydantic==2.13.4
     #   realtime
     #   storage3
     #   supabase-auth
-pydantic-core==2.47.0
+pydantic-core==2.46.4
     # via pydantic
 pydub==0.25.1
     # via gradio
@@ -184,9 +184,7 @@ python-dotenv==1.2.2
 python-multipart==0.0.29
     # via gradio
 pytz==2026.2
-    # via
-    #   gradio
-    #   pandas
+    # via gradio
 pyyaml==6.0.3
     # via
     #   gradio
@@ -196,7 +194,7 @@ realtime==2.30.0
     # via supabase
 requests==2.34.2
     # via pyiceberg
-rich==15.0.0
+rich==14.3.4
     # via
     #   pyiceberg
     #   typer
@@ -239,7 +237,7 @@ tenacity==9.1.4
     # via pyiceberg
 threadpoolctl==3.6.0
     # via scikit-learn
-tomlkit==0.15.0
+tomlkit==0.14.0
     # via gradio
 tqdm==4.67.3
     # via huggingface-hub
@@ -262,7 +260,7 @@ typing-inspection==0.4.2
     # via
     #   fastapi
     #   pydantic
-tzdata==2026.2
+tzdata==2026.2 ; sys_platform == 'emscripten' or sys_platform == 'win32'
     # via pandas
 urllib3==2.7.0
     # via requests
@@ -276,11 +274,11 @@ watchfiles==1.2.0
     # via uvicorn
 wcwidth==0.7.0
     # via prettytable
-websockets==16.0
+websockets==15.0.1
     # via
     #   realtime
     #   uvicorn
-yarl==1.23.0
+yarl==1.24.2
     # via
     #   postgrest
     #   storage3
