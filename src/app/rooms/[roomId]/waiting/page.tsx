@@ -9,7 +9,7 @@ import {
   startGameFromRoomAction,
 } from '@/app/actions/gameActions'
 import { GAME_ROOM_STATUS } from '@/lib/constants'
-import { performanceSupabase } from '@/lib/supabase/performanceClient'
+import { supabase } from '@/lib/supabase/client'
 import type { GameRoom } from '@/types/game'
 
 interface WaitingRoomPageProps {
@@ -73,9 +73,13 @@ export default function WaitingRoomPage({ params }: WaitingRoomPageProps) {
       try {
         const [roomResult, playersResult] = await Promise.all([
           getRoomDetailsAction(roomId),
-          performanceSupabase.getPlayersInRoom(roomId, {
-            includeDisconnected: false,
-          }),
+          supabase
+            .from('players')
+            .select('id, name, connected, created_at')
+            .eq('room_id', roomId)
+            .eq('connected', true)
+            .order('created_at', { ascending: false })
+            .limit(50),
         ])
 
         if (roomResult.success && roomResult.room) {
