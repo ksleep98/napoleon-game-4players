@@ -69,16 +69,6 @@ export const FEATURE_FLAGS = {
   },
 
   /**
-   * パフォーマンス監視
-   * 開発環境または環境変数で有効化
-   */
-  get PERFORMANCE_MONITORING() {
-    return (
-      isDevelopment() || process.env.NEXT_PUBLIC_ENABLE_PERF_MONITOR === 'true'
-    )
-  },
-
-  /**
    * デバッグツール表示
    * 開発環境でのみ有効
    */
@@ -112,7 +102,6 @@ export function getEnvironmentInfo() {
   // Feature flagsを手動で評価（getterプロパティのため）
   const featureEntries = [
     ['MULTIPLAYER_ROOMS', FEATURE_FLAGS.MULTIPLAYER_ROOMS],
-    ['PERFORMANCE_MONITORING', FEATURE_FLAGS.PERFORMANCE_MONITORING],
     ['DEBUG_TOOLS', FEATURE_FLAGS.DEBUG_TOOLS],
     ['VERBOSE_LOGGING', FEATURE_FLAGS.VERBOSE_LOGGING],
     ['EXPERIMENTAL_FEATURES', FEATURE_FLAGS.EXPERIMENTAL_FEATURES],
