@@ -35,7 +35,9 @@ addopts = "-q"
 [tool.uv]
 # Supply chain attack mitigation: skip packages published in the last 7 days.
 # Aligns with the project-wide minimumReleaseAge=10080 policy used by pnpm.
-exclude-newer = "2026-05-25T00:00:00Z"
+# Bumped to admit pip 26.1.2 (PYSEC-2026-196 fix, published 2026-05-31); still
+# only allows packages aged >= 7 days.
+exclude-newer = "2026-06-01T00:00:00Z"
 
 [tool.ruff]
 # Formatting is delegated to black; ruff handles lint only.
