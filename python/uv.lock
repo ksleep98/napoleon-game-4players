@@ -7,9 +7,6 @@ resolution-markers = [
     "sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
-[options]
-exclude-newer = "2026-06-01T00:00:00Z"
-
 [[package]]
 name = "annotated-doc"
 version = "0.0.4"

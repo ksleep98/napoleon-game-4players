@@ -64,7 +64,8 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Asia/Tokyo"
-    # 公開直後のパッケージを避ける (python/pyproject.toml の uv exclude-newer と同等)
+    # 公開直後のパッケージを避ける。Python の供給網保護はこの cooldown が唯一の
+    # ソース（旧 uv exclude-newer はメンテ負荷のため廃止し、ここに一本化）。
     cooldown:
       default-days: 7
       semver-major-days: 14
