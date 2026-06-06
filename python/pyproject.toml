@@ -22,7 +22,15 @@ dev = [
   "black>=25",
   "pip-audit>=2.7.3",
   "ruff>=0.8.4",
+  "pytest>=8",
 ]
+
+[tool.pytest.ini_options]
+# Tests import the `model` and `data` packages as top-level, mirroring how
+# train.py / app.py import them at runtime. Put python/ on sys.path.
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q"
 
 [tool.uv]
 # Supply chain attack mitigation: skip packages published in the last 7 days.
