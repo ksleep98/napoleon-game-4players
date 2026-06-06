@@ -29,6 +29,7 @@ charset-normalizer==3.4.7
     # via requests
 click==8.4.1
     # via
+    #   huggingface-hub
     #   pyiceberg
     #   typer
     #   uvicorn
@@ -54,7 +55,7 @@ fsspec==2026.4.0
     #   gradio-client
     #   huggingface-hub
     #   pyiceberg
-gradio==6.14.0
+gradio==6.15.2
     # via napoleon-ml-trainer
 gradio-client==2.5.0
     # via
@@ -76,7 +77,7 @@ hpack==4.1.0
     # via h2
 httpcore==1.0.9
     # via httpx
-httptools==0.7.1
+httptools==0.8.0
     # via uvicorn
 httpx==0.28.1
     # via
@@ -89,13 +90,13 @@ httpx==0.28.1
     #   supabase
     #   supabase-auth
     #   supabase-functions
-huggingface-hub==1.16.1
+huggingface-hub==1.17.0
     # via
     #   gradio
     #   gradio-client
 hyperframe==6.1.0
     # via h2
-idna==3.16
+idna==3.17
     # via
     #   anyio
     #   httpx
@@ -181,7 +182,7 @@ python-dotenv==1.2.2
     # via
     #   napoleon-ml-trainer
     #   uvicorn
-python-multipart==0.0.29
+python-multipart==0.0.30
     # via gradio
 pytz==2026.2
     # via gradio
@@ -216,7 +217,7 @@ six==1.17.0
     # via python-dateutil
 skops==0.14.0
     # via napoleon-ml-trainer
-starlette==1.1.0
+starlette==1.2.1
     # via
     #   fastapi
     #   gradio
