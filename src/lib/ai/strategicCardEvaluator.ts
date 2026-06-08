@@ -38,7 +38,7 @@ import {
   getCardStrengthSafe,
   getLowestWinningCard,
   getWeakestCard,
-  getWeakestNonFaceCard,
+  getWeakestCardPreservingSame2,
   isFaceCard,
 } from './strategies/helpers'
 import { evaluateNapoleonCooperation } from './strategies/napoleonCooperation'
@@ -709,12 +709,16 @@ function selectFollowingCard(
     let weakest: Card
 
     if (player.isNapoleon || player.isAdjutant) {
-      // ナポレオンチーム：通常の最弱カード
-      weakest = getWeakestCard(playableCards, gameState)
+      // ナポレオンチーム：通常の最弱カード（セイム2用の2は温存）
+      weakest = getWeakestCardPreservingSame2(playableCards, gameState)
     } else {
-      // 連合軍：非絵札を優先（絵札を取られないようにする）
-      const weakestNonFace = getWeakestNonFaceCard(playableCards, gameState)
-      weakest = weakestNonFace || getWeakestCard(playableCards, gameState)
+      // 連合軍：非絵札を優先（絵札を取られないようにする）。捨てる際も
+      // セイム2用の2は温存し、他の弱い非絵札があればそちらを先に捨てる。
+      const nonFaceCards = playableCards.filter((card) => !isFaceCard(card))
+      weakest =
+        nonFaceCards.length > 0
+          ? getWeakestCardPreservingSame2(nonFaceCards, gameState)
+          : getWeakestCard(playableCards, gameState)
     }
 
     return weakest

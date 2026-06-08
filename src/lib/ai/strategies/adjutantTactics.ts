@@ -161,8 +161,17 @@ export function evaluateAdjutantTactics(
   // ナポレオンに渡すべき絵札を選択
   let faceCardToPass: Card | null = null
   if (shouldPassFaceCard) {
+    // マイティーだけでなく表J・裏Jも除外する。これらは「弱い絵札」ではなく
+    // 単独で別トリックを取れる最強級カードなので、マイティーが既に勝っている
+    // トリックに被せて捨ててはいけない（連合軍側の getFaceCardToPassToAlliance
+    // と同じ除外条件に揃える）。
+    const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
     const faceCards = playableCards.filter(
-      (card) => isFaceCard(card) && !checkIsMighty(card)
+      (card) =>
+        isFaceCard(card) &&
+        !checkIsMighty(card) &&
+        !checkIsTrumpJack(card, trumpSuit) &&
+        !checkIsCounterJack(card, trumpSuit)
     )
 
     if (faceCards.length > 0) {
