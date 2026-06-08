@@ -191,7 +191,7 @@ pyyaml==6.0.3
     #   gradio
     #   huggingface-hub
     #   uvicorn
-realtime==2.30.0
+realtime==2.30.1
     # via supabase
 requests==2.34.2
     # via pyiceberg
