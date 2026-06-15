@@ -201,7 +201,7 @@ rich==15.0.0
     #   typer
 safehttpx==0.1.7
     # via gradio
-scikit-learn==1.8.0
+scikit-learn==1.9.0
     # via
     #   napoleon-ml-trainer
     #   skops
