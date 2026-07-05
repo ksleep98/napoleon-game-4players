@@ -273,7 +273,7 @@ uvloop==0.22.1 ; platform_python_implementation != 'PyPy' and sys_platform != 'c
     # via uvicorn
 watchfiles==1.2.0
     # via uvicorn
-wcwidth==0.7.0
+wcwidth==0.8.1
     # via prettytable
 websockets==16.0
     # via
