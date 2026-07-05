@@ -143,7 +143,7 @@ pillow==12.2.0
     # via
     #   gradio
     #   napoleon-ml-trainer
-postgrest==2.30.1
+postgrest==2.31.0
     # via supabase
 prettytable==3.17.0
     # via skops
