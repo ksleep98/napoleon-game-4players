@@ -44,7 +44,7 @@ deprecation==2.1.0
     # via
     #   postgrest
     #   storage3
-fastapi==0.136.3
+fastapi==0.138.1
     # via
     #   gradio
     #   napoleon-ml-trainer
@@ -55,7 +55,7 @@ fsspec==2026.4.0
     #   gradio-client
     #   huggingface-hub
     #   pyiceberg
-gradio==6.15.2
+gradio==6.19.0
     # via napoleon-ml-trainer
 gradio-client==2.5.0
     # via
@@ -265,7 +265,7 @@ tzdata==2026.2 ; sys_platform == 'emscripten' or sys_platform == 'win32'
     # via pandas
 urllib3==2.7.0
     # via requests
-uvicorn==0.48.0
+uvicorn==0.49.0
     # via
     #   gradio
     #   napoleon-ml-trainer
