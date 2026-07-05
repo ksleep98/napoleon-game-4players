@@ -242,7 +242,7 @@ tomlkit==0.15.0
     # via gradio
 tqdm==4.67.3
     # via huggingface-hub
-typer==0.26.4
+typer==0.26.8
     # via
     #   gradio
     #   hf-gradio
