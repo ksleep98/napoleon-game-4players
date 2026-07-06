@@ -222,7 +222,7 @@ starlette==1.2.1
     #   fastapi
     #   gradio
     #   napoleon-ml-trainer
-storage3==2.30.1
+storage3==2.31.0
     # via supabase
 strenum==0.4.15
     # via supabase-functions
