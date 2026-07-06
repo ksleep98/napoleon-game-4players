@@ -50,7 +50,7 @@ fastapi==0.138.1
     #   napoleon-ml-trainer
 filelock==3.29.4
     # via huggingface-hub
-fsspec==2026.4.0
+fsspec==2026.6.0
     # via
     #   gradio-client
     #   huggingface-hub
