@@ -205,7 +205,7 @@ scikit-learn==1.9.0
     # via
     #   napoleon-ml-trainer
     #   skops
-scipy==1.17.1
+scipy==1.18.0
     # via
     #   scikit-learn
     #   skops
