@@ -48,7 +48,7 @@ fastapi==0.138.1
     # via
     #   gradio
     #   napoleon-ml-trainer
-filelock==3.29.0
+filelock==3.29.4
     # via huggingface-hub
 fsspec==2026.4.0
     # via
