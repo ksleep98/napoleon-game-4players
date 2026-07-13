@@ -90,7 +90,7 @@ httpx==0.28.1
     #   supabase
     #   supabase-auth
     #   supabase-functions
-huggingface-hub==1.21.0
+huggingface-hub==1.22.0
     # via
     #   gradio
     #   gradio-client
