@@ -118,7 +118,7 @@ mmh3==5.2.1
     # via pyiceberg
 multidict==6.7.1
     # via yarl
-numpy==2.5.0
+numpy==2.5.1
     # via
     #   gradio
     #   napoleon-ml-trainer
