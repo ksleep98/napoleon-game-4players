@@ -145,7 +145,7 @@ pillow==12.2.0
     #   napoleon-ml-trainer
 postgrest==2.31.0
     # via supabase
-prettytable==3.17.0
+prettytable==3.18.0
     # via skops
 propcache==0.5.2
     # via yarl
