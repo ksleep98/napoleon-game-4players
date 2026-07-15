@@ -21,12 +21,16 @@ resource "github_repository" "napoleon_game" {
   allow_auto_merge       = false  # 自動マージ無効（手動マージのみ）
   delete_branch_on_merge = true   # マージ後ブランチ自動削除
 
-  # Security
-  vulnerability_alerts = true
-
   # Archive settings
   archived           = false
   archive_on_destroy = false
+}
+
+# Security: Dependabot vulnerability alerts
+# Replaces the deprecated `vulnerability_alerts` field on github_repository.
+resource "github_repository_vulnerability_alerts" "napoleon_game" {
+  repository = github_repository.napoleon_game.name
+  enabled    = true
 }
 
 # Repository Ruleset: develop (development integration)
