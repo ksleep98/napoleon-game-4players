@@ -96,6 +96,36 @@ export function getWeakestNonFaceCard(
 }
 
 /**
+ * 捨て札として最弱カードを選ぶが、セイム2用の「2」を不用意に捨てない。
+ *
+ * 非切り札の2はセイム2が成立すれば単独でトリックを取れる切り札的な札なので、
+ * 勝てないトリックで捨てる場合でも、他に捨てられるカードがあり、かつ序盤〜中盤
+ * （セイム2を狙える時期）であれば2を温存して次に弱いカードを捨てる。
+ * 終盤（進行度0.7以上）は2が死に札になりやすいので通常どおり捨てる。
+ */
+export function getWeakestCardPreservingSame2(
+  cards: Card[],
+  gameState: GameState
+): Card {
+  const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
+  const sorted = [...cards].sort(
+    (a, b) =>
+      getCardStrengthSafe(a, gameState) - getCardStrengthSafe(b, gameState)
+  )
+
+  const weakest = sorted[0]
+  const isSame2Two = weakest.rank === '2' && weakest.suit !== trumpSuit
+  const gameProgress = calculateGameProgress(gameState)
+
+  // 序盤〜中盤で、2以外に捨てられる札がある場合のみ2を温存
+  if (isSame2Two && gameProgress < 0.7 && sorted.length > 1) {
+    return sorted[1]
+  }
+
+  return weakest
+}
+
+/**
  * ゲームの進行度を計算（0.0〜1.0）
  */
 export function calculateGameProgress(gameState: GameState): number {

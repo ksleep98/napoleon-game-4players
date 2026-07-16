@@ -3,6 +3,7 @@
  * ヒューリスティック、MCTS、ハイブリッドの選択
  */
 
+import { predictBestCard, type Role } from '@/lib/ml/mlClient'
 import type { Card, GameState, Player } from '@/types/game'
 import { getPlayableCards } from './gameSimulator'
 import {
@@ -11,6 +12,32 @@ import {
   selectCardWithDeterminization,
 } from './monteCarloAI'
 import { selectBestStrategicCard } from './strategicCardEvaluator'
+
+/**
+ * ML 推論の採用基準。閾値未満は MCTS / heuristic にフォールバックする。
+ *
+ * ロードマップ (docs/ml/ML_IMPLEMENTATION_ROADMAP.md Phase 4.2) の初期値は 0.6。
+ * しかし 526 ゲーム/accuracy 26%・top-3 52% の時点でも、実プレイの top-1
+ * confidence は概ね 0.10〜0.25 に分布し、ゲームによって max が 0.24〜0.58
+ * と大きく振れる。これは Random Forest を 52 クラス分類で使う構造上の制約
+ * (200本の木の票が複数候補に分散) であり、データ追加では緩やかにしか
+ * 改善しない。
+ *
+ * 一方 top-3 accuracy は 52% に達しており、信頼度が低めでも「正解に近い
+ * 手」が選ばれている可能性は高い。実プレイで ML を実際に発火させて挙動
+ * を観察するため、当面 0.2 まで下げる(全 ML 判断のうち 20-40% が採用
+ * される想定)。データ拡充・キャリブレーション・別モデル等で confidence
+ * 分布が改善したら段階的に 0.3 → 0.5 → 0.6 に戻す。
+ */
+const ML_CONFIDENCE_THRESHOLD = 0.2
+
+type MLLogEvent = 'adopt' | 'adopt-topk' | 'fallback' | 'skip'
+
+function logML(event: MLLogEvent, detail: string): void {
+  // Tests are noisy enough without this; production/dev keep visibility.
+  if (process.env.NODE_ENV === 'test') return
+  console.log(`[aiStrategy.ml] ${event}: ${detail}`)
+}
 
 /**
  * AI戦略タイプ
@@ -159,6 +186,97 @@ function calculateGameProgress(gameState: GameState): number {
   const totalTricks = 12
   const completedTricks = gameState.tricks.length
   return completedTricks / totalTricks
+}
+
+/**
+ * ML 推論を優先するラッパー。信頼度が閾値以上かつ手札のカードを返してきた場合のみ
+ * その手を採用し、そうでなければ既存の selectAICard にフォールバックする。
+ *
+ * NEXT_PUBLIC_ML_API_URL 未設定時は ML を呼ばず、即フォールバックするので
+ * ローカル開発や ML 無効化環境でも追加コストはない。
+ */
+export async function selectAICardWithML(
+  gameState: GameState,
+  player: Player,
+  config: AIStrategyConfig
+): Promise<Card | null> {
+  const playableCards = getPlayableCards(gameState, player.id)
+  if (playableCards.length === 0) return null
+  if (playableCards.length === 1) {
+    logML('skip', `only-1-playable (${playableCards[0].id})`)
+    return playableCards[0]
+  }
+
+  const mlPick = await tryMLPick(gameState, player, playableCards)
+  if (mlPick) return mlPick
+
+  return selectAICard(gameState, player, config)
+}
+
+async function tryMLPick(
+  gameState: GameState,
+  player: Player,
+  playableCards: Card[]
+): Promise<Card | null> {
+  const role: Role = player.isNapoleon
+    ? 'napoleon'
+    : player.isAdjutant
+      ? 'adjutant'
+      : 'allied'
+
+  const prediction = await predictBestCard({
+    hand: player.hand,
+    tableCards: gameState.currentTrick.cards.map((pc) => pc.card),
+    currentSuit: gameState.leadingSuit ?? null,
+    trumpSuit: gameState.trumpSuit ?? null,
+    role,
+    isNapoleonTeam: player.isNapoleon || player.isAdjutant,
+    trickNumber: gameState.tricks.filter((t) => t.completed).length,
+  })
+
+  if (!prediction) {
+    logML('fallback', 'no-prediction (URL unset or API error)')
+    return null
+  }
+  if (prediction.confidence < ML_CONFIDENCE_THRESHOLD) {
+    logML(
+      'fallback',
+      `low-confidence (${prediction.confidence.toFixed(3)} < ${ML_CONFIDENCE_THRESHOLD}) primary=${prediction.predictedCardId}`
+    )
+    return null
+  }
+
+  const playableById = new Map(playableCards.map((c) => [c.id, c]))
+
+  // 第一候補を採用 (playable で閾値以上)
+  const primary = playableById.get(prediction.predictedCardId)
+  if (primary) {
+    logML(
+      'adopt',
+      `${primary.id} confidence=${prediction.confidence.toFixed(3)}`
+    )
+    return primary
+  }
+
+  // 第一候補が手札外/フォロー違反の場合は top-k から playable で閾値以上を探す
+  for (let i = 0; i < prediction.topK.length; i++) {
+    const candidate = prediction.topK[i]
+    if (candidate.confidence < ML_CONFIDENCE_THRESHOLD) break
+    const match = playableById.get(candidate.cardId)
+    if (match) {
+      logML(
+        'adopt-topk',
+        `${match.id} confidence=${candidate.confidence.toFixed(3)} (rank=${i + 1}, primary=${prediction.predictedCardId} not playable)`
+      )
+      return match
+    }
+  }
+
+  logML(
+    'fallback',
+    `no-playable-candidate (primary=${prediction.predictedCardId} c=${prediction.confidence.toFixed(3)})`
+  )
+  return null
 }
 
 /**

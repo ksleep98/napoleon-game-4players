@@ -7,8 +7,9 @@ import time
 from pathlib import Path
 from typing import cast
 
-import joblib
 import numpy as np
+import skops.io as sio
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, top_k_accuracy_score
 from sklearn.model_selection import GroupShuffleSplit
@@ -19,7 +20,7 @@ from model.features import FEATURE_NAMES, build_feature_matrix
 logger = logging.getLogger(__name__)
 
 MODEL_DIR = Path(__file__).resolve().parent / "models"
-MODEL_PATH = MODEL_DIR / "card_predictor.joblib"
+MODEL_PATH = MODEL_DIR / "card_predictor.skops"
 
 
 def split_by_game(
@@ -65,14 +66,26 @@ def main() -> int:
 
     logger.info("Train: %d rows, Test: %d rows", X_train.shape[0], X_test.shape[0])
 
-    logger.info("Training RandomForestClassifier(n_estimators=200, max_depth=12)...")
+    # Random Forest を CalibratedClassifierCV(isotonic) でラップして確信度を再較正する。
+    # 素の RF は 52 クラス分類で票が分散し、top-1 confidence が 0.10〜0.20 に張り付いて
+    # しまうため (Phase 4.2 観察)、isotonic regression で確率を再マッピングし、適切な
+    # 手については閾値 (0.2) を超えやすくする。cv=3 で fit 時間は約 3 倍になる。
+    logger.info(
+        "Training CalibratedClassifierCV(RF n_estimators=200, max_depth=12, cv=3, isotonic)..."
+    )
     t0 = time.perf_counter()
-    model = RandomForestClassifier(
+    base_rf = RandomForestClassifier(
         n_estimators=200,
         max_depth=12,
         min_samples_leaf=2,
         n_jobs=-1,
         random_state=42,
+    )
+    model = CalibratedClassifierCV(
+        estimator=base_rf,
+        method="isotonic",
+        cv=3,
+        n_jobs=-1,
     )
     model.fit(X_train, y_train)
     fit_seconds = time.perf_counter() - t0
@@ -85,19 +98,44 @@ def main() -> int:
     # top_k_accuracy needs the global label set; pass labels= for safety.
     labels = np.arange(52)
     proba_full = np.zeros((y_proba.shape[0], 52))
-    for col_idx, cls in enumerate(model.classes_):
+    # model.classes_ は sklearn stub 上 Optional だが fit 後は常に ndarray。
+    for col_idx, cls in enumerate(model.classes_):  # pyright: ignore[reportArgumentType]
         proba_full[:, cls] = y_proba[:, col_idx]
     top3 = top_k_accuracy_score(y_test, proba_full, k=3, labels=labels)
     top5 = top_k_accuracy_score(y_test, proba_full, k=5, labels=labels)
+
+    # 閾値 0.2 運用に対する効果を確認するため、テストセットの top-1 confidence の分布を出力する。
+    top1_conf = y_proba.max(axis=1)
+    pct_above_02 = float((top1_conf >= 0.2).mean()) * 100
+    pct_above_03 = float((top1_conf >= 0.3).mean()) * 100
 
     logger.info("=== Evaluation ===")
     logger.info("Accuracy:       %.2f%%", accuracy * 100)
     logger.info("Top-3 Accuracy: %.2f%%", top3 * 100)
     logger.info("Top-5 Accuracy: %.2f%%", top5 * 100)
     logger.info("Baseline (random over 52): %.2f%%", (1 / 52) * 100)
+    logger.info(
+        "Top-1 confidence: mean=%.3f, median=%.3f, >=0.2=%.1f%%, >=0.3=%.1f%%",
+        float(top1_conf.mean()),
+        float(np.median(top1_conf)),
+        pct_above_02,
+        pct_above_03,
+    )
 
+    # CalibratedClassifierCV は feature_importances_ を持たないので、cv 分割した各
+    # base RF の importances を平均する。sklearn の型スタブは fit 前提の Optional に
+    # なっており pyright が None アクセスを警告するが、fit 後のここでは常にセット済み
+    # のためその行に限り pyright suppress を入れる (Any で受けるとタイポ検出を失うので
+    # ピンポイント抑制を選ぶ)。
+    importance_vec = np.mean(
+        [
+            cc.estimator.feature_importances_  # pyright: ignore[reportOptionalMemberAccess]
+            for cc in model.calibrated_classifiers_
+        ],
+        axis=0,
+    )
     importances = sorted(
-        zip(FEATURE_NAMES, model.feature_importances_, strict=True),
+        zip(FEATURE_NAMES, importance_vec, strict=True),
         key=lambda t: t[1],
         reverse=True,
     )
@@ -105,7 +143,7 @@ def main() -> int:
     logger.info("Top 10 features by importance:\n%s", top_importances)
 
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    joblib.dump(
+    sio.dump(
         {
             "model": model,
             "feature_names": FEATURE_NAMES,

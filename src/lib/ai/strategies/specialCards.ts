@@ -51,6 +51,11 @@ export function evaluateSame2Potential(
 
   // 現在のトリックで異なるスートが出ている場合、そのスートは4枚揃わない
   const leadingSuit = currentTrick.cards[0].card.suit
+
+  // 切り札リードのトリックではセイム2が成立しないので、2は通常の弱札扱い
+  // （セイム2ポテンシャルのボーナス/ペナルティを与えない）。
+  if (leadingSuit === trumpSuit) return 0
+
   const allSameSuit = currentTrick.cards.every(
     (pc) => pc.card.suit === leadingSuit
   )
@@ -194,11 +199,14 @@ export function evaluateSame2Breaker(card: Card, gameState: GameState): number {
       checkIsCounterJack(trickCard.card, trumpSuit)
   )
 
-  // セイム2の可能性があるトリックでMighty/Jackを出すとセイム2を台無しにする
+  // セイム2の可能性があるトリックでMighty/Jackを出すとセイム2を台無しにする。
+  // ただし切り札リード時はセイム2が成立しないので、ペナルティを与えない
+  // （切り札リードで Mighty / 表J を出すのを過剰に抑制しないため）。
   if (
     allSameSuit &&
     !alreadyHasSame2Breaker &&
-    currentTrick.cards.length >= 2
+    currentTrick.cards.length >= 2 &&
+    leadingSuit !== trumpSuit
   ) {
     // ゲーム進行度を取得
     const gameProgress = calculateGameProgress(gameState)
@@ -349,8 +357,14 @@ export function evaluateSpecialCardStrategy(
   )
 
   // セイム2リスク: 全て同じスートで特殊カードがまだ出ていない場合
+  // 切り札リード時はセイム2が成立しない（napoleonCardRules.checkSame2Conditions:
+  // leadingSuit === trumpSuit は無効）ため、リスク扱いしない。これを怠ると
+  // 切り札リードのトリックで Mighty / 表J の使用が誤ってブロックされる。
   const hasSame2Risk =
-    allSameSuit && !alreadyHasSpecialCard && currentTrick.cards.length >= 2
+    allSameSuit &&
+    !alreadyHasSpecialCard &&
+    currentTrick.cards.length >= 2 &&
+    leadingSuit !== trumpSuit
 
   // Mighty使用判断
   let shouldUseMighty = false

@@ -12,6 +12,12 @@ updates:
       day: "monday" # 月曜日
       time: "09:00" # JST 18:00
       timezone: "Asia/Tokyo"
+    # 公開直後のパッケージを避ける (.npmrc minimumReleaseAge と同等の役割)
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+      include:
+        - "*"
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
@@ -58,6 +64,13 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Asia/Tokyo"
+    # 公開直後のパッケージを避ける。Python の供給網保護はこの cooldown が唯一の
+    # ソース（旧 uv exclude-newer はメンテ負荷のため廃止し、ここに一本化）。
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+      include:
+        - "*"
     open-pull-requests-limit: 10
     labels:
       - "dependencies"

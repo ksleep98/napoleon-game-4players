@@ -11,14 +11,17 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from typing import Literal
 
 import gradio as gr
-import joblib
 import numpy as np
 import pandas as pd
+import skops.io as sio
+import uvicorn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from model.features import (
     SUITS,
@@ -74,7 +77,11 @@ class ModelHolder:
         payload = self._payload
         if payload is None or self._mtime != mtime:
             logger.info("Loading model from %s", MODEL_PATH)
-            payload = joblib.load(MODEL_PATH)
+            # skops scans the file for non-stdlib/scikit-learn types and refuses
+            # to load unknown classes unless explicitly trusted — accept only the
+            # types declared inside the file we just produced.
+            trusted = sio.get_untrusted_types(file=MODEL_PATH)
+            payload = sio.load(MODEL_PATH, trusted=trusted)
             self._payload = payload
             self._mtime = mtime
         return payload
@@ -114,7 +121,8 @@ def _predict(request: PredictRequest, top_k: int = 5) -> PredictResponse:
 
     proba = model.predict_proba(X)[0]
     full = np.zeros(52)
-    for col_idx, cls in enumerate(model.classes_):
+    # model.classes_ は sklearn stub 上 Optional だが fit 後は常に ndarray。
+    for col_idx, cls in enumerate(model.classes_):  # pyright: ignore[reportArgumentType]
         full[cls] = proba[col_idx]
 
     # Restrict to cards actually in hand (model may suggest cards player doesn't hold).
@@ -138,6 +146,27 @@ def _predict(request: PredictRequest, top_k: int = 5) -> PredictResponse:
 
 
 app = FastAPI(title="Napoleon ML Trainer", version="0.1.0")
+
+# Defense-in-depth for PYSEC-2026-161 (Host header injection in starlette
+# <=1.0.0): reject requests whose Host header is not in the allow list so the
+# starlette `request.url.path` reconstruction cannot be poisoned. Once the
+# supply-chain cooldown window allows starlette 1.0.1, this middleware becomes
+# redundant for that CVE but still provides a useful general-purpose guard.
+# Override the allow list via the ALLOWED_HOSTS env var (comma-separated)
+# when deploying behind a custom domain.
+_default_allowed_hosts = [
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "*.hf.space",  # Hugging Face Spaces default domain
+]
+_allowed_hosts_env = os.environ.get("ALLOWED_HOSTS", "").strip()
+_allowed_hosts = (
+    [h.strip() for h in _allowed_hosts_env.split(",") if h.strip()]
+    if _allowed_hosts_env
+    else _default_allowed_hosts
+)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=_allowed_hosts)
 
 
 @app.get("/api/health")
@@ -249,8 +278,6 @@ app = gr.mount_gradio_app(app, ui, path="/")
 
 
 if __name__ == "__main__":
-    import uvicorn
-
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     # Hugging Face Spaces expects 7860; bind 0.0.0.0 for container access.
     uvicorn.run(app, host="0.0.0.0", port=7860)

@@ -25,6 +25,14 @@ env:
   # Develop environment URL (actual Vercel develop environment)
   DEVELOP_URL: "https://napoleon-game-dev.vercel.app"
 
+# Vercel emits multiple deployment_status events per deploy
+# (queued -> building -> success). Cancel earlier runs in the same deploy
+# group so the PR UI only shows the final outcome instead of 2-3 skipped
+# checks per feature-branch deploy.
+concurrency:
+  group: e2e-develop-${{ github.event.deployment.environment || github.event_name }}-${{ github.event.deployment.ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   e2e-develop:
     runs-on: ubuntu-latest
@@ -40,13 +48,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: develop
           fetch-depth: 0
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093 # v6.0.8
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
 
       - name: Setup Node.js with cache
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
@@ -65,7 +73,7 @@ jobs:
 
       - name: Cache Playwright browsers
         id: playwright-cache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
@@ -201,7 +209,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: develop
           fetch-depth: 0

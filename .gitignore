@@ -126,4 +126,5 @@ python/.ruff_cache/
 python/.pytest_cache/
 python/model/models/*.pkl
 python/model/models/*.joblib
+python/model/models/*.skops
 *.pyc
