@@ -38,7 +38,7 @@ deprecation==2.1.0
     # via
     #   postgrest
     #   storage3
-fastapi==0.136.3
+fastapi==0.139.0
     # via
     #   gradio
     #   napoleon-ml-trainer
@@ -238,7 +238,7 @@ typing-inspection==0.4.2
     #   pydantic
 tzdata==2026.2 ; sys_platform == 'emscripten' or sys_platform == 'win32'
     # via pandas
-uvicorn==0.50.2
+uvicorn==0.51.0
     # via
     #   gradio
     #   napoleon-ml-trainer
