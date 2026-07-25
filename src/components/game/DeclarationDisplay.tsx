@@ -2,6 +2,11 @@
 
 import { SUIT_DISPLAY_COLORS, SUIT_NAMES } from '@/lib/constants'
 import type { NapoleonDeclaration, Suit } from '@/types/game'
+import {
+  ADJUTANT_BADGE_SUIT_LABELS,
+  ADJUTANT_BADGE_TONES,
+  AdjutantCardBadge,
+} from './AdjutantCardBadge'
 
 interface DeclarationDisplayProps {
   declaration: NapoleonDeclaration
@@ -46,11 +51,12 @@ export function DeclarationDisplay({
         </div>
 
         {declaration.adjutantCard && (
-          <div className="text-center pt-2 border-t border-yellow-200">
-            <div className="text-sm text-yellow-600 mb-1">Adjutant Card:</div>
-            <div className="font-semibold text-yellow-800">
-              {declaration.adjutantCard.rank} of {declaration.adjutantCard.suit}
-            </div>
+          <div className="flex justify-center pt-3 border-t border-yellow-200">
+            <AdjutantCardBadge
+              card={declaration.adjutantCard}
+              tone={ADJUTANT_BADGE_TONES.LIGHT}
+              suitLabel={ADJUTANT_BADGE_SUIT_LABELS.JA}
+            />
           </div>
         )}
 
