@@ -3,8 +3,14 @@
  * MCTSのシミュレーションフェーズで使用
  */
 
-import { countFaceCards, GAME_PHASES } from '@/lib/constants'
+import {
+  countFaceCards,
+  GAME_CONFIG,
+  GAME_PHASES,
+  NAPOLEON_RULES,
+} from '@/lib/constants'
 import { determineWinnerWithSpecialRules } from '@/lib/napoleonCardRules'
+import { isGameDecided } from '@/lib/scoring'
 import { random } from '@/lib/utils/rng'
 import type { Card, GameState, PlayedCard, Player, Suit } from '@/types/game'
 
@@ -79,6 +85,9 @@ export function simulateCardPlay(
   }
   player.hand.splice(cardIndex, 1)
 
+  // 空トリックへの着手か（リードスート確定の判定は push の前に行う）
+  const isLeadingCard = newState.currentTrick.cards.length === 0
+
   // トリックにカードを追加
   const playedCard: PlayedCard = {
     card: cloneCard(card),
@@ -87,8 +96,17 @@ export function simulateCardPlay(
   }
   newState.currentTrick.cards.push(playedCard)
 
+  // 最初のカードの場合、リードスートを設定（本番の gameLogic.playCard と同じ記帳）
+  // これを怠ると trick.leadingSuit が常に undefined になり、
+  // estimatePlayerVoids / signalDecoder / probabilisticDecision など
+  // leadingSuit を参照する評価ロジックがシミュレーション中だけ無効化される。
+  if (isLeadingCard) {
+    newState.currentTrick.leadingSuit = card.suit
+    newState.leadingSuit = card.suit
+  }
+
   // トリックが完了したか確認（4人プレイヤー）
-  if (newState.currentTrick.cards.length === 4) {
+  if (newState.currentTrick.cards.length === GAME_CONFIG.PLAYERS_COUNT) {
     completeTrick(newState)
   } else {
     // 次のプレイヤーへ
@@ -105,8 +123,13 @@ function completeTrick(state: GameState): void {
   const trick = state.currentTrick
   const trumpSuit = state.trumpSuit as Suit
 
+  // 1トリック目かどうか（本番の gameLogic.determineWinner と同じ判定）。
+  // ここは tricks.push の前なので length === 0 が「このトリックが1トリック目」を意味する。
+  // 1トリック目は切り札判定とセイム2ルールが無効になる。
+  const isFirstTrick = state.tricks.length === 0
+
   // 勝者を決定
-  const winner = determineWinnerWithSpecialRules(trick, trumpSuit, false)
+  const winner = determineWinnerWithSpecialRules(trick, trumpSuit, isFirstTrick)
 
   if (!winner) {
     console.error('No winner determined for trick')
@@ -133,7 +156,7 @@ function completeTrick(state: GameState): void {
   state.currentPlayerIndex = winnerIndex
 
   // ゲーム終了チェック
-  if (state.tricks.length >= 12 || isGameFinished(state)) {
+  if (isGameFinished(state)) {
     state.phase = GAME_PHASES.FINISHED
     determineGameWinner(state)
   }
@@ -151,41 +174,17 @@ function updateTrickScore(_state: GameState, _winnerId: string): void {
  * ゲームが終了したか判定
  */
 export function isGameFinished(state: GameState): boolean {
-  // 12トリック完了
-  if (state.tricks.length >= 12) return true
+  // 全トリック完了
+  if (state.tricks.length >= GAME_CONFIG.CARDS_PER_PLAYER) return true
 
   // 全プレイヤーの手札が空
   const allHandsEmpty = state.players.every((p) => p.hand.length === 0)
   if (allHandsEmpty) return true
 
-  // 早期終了条件（ナポレオンまたは連合軍が目標達成不可能）
-  // ただし、ゲーム開始直後（トリック数が0）の場合は早期終了しない
-  if (state.tricks.length > 0) {
-    const napoleonFaceCardsWon = getNapoleonFaceCardsWon(state)
-    const remainingTricks = 12 - state.tricks.length
-
-    // ナポレオンの目標絵札数
-    const targetFaceCards = state.napoleonDeclaration?.targetTricks || 12
-
-    // 残りトリックに絵札が最大5枚（10, J, Q, K, A）あると仮定
-    const maxPossibleFaceCards = remainingTricks * 5
-
-    // ナポレオンが目標達成不可能（残り全部取っても届かない）
-    if (napoleonFaceCardsWon + maxPossibleFaceCards < targetFaceCards) {
-      return true
-    }
-
-    // 連合軍の勝利確定計算
-    // 全絵札数 = 20枚（10, J, Q, K, A が各スート5枚 x 4スート）
-    const maxNapoleonCanGet = napoleonFaceCardsWon + maxPossibleFaceCards
-
-    // 連合軍がすでに十分な絵札を獲得（ナポレオンが目標達成不可能）
-    if (maxNapoleonCanGet < targetFaceCards) {
-      return true
-    }
-  }
-
-  return false
+  // 早期終了条件は本番と同一実装を使う (gameLogic.completeTrick → scoring.isGameDecided)。
+  // 旧実装は「1トリックあたり最大絵札5枚」(実際は4人=4枚) という過大評価と、
+  // 同一条件の重複判定を持ち、さらにナポレオンが目標を達成済みでも終了しなかった。
+  return isGameDecided(state).decided
 }
 
 /**
@@ -232,7 +231,9 @@ export interface GameResult {
 
 export function getGameResult(state: GameState): GameResult {
   const napoleonFaceCardsWon = getNapoleonFaceCardsWon(state)
-  const targetFaceCards = state.napoleonDeclaration?.targetTricks || 12
+  // 既定値は本番 (scoring.isGameDecided) と揃える
+  const targetFaceCards =
+    state.napoleonDeclaration?.targetTricks ?? NAPOLEON_RULES.TARGET_FACE_CARDS
   const napoleonWon = napoleonFaceCardsWon >= targetFaceCards
 
   return {

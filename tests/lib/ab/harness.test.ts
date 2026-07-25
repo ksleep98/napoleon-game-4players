@@ -352,8 +352,9 @@ describe('ab/harness missing trumpSuit emulation', () => {
   })
 
   it('leaves the trick resolution untouched when the AI view is blinded', () => {
-    // 切り札を隠すのは AI の視界だけ。ルール（勝敗判定）は宣言スートのままなので
-    // 12 トリックが最後まで解決し、絵札の総数も変わらない。
+    // 切り札を隠すのは AI の視界だけ。ルール（勝敗判定）は宣言スートのまま解決される。
+    // トリック数は 12 固定ではない: 本番 (gameLogic.completeTrick → scoring.isGameDecided)
+    // と同様、勝敗が確定した時点で打ち切られるため 12 以下になりうる。
     const result = runAB(
       buildOptions({
         games: 2,
@@ -364,7 +365,10 @@ describe('ab/harness missing trumpSuit emulation', () => {
     for (const pair of result.games) {
       for (const outcome of [pair.a, pair.b]) {
         expect(outcome.trumpSuitHiddenSeats).toBe(GAME_CONFIG.PLAYERS_COUNT)
-        expect(outcome.tricksPlayed).toBe(12)
+        expect(outcome.tricksPlayed).toBeGreaterThan(0)
+        expect(outcome.tricksPlayed).toBeLessThanOrEqual(
+          GAME_CONFIG.CARDS_PER_PLAYER
+        )
         expect(outcome.napoleonFaceCards).toBeLessThanOrEqual(TOTAL_FACE_CARDS)
       }
     }
