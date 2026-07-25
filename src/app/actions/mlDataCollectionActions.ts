@@ -1,179 +1,144 @@
 'use server'
 
-import type { MLTrainingData } from '@/lib/ml/dataExtractor'
-import { supabaseAdmin } from '@/lib/supabase/server'
-
 /**
- * ゲームの各手を機械学習用に記録
+ * 機械学習データ収集 Server Action（薄いラッパー）
  *
- * @param data - 記録するプレイデータ
- * @returns 記録結果
+ * F-5 対策:
+ * - 実際の書き込み／読み取りロジックは `@/lib/ml/dataCollection` にある。
+ * - この層はブラウザから到達可能なエンドポイントなので、
+ *   クッキー照合・所有者チェック・レート制限・入力検証を必ず行う。
+ * - サーバー内部処理（`processAIPlayingPhase`）とヘッドレスシミュレータ
+ *   （`pnpm sim`）は、リクエストスコープ外で `cookies()` を呼べないため
+ *   このラッパーを経由せず内部関数を直接呼ぶ。
  */
-export async function recordGameMove(data: MLTrainingData) {
-  try {
-    const supabase = supabaseAdmin
 
-    const { error } = await supabase.from('ml_training_data').insert({
-      game_id: data.gameId,
-      player_id: data.playerId,
-      trick_number: data.trickNumber,
-      hand: data.hand,
-      table_cards: data.tableCards,
-      current_suit: data.currentSuit,
-      trump_suit: data.trumpSuit,
-      selected_card: data.selectedCard,
-      game_phase: data.gamePhase,
-      role: data.role,
-      is_napoleon_team: data.isNapoleonTeam,
-      game_result: data.gameResult,
-      player_final_score: data.playerFinalScore,
-      is_ai_player: data.isAiPlayer,
-      ai_difficulty: data.aiDifficulty,
-    })
+import { requireAuthenticatedPlayerId } from '@/lib/auth/requireSessionOwner'
+import { AUTH_ERRORS, ML_RATE_LIMITS } from '@/lib/constants'
+import { GameActionError } from '@/lib/errors/GameActionError'
+import {
+  getMLAIStats as getMLAIStatsInternal,
+  getMLRoleStats as getMLRoleStatsInternal,
+  getMLTrainingStats as getMLTrainingStatsInternal,
+  type MLCollectionResult,
+  type MLGameResult,
+  recordGameMove as recordGameMoveInternal,
+  updateGameResult as updateGameResultInternal,
+} from '@/lib/ml/dataCollection'
+import type { MLTrainingData } from '@/lib/ml/dataExtractor'
+import { checkRateLimit } from '@/lib/supabase/server'
 
-    if (error) {
-      console.error('[ML Data Collection] Error recording move:', error)
-      return { success: false, error: error.message }
-    }
+const RATE_LIMIT_ERROR = 'Rate limit exceeded'
 
-    return { success: true }
-  } catch (error) {
-    console.error('[ML Data Collection] Unexpected error:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }
+function toFailure(error: unknown): MLCollectionResult {
+  return {
+    success: false,
+    error:
+      error instanceof GameActionError || error instanceof Error
+        ? error.message
+        : 'Unknown error',
+  }
+}
+
+function assertRateLimit(key: string, max: number, windowMs: number): void {
+  if (!checkRateLimit(key, max, windowMs)) {
+    throw new Error(RATE_LIMIT_ERROR)
   }
 }
 
 /**
- * ゲーム終了時に全レコードにゲーム結果を更新
- *
- * @param gameId - ゲームID
- * @param gameResult - ゲーム結果
- * @param playerScores - プレイヤーごとの最終スコア
- * @returns 更新結果
+ * ゲームの各手を記録（ブラウザからの呼び出し用）
+ * 自分自身の playerId のデータしか記録できない
  */
-export async function updateGameResult(
-  gameId: string,
-  gameResult: 'napoleon_win' | 'allied_win',
-  playerScores: Record<string, number>
-) {
+export async function recordGameMoveAction(
+  data: MLTrainingData
+): Promise<MLCollectionResult> {
   try {
-    const supabase = supabaseAdmin
+    const actorId = await requireAuthenticatedPlayerId()
 
-    // 各プレイヤーのデータを個別に更新
-    const updatePromises = Object.entries(playerScores).map(
-      ([playerId, score]) =>
-        supabase
-          .from('ml_training_data')
-          .update({
-            game_result: gameResult,
-            player_final_score: score,
-          })
-          .eq('game_id', gameId)
-          .eq('player_id', playerId)
+    assertRateLimit(
+      `ml_record_move_${actorId}`,
+      ML_RATE_LIMITS.RECORD_MOVE.MAX,
+      ML_RATE_LIMITS.RECORD_MOVE.WINDOW_MS
     )
 
-    const results = await Promise.all(updatePromises)
-
-    const errors = results.filter((r: { error: unknown }) => r.error)
-    if (errors.length > 0) {
-      console.error('[ML Data Collection] Error updating game results:', errors)
-      return { success: false, error: 'Failed to update some records' }
+    // 他人の playerId でのデータ投入を禁止（学習データ汚染防止）
+    if (data?.playerId !== actorId) {
+      throw new Error(AUTH_ERRORS.FORBIDDEN_PLAYER)
     }
 
-    return { success: true }
+    return await recordGameMoveInternal(data)
   } catch (error) {
-    console.error('[ML Data Collection] Unexpected error:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+    console.error('[ML Data Collection] recordGameMoveAction failed:', error)
+    return toFailure(error)
+  }
+}
+
+/**
+ * ゲーム結果を記録（ブラウザからの呼び出し用）
+ * 自分がスコアに含まれるゲームのみ更新できる
+ */
+export async function updateGameResultAction(
+  gameId: string,
+  gameResult: MLGameResult,
+  playerScores: Record<string, number>
+): Promise<MLCollectionResult> {
+  try {
+    const actorId = await requireAuthenticatedPlayerId()
+
+    assertRateLimit(
+      `ml_update_result_${actorId}`,
+      ML_RATE_LIMITS.UPDATE_RESULT.MAX,
+      ML_RATE_LIMITS.UPDATE_RESULT.WINDOW_MS
+    )
+
+    if (!playerScores || !(actorId in playerScores)) {
+      throw new Error(AUTH_ERRORS.FORBIDDEN_PLAYER)
     }
+
+    return await updateGameResultInternal(gameId, gameResult, playerScores)
+  } catch (error) {
+    console.error('[ML Data Collection] updateGameResultAction failed:', error)
+    return toFailure(error)
+  }
+}
+
+async function guardedStats(
+  key: string,
+  fetcher: () => Promise<MLCollectionResult>
+): Promise<MLCollectionResult> {
+  try {
+    const actorId = await requireAuthenticatedPlayerId()
+
+    assertRateLimit(
+      `${key}_${actorId}`,
+      ML_RATE_LIMITS.STATS.MAX,
+      ML_RATE_LIMITS.STATS.WINDOW_MS
+    )
+
+    return await fetcher()
+  } catch (error) {
+    console.error('[ML Data Collection] stats action failed:', error)
+    return toFailure(error)
   }
 }
 
 /**
  * 訓練データの統計情報を取得
- *
- * @returns 統計情報
  */
-export async function getMLTrainingStats() {
-  try {
-    const supabase = supabaseAdmin
-
-    const { data, error } = await supabase
-      .from('ml_training_stats')
-      .select('*')
-      .single()
-
-    if (error) {
-      console.error('[ML Data Collection] Error fetching stats:', error)
-      return { success: false, error: error.message }
-    }
-
-    return { success: true, data }
-  } catch (error) {
-    console.error('[ML Data Collection] Unexpected error:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }
-  }
+export async function getMLTrainingStatsAction(): Promise<MLCollectionResult> {
+  return guardedStats('ml_stats', getMLTrainingStatsInternal)
 }
 
 /**
  * 役割別統計を取得
- *
- * @returns 役割別統計
  */
-export async function getMLRoleStats() {
-  try {
-    const supabase = supabaseAdmin
-
-    const { data, error } = await supabase
-      .from('ml_training_role_stats')
-      .select('*')
-
-    if (error) {
-      console.error('[ML Data Collection] Error fetching role stats:', error)
-      return { success: false, error: error.message }
-    }
-
-    return { success: true, data }
-  } catch (error) {
-    console.error('[ML Data Collection] Unexpected error:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }
-  }
+export async function getMLRoleStatsAction(): Promise<MLCollectionResult> {
+  return guardedStats('ml_role_stats', getMLRoleStatsInternal)
 }
 
 /**
  * AI難易度別統計を取得
- *
- * @returns AI難易度別統計
  */
-export async function getMLAIStats() {
-  try {
-    const supabase = supabaseAdmin
-
-    const { data, error } = await supabase
-      .from('ml_training_ai_stats')
-      .select('*')
-
-    if (error) {
-      console.error('[ML Data Collection] Error fetching AI stats:', error)
-      return { success: false, error: error.message }
-    }
-
-    return { success: true, data }
-  } catch (error) {
-    console.error('[ML Data Collection] Unexpected error:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }
-  }
+export async function getMLAIStatsAction(): Promise<MLCollectionResult> {
+  return guardedStats('ml_ai_stats', getMLAIStatsInternal)
 }

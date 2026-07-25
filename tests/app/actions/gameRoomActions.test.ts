@@ -15,9 +15,15 @@ import {
   setPlayerOnlineAction,
   startGameFromRoomAction,
 } from '@/app/actions/gameActions'
+import { AUTH_ERRORS } from '@/lib/constants'
 import type { GameRoom } from '@/types/game'
 
 // Mock all dependencies
+jest.mock('@/lib/cookies/sessionCookies', () => ({
+  getSessionCookie: jest.fn(),
+  isSessionValid: jest.fn(),
+}))
+
 jest.mock('@/lib/supabase/server', () => ({
   checkRateLimit: jest.fn(),
   supabaseAdmin: {
@@ -45,6 +51,7 @@ import {
   validateGameId,
   validatePlayerId,
 } from '@/lib/supabase/server'
+import { mockAuthenticatedSession } from '../../utils/sessionTestUtils'
 
 // Mock data creators
 const createMockRoom = (): Omit<GameRoom, 'createdAt'> => ({
@@ -69,6 +76,7 @@ const createMockRoomData = () => ({
 describe('Game Room Actions', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockAuthenticatedSession('player-1')
     jest.spyOn(console, 'error').mockImplementation()
     jest.spyOn(console, 'log').mockImplementation()
     jest.spyOn(console, 'warn').mockImplementation()
@@ -170,7 +178,9 @@ describe('Game Room Actions', () => {
   })
 
   describe('getGameRoomsAction', () => {
-    it('should get game rooms successfully without player ID', async () => {
+    it('should require an authenticated player ID', async () => {
+      ;(validatePlayerId as jest.Mock).mockReturnValue(false)
+
       const mockFrom = jest.fn().mockReturnValue({
         select: jest.fn().mockReturnValue({
           eq: jest.fn().mockReturnValue({
@@ -183,11 +193,10 @@ describe('Game Room Actions', () => {
       })
       ;(supabaseAdmin.from as jest.Mock).mockImplementation(mockFrom)
 
-      const result = await getGameRoomsAction()
+      const result = await getGameRoomsAction('')
 
-      expect(result.success).toBe(true)
-      expect(result.gameRooms).toHaveLength(1)
-      expect(result.gameRooms?.[0].name).toBe('Test Room')
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Invalid player ID')
     })
 
     it('should get game rooms successfully with player ID', async () => {
@@ -234,7 +243,10 @@ describe('Game Room Actions', () => {
       })
       ;(supabaseAdmin.from as jest.Mock).mockImplementation(mockFrom)
 
-      const result = await getGameRoomsAction()
+      ;(validatePlayerId as jest.Mock).mockReturnValue(true)
+      ;(checkRateLimit as jest.Mock).mockReturnValue(true)
+
+      const result = await getGameRoomsAction('player-1')
 
       expect(result.success).toBe(false)
       expect(result.error).toContain('Failed to get game rooms')
@@ -242,6 +254,10 @@ describe('Game Room Actions', () => {
   })
 
   describe('joinGameRoomAction', () => {
+    beforeEach(() => {
+      mockAuthenticatedSession('player-2')
+    })
+
     it('should join game room successfully', async () => {
       ;(validateGameId as jest.Mock).mockReturnValue(true)
       ;(validatePlayerId as jest.Mock).mockReturnValue(true)
@@ -575,32 +591,77 @@ describe('Game Room Actions', () => {
   })
 
   describe('getRoomDetailsAction', () => {
-    it('should get room details successfully', async () => {
-      ;(validateGameId as jest.Mock).mockReturnValue(true)
-
-      const mockFrom = jest.fn().mockReturnValue({
-        select: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({
-            single: jest.fn().mockResolvedValue({
-              data: createMockRoomData(),
-              error: null,
+    const mockRoomAndMembership = (playerRoomId: string | null) => {
+      const mockFrom = jest.fn().mockImplementation((table: string) => {
+        if (table === 'game_rooms') {
+          return {
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                single: jest.fn().mockResolvedValue({
+                  data: createMockRoomData(),
+                  error: null,
+                }),
+              }),
+            }),
+          }
+        }
+        return {
+          select: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({
+                data: { room_id: playerRoomId },
+                error: null,
+              }),
             }),
           }),
-        }),
+        }
       })
       ;(supabaseAdmin.from as jest.Mock).mockImplementation(mockFrom)
+    }
 
-      const result = await getRoomDetailsAction('room-1')
+    it('should get room details successfully for a room member', async () => {
+      ;(validateGameId as jest.Mock).mockReturnValue(true)
+      ;(validatePlayerId as jest.Mock).mockReturnValue(true)
+      ;(checkRateLimit as jest.Mock).mockReturnValue(true)
+      mockAuthenticatedSession('player-2')
+      mockRoomAndMembership('room-1')
+
+      const result = await getRoomDetailsAction('room-1', 'player-2')
 
       expect(result.success).toBe(true)
       expect(result.room).toBeDefined()
       expect(result.room?.name).toBe('Test Room')
     })
 
+    it('should reject a caller that is not a room member', async () => {
+      ;(validateGameId as jest.Mock).mockReturnValue(true)
+      ;(validatePlayerId as jest.Mock).mockReturnValue(true)
+      ;(checkRateLimit as jest.Mock).mockReturnValue(true)
+      mockAuthenticatedSession('outsider')
+      mockRoomAndMembership(null)
+
+      const result = await getRoomDetailsAction('room-1', 'outsider')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe(AUTH_ERRORS.NOT_A_ROOM_MEMBER)
+    })
+
+    it('should reject when the session belongs to another player', async () => {
+      ;(validateGameId as jest.Mock).mockReturnValue(true)
+      ;(validatePlayerId as jest.Mock).mockReturnValue(true)
+      ;(checkRateLimit as jest.Mock).mockReturnValue(true)
+      mockAuthenticatedSession('player-1')
+
+      const result = await getRoomDetailsAction('room-1', 'victim-player')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe(AUTH_ERRORS.FORBIDDEN_PLAYER)
+    })
+
     it('should return error when room ID invalid', async () => {
       ;(validateGameId as jest.Mock).mockReturnValue(false)
 
-      const result = await getRoomDetailsAction('invalid')
+      const result = await getRoomDetailsAction('invalid', 'player-1')
 
       expect(result.success).toBe(false)
       expect(result.error).toBe('Invalid room ID')

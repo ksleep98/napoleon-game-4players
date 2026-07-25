@@ -6,7 +6,7 @@ annotated-doc==0.0.4
     #   typer
 annotated-types==0.7.0
     # via pydantic
-anyio==4.13.0
+anyio==4.14.2
     # via
     #   gradio
     #   httpx
@@ -20,7 +20,7 @@ certifi==2026.5.20
     # via
     #   httpcore
     #   httpx
-cffi==2.0.0 ; platform_python_implementation != 'PyPy'
+cffi==2.1.0 ; platform_python_implementation != 'PyPy'
     # via cryptography
 click==8.4.1
     # via
@@ -38,13 +38,13 @@ deprecation==2.1.0
     # via
     #   postgrest
     #   storage3
-fastapi==0.136.3
+fastapi==0.139.0
     # via
     #   gradio
     #   napoleon-ml-trainer
 filelock==3.29.0
     # via huggingface-hub
-fsspec==2026.4.0
+fsspec==2026.6.0
     # via
     #   gradio-client
     #   huggingface-hub
@@ -64,7 +64,7 @@ h2==4.3.0
     # via httpx
 hf-gradio==0.4.1
     # via gradio
-hf-xet==1.5.0 ; platform_machine == 'AMD64' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
+hf-xet==1.5.1 ; platform_machine == 'AMD64' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
     # via huggingface-hub
 hpack==4.1.0
     # via h2
@@ -151,7 +151,7 @@ pydantic==2.13.4
     #   realtime
     #   storage3
     #   supabase-auth
-pydantic-core==2.46.4
+pydantic-core==2.47.0
     # via pydantic
 pydub==0.25.1
     # via gradio
@@ -217,12 +217,12 @@ tomlkit==0.14.0
     # via gradio
 tqdm==4.67.3
     # via huggingface-hub
-typer==0.25.1
+typer==0.26.8
     # via
     #   gradio
     #   hf-gradio
     #   huggingface-hub
-typing-extensions==4.15.0
+typing-extensions==4.16.0
     # via
     #   fastapi
     #   gradio
@@ -236,9 +236,9 @@ typing-inspection==0.4.2
     # via
     #   fastapi
     #   pydantic
-tzdata==2026.2 ; sys_platform == 'emscripten' or sys_platform == 'win32'
+tzdata==2026.3 ; sys_platform == 'emscripten' or sys_platform == 'win32'
     # via pandas
-uvicorn==0.50.2
+uvicorn==0.51.0
     # via
     #   gradio
     #   napoleon-ml-trainer
@@ -246,7 +246,7 @@ uvloop==0.22.1 ; platform_python_implementation != 'PyPy' and sys_platform != 'c
     # via uvicorn
 watchfiles==1.2.0
     # via uvicorn
-wcwidth==0.7.0
+wcwidth==0.8.2
     # via prettytable
 websockets==15.0.1
     # via

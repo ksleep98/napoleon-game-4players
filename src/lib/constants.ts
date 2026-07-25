@@ -199,7 +199,18 @@ export const SESSION_ERRORS = {
   NOT_FOUND: 'Session not found',
   EXPIRED: 'Session expired',
   REQUIRED: 'Player ID and name are required',
+  INVALID_PLAYER_ID: 'Invalid player ID',
+  INVALID_PLAYER_NAME: 'Invalid player name',
+  RATE_LIMITED: 'Rate limit exceeded',
+  /** 既に他人が使っている playerId でセッションを作ろうとした */
+  PLAYER_ID_TAKEN: 'Player ID is already in use',
 } as const
+
+// セッション発行のレート制限
+export const SESSION_RATE_LIMIT = { MAX: 10, WINDOW_MS: 60000 } as const
+
+// プレイヤー名の最大長
+export const PLAYER_NAME_MAX_LENGTH = 50
 
 // Session duration in milliseconds (24 hours)
 export const SESSION_DURATION_MS = 86400000
@@ -219,6 +230,55 @@ export const GAME_ID_PREFIXES = {
 export const AI_GAME_DEFAULTS = {
   PLAYER_ID: 'player_1',
   PLAYER_NAME: 'You',
+} as const
+
+// 認可（Server Action）エラーメッセージ
+export const AUTH_ERRORS = {
+  SESSION_REQUIRED: 'Authentication required',
+  FORBIDDEN_PLAYER: 'Not authorized to act as this player',
+  NOT_A_PARTICIPANT: 'Not a participant of this game',
+  NOT_A_ROOM_MEMBER: 'Not a member of this room',
+} as const
+
+// 他プレイヤーの手札をマスクする際のダミーカード定義
+export const MASKED_CARD = {
+  ID_PREFIX: 'masked_',
+  HIDDEN_PILE_OWNER: 'hidden',
+  SUIT: 'spades',
+  RANK: 'A',
+  VALUE: 0,
+} as const
+
+// 機械学習データ収集のレート制限（Server Action 経由の呼び出しのみ）
+export const ML_RATE_LIMITS = {
+  RECORD_MOVE: { MAX: 120, WINDOW_MS: 60000 },
+  UPDATE_RESULT: { MAX: 20, WINDOW_MS: 60000 },
+  STATS: { MAX: 30, WINDOW_MS: 60000 },
+} as const
+
+// 機械学習データの入力検証エラーメッセージ
+export const ML_VALIDATION_ERRORS = {
+  INVALID_GAME_ID: 'Invalid game ID',
+  INVALID_PLAYER_ID: 'Invalid player ID',
+  INVALID_TRICK_NUMBER: 'Invalid trick number',
+  INVALID_CARD_COLLECTION: 'Invalid card collection',
+  INVALID_SELECTED_CARD: 'Invalid selected card',
+  INVALID_GAME_RESULT: 'Invalid game result',
+  INVALID_SCORES: 'Invalid player scores',
+} as const
+
+// 機械学習データの入力検証境界値
+export const ML_VALIDATION_LIMITS = {
+  MAX_TRICK_NUMBER: 20,
+  MAX_HAND_SIZE: 16,
+  MAX_TABLE_CARDS: 4,
+  MAX_SCORE_ENTRIES: 8,
+} as const
+
+// 機械学習データのゲーム結果ラベル
+export const ML_GAME_RESULTS = {
+  NAPOLEON_WIN: 'napoleon_win',
+  ALLIED_WIN: 'allied_win',
 } as const
 
 // Jokerを除外した52枚のトランプカードデッキを生成（スペード・ハート・ダイヤ・クラブ各13枚）

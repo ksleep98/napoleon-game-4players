@@ -32,7 +32,6 @@ jest.mock('next/cache', () => ({
   revalidatePath: jest.fn(),
 }))
 
-import { getSessionCookie, isSessionValid } from '@/lib/cookies/sessionCookies'
 // Import mocked functions
 import {
   checkRateLimit,
@@ -40,6 +39,7 @@ import {
   validateGameId,
   validatePlayerId,
 } from '@/lib/supabase/server'
+import { mockAuthenticatedSession } from '../../utils/sessionTestUtils'
 
 // Mock data creators
 const createGameState = (): GameState => ({
@@ -79,6 +79,7 @@ const createGameResult = (): GameResult => ({
 describe('Core Game Actions', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockAuthenticatedSession('player-1')
     jest.spyOn(console, 'error').mockImplementation()
     jest.spyOn(console, 'log').mockImplementation()
     jest.spyOn(console, 'warn').mockImplementation()
@@ -274,6 +275,9 @@ describe('Core Game Actions', () => {
         }),
       })
       ;(supabaseAdmin.from as jest.Mock).mockImplementation(mockFrom)
+
+      // 認証済みだがゲームに参加していないプレイヤー
+      mockAuthenticatedSession('player-999')
 
       const result = await loadGameStateAction('test-game', 'player-999')
 

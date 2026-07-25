@@ -1,34 +1,27 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { usePlayerSession } from '@/hooks/useSupabase'
 
 export default function ResetSessionPage() {
   const router = useRouter()
   const [status, setStatus] = useState<'idle' | 'resetting' | 'done'>('idle')
-  const [sessionData, setSessionData] = useState<{
-    playerId: string | null
-    playerName: string | null
-  }>({ playerId: null, playerName: null })
 
-  // セッション情報を読み込み
-  useEffect(() => {
-    const playerId = localStorage.getItem('playerId')
-    const playerName = localStorage.getItem('playerName')
-    setSessionData({ playerId, playerName })
-  }, [])
+  // Phase 5: httpOnlyクッキーのセッションのみを信頼する（localStorage廃止）
+  const { playerName, isAuthenticated, clearPlayer } = usePlayerSession()
 
-  const handleReset = () => {
+  const handleReset = async () => {
     setStatus('resetting')
 
-    // LocalStorageをクリア
-    localStorage.clear()
+    try {
+      // httpOnlyクッキーのセッションを破棄（localStorageには何も保持していない）
+      await clearPlayer()
+    } catch (error) {
+      console.error('Failed to clear session:', error)
+    }
 
-    // アニメーション効果のため少し待機
-    setTimeout(() => {
-      setStatus('done')
-      setSessionData({ playerId: null, playerName: null })
-    }, 500)
+    setStatus('done')
   }
 
   const handleGoHome = () => {
@@ -58,24 +51,15 @@ export default function ResetSessionPage() {
             <h2 className="text-lg font-semibold text-gray-700 mb-4">
               現在のセッション情報
             </h2>
-            {sessionData.playerId || sessionData.playerName ? (
+            {isAuthenticated ? (
               <div className="space-y-2">
-                {sessionData.playerName && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-600">👤 プレイヤー名:</span>
-                    <code className="bg-blue-100 text-blue-800 px-3 py-1 rounded">
-                      {sessionData.playerName}
-                    </code>
-                  </div>
-                )}
-                {sessionData.playerId && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-600">🔑 プレイヤーID:</span>
-                    <code className="bg-purple-100 text-purple-800 px-3 py-1 rounded text-xs">
-                      {sessionData.playerId}
-                    </code>
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-600">👤 プレイヤー名:</span>
+                  <code className="bg-blue-100 text-blue-800 px-3 py-1 rounded">
+                    {playerName ?? '(未設定)'}
+                  </code>
+                </div>
+                {/* F-2: プレイヤーIDは画面に描画しない */}
               </div>
             ) : (
               <p className="text-gray-500 italic">
@@ -105,20 +89,17 @@ export default function ResetSessionPage() {
           )}
 
           {/* Reset Warning */}
-          {status === 'idle' &&
-            (sessionData.playerId || sessionData.playerName) && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-                <h3 className="font-semibold text-amber-800 mb-2">
-                  ⚠️ 注意事項
-                </h3>
-                <ul className="text-amber-700 text-sm space-y-1 list-disc list-inside">
-                  <li>保存されたプレイヤー情報が削除されます</li>
-                  <li>参加中のルームから自動的に退出されます</li>
-                  <li>ホストの場合、ルームは保持されますが再参加が必要です</li>
-                  <li>リセット後は新しいプレイヤーIDが発行されます</li>
-                </ul>
-              </div>
-            )}
+          {status === 'idle' && isAuthenticated && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+              <h3 className="font-semibold text-amber-800 mb-2">⚠️ 注意事項</h3>
+              <ul className="text-amber-700 text-sm space-y-1 list-disc list-inside">
+                <li>保存されたプレイヤー情報が削除されます</li>
+                <li>参加中のルームから自動的に退出されます</li>
+                <li>ホストの場合、ルームは保持されますが再参加が必要です</li>
+                <li>リセット後は新しいプレイヤーIDが発行されます</li>
+              </ul>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="space-y-3">
