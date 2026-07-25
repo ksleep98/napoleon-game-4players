@@ -149,6 +149,13 @@ export const GAME_PHASES = {
   FINISHED: 'finished',
 } as const
 
+// Node.js 実行環境（文字列リテラル直書きを避けるため定数化）
+export const NODE_ENVIRONMENTS = {
+  DEVELOPMENT: 'development',
+  TEST: 'test',
+  PRODUCTION: 'production',
+} as const
+
 // Player roles
 export const PLAYER_ROLES = {
   NAPOLEON: 'Napoleon',

@@ -9,6 +9,7 @@ import {
   initializeAIGame,
   initializeGame,
   passNapoleonDeclaration,
+  redealCards,
   setAdjutant,
 } from '@/lib/gameLogic'
 import type { Card, GameState, NapoleonDeclaration, Trick } from '@/types/game'
@@ -163,6 +164,99 @@ describe('Game Logic', () => {
         expect(() => {
           declareNapoleon(gameState, invalidDeclaration)
         }).toThrow('Invalid Napoleon declaration')
+      })
+    })
+
+    /**
+     * trumpSuit は AI 評価層 (strategicCardEvaluator / strategies/*) が
+     * 直接参照する。未設定だと `|| 'spades'` のフォールバックで宣言スートに
+     * 関係なく「切り札 = スペード」として思考してしまうため、宣言確定時に
+     * 必ず設定されていることを保証する。
+     */
+    describe('trumpSuit propagation', () => {
+      it('should set trumpSuit from the declared suit', () => {
+        const declaration: NapoleonDeclaration = {
+          playerId: gameState.players[0].id,
+          targetTricks: 14,
+          suit: SUIT_ENUM.HEARTS,
+        }
+
+        const updatedState = declareNapoleon(gameState, declaration)
+
+        expect(updatedState.trumpSuit).toBe(SUIT_ENUM.HEARTS)
+      })
+
+      it('should update trumpSuit when a higher declaration overrides it', () => {
+        const first = declareNapoleon(gameState, {
+          playerId: gameState.players[0].id,
+          targetTricks: 14,
+          suit: SUIT_ENUM.HEARTS,
+        })
+        expect(first.trumpSuit).toBe(SUIT_ENUM.HEARTS)
+
+        const second = declareNapoleon(first, {
+          playerId: gameState.players[1].id,
+          targetTricks: 15,
+          suit: SUIT_ENUM.DIAMONDS,
+        })
+
+        expect(second.trumpSuit).toBe(SUIT_ENUM.DIAMONDS)
+      })
+
+      it('should keep trumpSuit through the adjutant and exchange phases', () => {
+        const declaration: NapoleonDeclaration = {
+          playerId: gameState.players[0].id,
+          targetTricks: 14,
+          suit: SUIT_ENUM.CLUBS,
+        }
+        const napoleonState = declareNapoleon(gameState, declaration)
+
+        const adjutantCard = gameState.players[1].hand[0]
+        const adjutantState = setAdjutant(
+          { ...napoleonState, phase: GAME_PHASES.ADJUTANT },
+          adjutantCard
+        )
+        expect(adjutantState.trumpSuit).toBe(SUIT_ENUM.CLUBS)
+
+        const napoleonPlayer = adjutantState.players.find((p) => p.isNapoleon)
+        const cardsToDiscard = (napoleonPlayer?.hand ?? []).slice(0, 4)
+        const playingState = exchangeCards(
+          adjutantState,
+          gameState.players[0].id,
+          cardsToDiscard
+        )
+
+        expect(playingState.phase).toBe(GAME_PHASES.PLAYING)
+        expect(playingState.trumpSuit).toBe(SUIT_ENUM.CLUBS)
+      })
+
+      it('should survive a JSON round trip (games.state jsonb column)', () => {
+        const declaration: NapoleonDeclaration = {
+          playerId: gameState.players[0].id,
+          targetTricks: 14,
+          suit: SUIT_ENUM.DIAMONDS,
+        }
+        const updatedState = declareNapoleon(gameState, declaration)
+
+        // Supabase の games テーブルは GameState をまるごと jsonb に保存する
+        const restored = JSON.parse(JSON.stringify(updatedState)) as GameState
+
+        expect(restored.trumpSuit).toBe(SUIT_ENUM.DIAMONDS)
+        expect(restored.napoleonDeclaration?.suit).toBe(SUIT_ENUM.DIAMONDS)
+      })
+
+      it('should clear trumpSuit on redeal', () => {
+        const declaration: NapoleonDeclaration = {
+          playerId: gameState.players[0].id,
+          targetTricks: 14,
+          suit: SUIT_ENUM.HEARTS,
+        }
+        const declared = declareNapoleon(gameState, declaration)
+
+        const redealt = redealCards({ ...declared, needsRedeal: true })
+
+        expect(redealt.trumpSuit).toBeUndefined()
+        expect(redealt.napoleonDeclaration).toBeUndefined()
       })
     })
   })
