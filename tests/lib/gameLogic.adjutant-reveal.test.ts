@@ -28,6 +28,17 @@ describe('Adjutant Card Reveal Feature', () => {
       throw new Error('Napoleon player not found')
     }
 
+    // initializeGame はデッキをシャッフルして配るため、その手札に testDeck の
+    // カードを継ぎ足すと同じ id のカードが手札に 2 枚並びうる。playCard は id で
+    // カードを探すので、wasHidden の付いていない方を掴むとテストが間欠的に落ちる。
+    // 配札そのものを testDeck の重複しないスライスで決定的に置き換える。
+    const deckWithoutAdjutant = testDeck.filter(
+      (card) => card.id !== adjutantCard?.id
+    )
+    gameState.players.forEach((player, index) => {
+      player.hand = deckWithoutAdjutant.slice(index * 12, index * 12 + 12)
+    })
+
     gameState.napoleonDeclaration = {
       playerId: napoleon.id,
       targetTricks: 13,
@@ -35,21 +46,18 @@ describe('Adjutant Card Reveal Feature', () => {
       adjutantCard: adjutantCard as Card,
     }
 
-    // Put the adjutant card in hidden cards to simulate the scenario
+    // Put the adjutant card in hidden cards to simulate the scenario.
+    // 残り 3 枚は誰の手札にも配られていない末尾から取る。
     gameState.hiddenCards = [
       adjutantCard as Card,
-      testDeck[1],
-      testDeck[2],
-      testDeck[3],
+      ...deckWithoutAdjutant.slice(48, 51),
     ]
 
     // Add hidden cards to Napoleon's hand (simulating the exchange phase)
-    if (napoleon) {
-      napoleon.hand = [
-        ...napoleon.hand.slice(0, 8), // Keep some original cards
-        ...gameState.hiddenCards.map((card) => ({ ...card, wasHidden: true })),
-      ]
-    }
+    napoleon.hand = [
+      ...napoleon.hand.slice(0, 8), // Keep some original cards
+      ...gameState.hiddenCards.map((card) => ({ ...card, wasHidden: true })),
+    ]
 
     // Set to playing phase
     gameState.phase = GAME_PHASES.PLAYING
@@ -156,11 +164,15 @@ describe('Adjutant Card Reveal Feature', () => {
           adjutantCard: testAdjutantCard,
         }
 
-        // Give Napoleon the adjutant card in original hand (no wasHidden flag)
+        // Give Napoleon the adjutant card in original hand (no wasHidden flag).
+        // beforeEach と同様に、配札を testDeck の決定的なスライスへ置き換えて
+        // 副官カードの id が手札に重複しないようにする。
         const adjutantCardNotHidden = { ...testAdjutantCard }
 
         napoleonClean.hand = [
-          ...napoleonClean.hand.slice(0, 8),
+          ...testDeck
+            .filter((card) => card.id !== testAdjutantCard.id)
+            .slice(0, 8),
           adjutantCardNotHidden,
         ]
 
