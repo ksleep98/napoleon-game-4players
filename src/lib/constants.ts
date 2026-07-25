@@ -156,6 +156,11 @@ export const PLAYER_ROLES = {
   CITIZEN: 'Citizen',
 } as const
 
+// 副官「指定カード」のラベル
+// 公開情報である「どのカードが指定されたか」を指す。
+// 秘匿情報である「誰が副官か」と取り違えられないよう、必ず Card を明記する
+export const ADJUTANT_CARD_LABEL = `${PLAYER_ROLES.ADJUTANT} Card`
+
 export const GAME_CONFIG = {
   PLAYERS_COUNT: 4,
   CARDS_PER_PLAYER: 12, // 52枚（Joker除外）から4人に12枚ずつ配って残り4枚
