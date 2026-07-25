@@ -6,12 +6,17 @@
  * 枚数は保持するため、`hand.length` に依存する UI（OpponentHand /
  * GameBoard / scoring の cardsInHand）はそのまま動作する。
  *
+ * さらに副官の正体（`isAdjutant`）も、副官指定カードが場に出るまでは
+ * 閲覧者本人以外について false へ落とす。UI 側でガードしても
+ * レスポンスに残っていれば DevTools から丸見えになるため。
+ *
  * AI の思考はすべてサーバーサイド（processAITurn / processAIPlayingPhase）で
  * 行われ、DB から読み直した未マスクの状態を使うため、マスキングの影響を受けない。
  */
 
 import { MASKED_CARD } from '@/lib/constants'
 import type { Card, GameState } from '@/types/game'
+import { isAdjutantIdentityPublic } from '@/utils/gameUtils'
 
 function createMaskedCard(ownerKey: string, index: number): Card {
   return {
@@ -27,7 +32,7 @@ function maskCards(cards: Card[], ownerKey: string): Card[] {
 }
 
 /**
- * 閲覧者以外の手札・伏せ札をマスクしたゲーム状態を返す
+ * 閲覧者以外の手札・伏せ札・副官の正体をマスクしたゲーム状態を返す
  * @param gameState 未マスクのゲーム状態
  * @param viewerPlayerId 閲覧者（認証済みプレイヤー）のID
  */
@@ -35,12 +40,19 @@ export function maskGameStateForPlayer(
   gameState: GameState,
   viewerPlayerId: string
 ): GameState {
+  const adjutantIsPublic = isAdjutantIdentityPublic(gameState)
+
   return {
     ...gameState,
     players: gameState.players.map((player) =>
       player.id === viewerPlayerId
         ? player
-        : { ...player, hand: maskCards(player.hand, player.id) }
+        : {
+            ...player,
+            hand: maskCards(player.hand, player.id),
+            // 副官本人以外には、公開されるまで副官フラグを渡さない
+            isAdjutant: adjutantIsPublic ? player.isAdjutant : false,
+          }
     ),
     hiddenCards: maskCards(
       gameState.hiddenCards,

@@ -13,9 +13,19 @@ interface TrickResultProps {
     isAdjutant?: boolean
   }>
   onContinue: () => void
+  /** 副官指定カードが場に出て正体が公開済みかどうか */
+  isAdjutantRevealed?: boolean
+  /** 閲覧者のプレイヤーID（自分の正体は常に見える） */
+  currentPlayerId?: string | null
 }
 
-export function TrickResult({ trick, players, onContinue }: TrickResultProps) {
+export function TrickResult({
+  trick,
+  players,
+  onContinue,
+  isAdjutantRevealed = false,
+  currentPlayerId,
+}: TrickResultProps) {
   const [isClosing, setIsClosing] = useState(false)
 
   if (!trick.completed || !trick.winnerPlayerId) {
@@ -24,6 +34,11 @@ export function TrickResult({ trick, players, onContinue }: TrickResultProps) {
 
   const winner = players.find((p) => p.id === trick.winnerPlayerId)
   const faceCardsInPhase = trick.cards.filter((pc) => isFaceCard(pc.card))
+
+  // 副官の正体は公開されるまで隠す（自分自身の正体は常に表示）
+  const showWinnerAdjutantBadge =
+    Boolean(winner?.isAdjutant) &&
+    (isAdjutantRevealed || winner?.id === currentPlayerId)
 
   const getCardDisplay = (playedCard: PlayedCard) => {
     const card = playedCard.card
@@ -56,7 +71,7 @@ export function TrickResult({ trick, players, onContinue }: TrickResultProps) {
               <div className="text-sm md:text-base font-bold text-blue-700 truncate">
                 {winner?.name}
                 {winner?.isNapoleon && ' 👑'}
-                {winner?.isAdjutant && ' ⚔️'}
+                {showWinnerAdjutantBadge && ' ⚔️'}
               </div>
             </div>
             <div className="flex-shrink-0 ml-2">
