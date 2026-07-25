@@ -12,6 +12,7 @@ import {
   getPlayerStats,
 } from '@/lib/scoring'
 import type { GameState } from '@/types/game'
+import { ADJUTANT_BADGE_TONES, AdjutantCardBadge } from './AdjutantCardBadge'
 
 interface GameStatusProps {
   gameState: GameState
@@ -98,6 +99,15 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
                 Declared by: {napoleonPlayer?.name}
               </span>
             </div>
+            {/* 副官「指定カード」は宣言時に全員へ告げられる公開情報 */}
+            {gameState.napoleonCard && (
+              <div className="flex justify-center mt-2 pt-2 border-t border-yellow-200">
+                <AdjutantCardBadge
+                  card={gameState.napoleonCard}
+                  tone={ADJUTANT_BADGE_TONES.LIGHT}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}
