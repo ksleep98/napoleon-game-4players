@@ -4,7 +4,7 @@
 
 import { GAME_PHASES, MASKED_CARD } from '@/lib/constants'
 import { maskGameStateForPlayer } from '@/lib/game/maskGameState'
-import type { Card, GameState, Player } from '@/types/game'
+import type { Card, GameState, PlayedCard, Player, Trick } from '@/types/game'
 
 const createCard = (id: string, rank: Card['rank']): Card => ({
   id,
@@ -12,6 +12,9 @@ const createCard = (id: string, rank: Card['rank']): Card => ({
   rank,
   value: 10,
 })
+
+/** 副官指定カード（ナポレオンが宣言時に指定した公開情報） */
+const adjutantDesignationCard = createCard('adjutant-card', 'A')
 
 const createPlayer = (id: string, hand: Card[]): Player => ({
   id,
@@ -23,7 +26,7 @@ const createPlayer = (id: string, hand: Card[]): Player => ({
   isAI: false,
 })
 
-const createGameState = (): GameState => ({
+const createGameState = (overrides: Partial<GameState> = {}): GameState => ({
   id: 'test-game',
   players: [
     createPlayer('me', [createCard('c1', 'A'), createCard('c2', 'K')]),
@@ -41,6 +44,30 @@ const createGameState = (): GameState => ({
   needsRedeal: false,
   createdAt: new Date(),
   updatedAt: new Date(),
+  ...overrides,
+})
+
+/** 副官が 'other'、ナポレオンが 'me' の状態を作る */
+const createAdjutantGameState = (
+  overrides: Partial<GameState> = {}
+): GameState => {
+  const base = createGameState(overrides)
+  return {
+    ...base,
+    players: base.players.map((player) =>
+      player.id === 'other'
+        ? { ...player, isAdjutant: true }
+        : { ...player, isNapoleon: player.id === 'me' }
+    ),
+    napoleonCard: adjutantDesignationCard,
+  }
+}
+
+const createCompletedTrick = (cards: PlayedCard[]): Trick => ({
+  id: 'trick-played',
+  cards,
+  completed: true,
+  winnerPlayerId: cards[0]?.playerId,
 })
 
 describe('maskGameStateForPlayer', () => {
@@ -94,5 +121,117 @@ describe('maskGameStateForPlayer', () => {
         expect(card.id.startsWith(MASKED_CARD.ID_PREFIX)).toBe(true)
       }
     }
+  })
+})
+
+describe('maskGameStateForPlayer - adjutant identity', () => {
+  describe('before the adjutant designation card is played', () => {
+    it('hides another player isAdjutant flag', () => {
+      const masked = maskGameStateForPlayer(createAdjutantGameState(), 'me')
+      const other = masked.players.find((p) => p.id === 'other')
+
+      expect(other?.isAdjutant).toBe(false)
+    })
+
+    it('does not leak the adjutant flag anywhere in the payload', () => {
+      const masked = maskGameStateForPlayer(createAdjutantGameState(), 'me')
+
+      expect(JSON.stringify(masked)).not.toContain('"isAdjutant":true')
+    })
+
+    it('hides the adjutant from Napoleon as well', () => {
+      const state = createAdjutantGameState()
+      const napoleon = state.players.find((p) => p.isNapoleon)
+      const masked = maskGameStateForPlayer(state, napoleon?.id ?? '')
+
+      expect(masked.players.find((p) => p.id === 'other')?.isAdjutant).toBe(
+        false
+      )
+    })
+
+    it('keeps the adjutant own flag visible to themselves', () => {
+      const masked = maskGameStateForPlayer(createAdjutantGameState(), 'other')
+      const me = masked.players.find((p) => p.id === 'other')
+
+      expect(me?.isAdjutant).toBe(true)
+    })
+
+    it('does not mutate the original (server side) state', () => {
+      const original = createAdjutantGameState()
+      maskGameStateForPlayer(original, 'me')
+
+      expect(original.players.find((p) => p.id === 'other')?.isAdjutant).toBe(
+        true
+      )
+    })
+
+    it('keeps the public isNapoleon flag untouched', () => {
+      const masked = maskGameStateForPlayer(createAdjutantGameState(), 'other')
+
+      expect(masked.players.find((p) => p.id === 'me')?.isNapoleon).toBe(true)
+    })
+  })
+
+  describe('after the adjutant is revealed', () => {
+    it('exposes isAdjutant once the designation card is in a completed trick', () => {
+      const state = createAdjutantGameState({
+        tricks: [
+          createCompletedTrick([
+            { card: adjutantDesignationCard, playerId: 'other', order: 0 },
+          ]),
+        ],
+      })
+      const masked = maskGameStateForPlayer(state, 'me')
+
+      expect(masked.players.find((p) => p.id === 'other')?.isAdjutant).toBe(
+        true
+      )
+    })
+
+    it('exposes isAdjutant when Napoleon played it from the hidden cards (revealsAdjutant)', () => {
+      const revealingCard: PlayedCard = {
+        card: adjutantDesignationCard,
+        playerId: 'me',
+        order: 0,
+        revealsAdjutant: true,
+      }
+      const state = createAdjutantGameState({
+        currentTrick: {
+          id: 'trick-1',
+          cards: [revealingCard],
+          completed: false,
+        },
+      })
+      const masked = maskGameStateForPlayer(state, 'me')
+
+      expect(masked.players.find((p) => p.id === 'other')?.isAdjutant).toBe(
+        true
+      )
+    })
+
+    it('exposes isAdjutant when the game is finished', () => {
+      const state = createAdjutantGameState({ phase: GAME_PHASES.FINISHED })
+      const masked = maskGameStateForPlayer(state, 'me')
+
+      expect(masked.players.find((p) => p.id === 'other')?.isAdjutant).toBe(
+        true
+      )
+    })
+
+    it('still masks other players hands after the reveal', () => {
+      const state = createAdjutantGameState({
+        tricks: [
+          createCompletedTrick([
+            { card: adjutantDesignationCard, playerId: 'other', order: 0 },
+          ]),
+        ],
+      })
+      const masked = maskGameStateForPlayer(state, 'me')
+      const other = masked.players.find((p) => p.id === 'other')
+
+      for (const card of other?.hand ?? []) {
+        expect(card.id.startsWith(MASKED_CARD.ID_PREFIX)).toBe(true)
+      }
+    })
   })
 })
