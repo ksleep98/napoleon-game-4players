@@ -762,11 +762,6 @@ export async function validateSessionAction(
     // 🔒 認可: 他人のセッション状態を問い合わせられないようにする
     await requireSessionOwner(playerId)
 
-    // CI環境ではSupabase接続をスキップ
-    if (process.env.CI === 'true') {
-      return { success: true, valid: true }
-    }
-
     // レート制限チェック
     if (!checkRateLimit(`validate_session_${playerId}`, 30, 60000)) {
       throw new GameActionError('Rate limit exceeded', 'RATE_LIMIT_EXCEEDED')
