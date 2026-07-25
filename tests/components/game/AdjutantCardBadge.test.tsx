@@ -1,9 +1,10 @@
 import { render, screen } from '@testing-library/react'
 import {
+  ADJUTANT_BADGE_SUIT_LABELS,
   ADJUTANT_BADGE_TONES,
   AdjutantCardBadge,
 } from '@/components/game/AdjutantCardBadge'
-import { ADJUTANT_CARD_LABEL, SUIT_SYMBOLS } from '@/lib/constants'
+import { ADJUTANT_CARD_LABEL, SUIT_NAMES, SUIT_SYMBOLS } from '@/lib/constants'
 import type { Card } from '@/types/game'
 
 const heartsAce: Card = {
@@ -61,5 +62,47 @@ describe('AdjutantCardBadge', () => {
     )
 
     expect(container.firstElementChild?.className).toContain('bg-yellow-100')
+  })
+
+  it('uses the English suit name by default (HUD wording)', () => {
+    render(<AdjutantCardBadge card={heartsAce} />)
+
+    expect(
+      screen.getByText(`${heartsAce.rank} ${heartsAce.suit}`)
+    ).toBeVisible()
+    expect(
+      screen.queryByText(`${heartsAce.rank} ${SUIT_NAMES.hearts}`)
+    ).not.toBeInTheDocument()
+  })
+
+  it('uses the Japanese suit name when asked (declaration panel wording)', () => {
+    render(
+      <AdjutantCardBadge
+        card={heartsAce}
+        tone={ADJUTANT_BADGE_TONES.LIGHT}
+        suitLabel={ADJUTANT_BADGE_SUIT_LABELS.JA}
+      />
+    )
+
+    // 宣言パネルの切り札表示（SUIT_NAMES）と同じ表記に揃える
+    expect(
+      screen.getByText(`${heartsAce.rank} ${SUIT_NAMES.hearts}`)
+    ).toBeVisible()
+    expect(
+      screen.queryByText(`${heartsAce.rank} ${heartsAce.suit}`)
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps the rank untranslated in the Japanese wording', () => {
+    render(
+      <AdjutantCardBadge
+        card={clubsTen}
+        suitLabel={ADJUTANT_BADGE_SUIT_LABELS.JA}
+      />
+    )
+
+    expect(
+      screen.getByText(`${clubsTen.rank} ${SUIT_NAMES.clubs}`)
+    ).toBeVisible()
   })
 })

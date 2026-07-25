@@ -2,7 +2,11 @@
 
 import { SUIT_DISPLAY_COLORS, SUIT_NAMES } from '@/lib/constants'
 import type { NapoleonDeclaration, Suit } from '@/types/game'
-import { ADJUTANT_BADGE_TONES, AdjutantCardBadge } from './AdjutantCardBadge'
+import {
+  ADJUTANT_BADGE_SUIT_LABELS,
+  ADJUTANT_BADGE_TONES,
+  AdjutantCardBadge,
+} from './AdjutantCardBadge'
 
 interface DeclarationDisplayProps {
   declaration: NapoleonDeclaration
@@ -51,6 +55,7 @@ export function DeclarationDisplay({
             <AdjutantCardBadge
               card={declaration.adjutantCard}
               tone={ADJUTANT_BADGE_TONES.LIGHT}
+              suitLabel={ADJUTANT_BADGE_SUIT_LABELS.JA}
             />
           </div>
         )}

@@ -1,7 +1,7 @@
 'use client'
 
 import { memo } from 'react'
-import { ADJUTANT_CARD_LABEL } from '@/lib/constants'
+import { ADJUTANT_CARD_LABEL, SUIT_NAMES } from '@/lib/constants'
 import type { Card as CardType } from '@/types/game'
 import { Card } from './Card'
 
@@ -41,19 +41,38 @@ const TONE_STYLES = {
   },
 } as const
 
+/**
+ * スート名の表記
+ * - HUD は TRICK / TRUMP / Napoleon / Alliance と英語で統一されているため EN
+ * - 宣言パネルは切り札を SUIT_NAMES（「♠ スペード」）で出しているため JA
+ * ランク（A/K/Q/J/数字）は日本語圏でもそのまま通じるので和訳しない
+ */
+export const ADJUTANT_BADGE_SUIT_LABELS = {
+  EN: 'en',
+  JA: 'ja',
+} as const
+
+export type AdjutantBadgeSuitLabel =
+  (typeof ADJUTANT_BADGE_SUIT_LABELS)[keyof typeof ADJUTANT_BADGE_SUIT_LABELS]
+
 interface AdjutantCardBadgeProps {
   /** 副官指定カード（公開情報） */
   card: CardType
   tone?: AdjutantBadgeTone
+  suitLabel?: AdjutantBadgeSuitLabel
   className?: string
 }
 
 export const AdjutantCardBadge = memo(function AdjutantCardBadge({
   card,
   tone = ADJUTANT_BADGE_TONES.DARK,
+  suitLabel = ADJUTANT_BADGE_SUIT_LABELS.EN,
   className = '',
 }: AdjutantCardBadgeProps) {
   const toneStyles = TONE_STYLES[tone]
+  const isEnglishSuitLabel = suitLabel === ADJUTANT_BADGE_SUIT_LABELS.EN
+  // EN は enum 値をそのまま出し capitalize で整形、JA は SUIT_NAMES（記号 + 和名）
+  const suitText = isEnglishSuitLabel ? card.suit : SUIT_NAMES[card.suit]
 
   return (
     <div
@@ -66,9 +85,11 @@ export const AdjutantCardBadge = memo(function AdjutantCardBadge({
           {ADJUTANT_CARD_LABEL}
         </span>
         <span
-          className={`text-xs font-extrabold capitalize whitespace-nowrap ${toneStyles.value}`}
+          className={`text-xs font-extrabold whitespace-nowrap ${
+            isEnglishSuitLabel ? 'capitalize' : ''
+          } ${toneStyles.value}`}
         >
-          {`${card.rank} ${card.suit}`}
+          {`${card.rank} ${suitText}`}
         </span>
       </div>
       <Card card={card} size="tiny" />

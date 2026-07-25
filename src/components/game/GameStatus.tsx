@@ -12,7 +12,11 @@ import {
   getPlayerStats,
 } from '@/lib/scoring'
 import type { GameState } from '@/types/game'
-import { ADJUTANT_BADGE_TONES, AdjutantCardBadge } from './AdjutantCardBadge'
+import {
+  ADJUTANT_BADGE_SUIT_LABELS,
+  ADJUTANT_BADGE_TONES,
+  AdjutantCardBadge,
+} from './AdjutantCardBadge'
 
 interface GameStatusProps {
   gameState: GameState
@@ -105,6 +109,7 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
                 <AdjutantCardBadge
                   card={gameState.napoleonCard}
                   tone={ADJUTANT_BADGE_TONES.LIGHT}
+                  suitLabel={ADJUTANT_BADGE_SUIT_LABELS.JA}
                 />
               </div>
             )}
