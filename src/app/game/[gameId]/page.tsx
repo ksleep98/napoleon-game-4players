@@ -16,7 +16,10 @@ import { GAME_PHASES } from '@/lib/constants'
 import { getNextDeclarationPlayer } from '@/lib/napoleonRules'
 import { calculateGameResult, getPlayerFaceCardCount } from '@/lib/scoring'
 import type { Card as CardType, NapoleonDeclaration } from '@/types/game'
-import { checkAdjutantRevealed } from '@/utils/gameUtils'
+import {
+  checkAdjutantRevealed,
+  isAdjutantIdentityPublic,
+} from '@/utils/gameUtils'
 
 // 動的インポート - 初期バンドルサイズを削減
 const GameBoard = dynamic(
@@ -311,6 +314,8 @@ function GamePageContent() {
             trick={gameState.lastCompletedTrick}
             players={gameState.players}
             onContinue={() => actions.closeTrickResult()}
+            isAdjutantRevealed={isAdjutantIdentityPublic(gameState)}
+            currentPlayerId={currentPlayerId}
           />
         </div>
       )
@@ -511,6 +516,8 @@ function GamePageContent() {
             trick={gameState.lastCompletedTrick}
             players={gameState.players}
             onContinue={() => actions.closeTrickResult()}
+            isAdjutantRevealed={isAdjutantIdentityPublic(gameState)}
+            currentPlayerId={currentPlayerId}
           />
         )}
       </div>
