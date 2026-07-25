@@ -173,6 +173,8 @@ export function usePlayerSession() {
     playerName: null,
     isAuthenticated: false,
   })
+  // クッキーの初回読み込みが完了したか（セッション未確立との区別に必要）
+  const [isSessionLoaded, setIsSessionLoaded] = useState(false)
 
   useEffect(() => {
     const initializeSession = async () => {
@@ -191,6 +193,8 @@ export function usePlayerSession() {
         }
       } catch (error) {
         console.warn('Failed to initialize session:', error)
+      } finally {
+        setIsSessionLoaded(true)
       }
     }
 
@@ -245,6 +249,7 @@ export function usePlayerSession() {
     playerId: state.playerId,
     playerName: state.playerName,
     isAuthenticated: state.isAuthenticated,
+    isSessionLoaded,
     initializePlayer,
     clearPlayer,
   }

@@ -1,11 +1,17 @@
 'use server'
 
 import { processAIPlayingPhase } from '@/lib/ai/gameTricks'
+import {
+  assertCanActAsPlayer,
+  requireAuthenticatedPlayerId,
+} from '@/lib/auth/requireSessionOwner'
 import { GAME_PHASES } from '@/lib/constants'
 import {
   GAME_ACTION_ERROR_CODES,
   GameActionError,
 } from '@/lib/errors/GameActionError'
+import { requireGameState } from '@/lib/game/gameStateRepository'
+import { maskGameStateForPlayer } from '@/lib/game/maskGameState'
 import {
   closeTrickResult,
   declareNapoleon,
@@ -16,19 +22,50 @@ import {
   redealCards,
   setAdjutant,
 } from '@/lib/gameLogic'
+import { recordGameMove } from '@/lib/ml/dataCollection'
 import { extractMLTrainingData } from '@/lib/ml/dataExtractor'
+import { validateGameId } from '@/lib/supabase/server'
 import type { Card, GameState, NapoleonDeclaration } from '@/types/game'
-import {
-  loadGameStateAction,
-  saveGameStateAction,
-  validateSessionAction,
-} from './gameActions'
-import { recordGameMove } from './mlDataCollectionActions'
+import { saveGameStateAction } from './gameActions'
 
 export interface GameActionResult<T = GameState> {
   success: boolean
   data?: T
   error?: string
+}
+
+/**
+ * 共通の認可処理
+ *
+ * - 操作主体(actor)は httpOnly クッキーのセッションからのみ決まる
+ * - 引数の playerId は「操作対象」でしかなく、認証情報としては信頼しない
+ * - COM(AI) のターンは同じゲームの人間プレイヤーが代理で進める設計のため、
+ *   対象が同一ゲームの AI プレイヤーである場合に限り actor !== target を許可する
+ */
+async function authorizeGameAction(
+  gameId: string,
+  targetPlayerId: string
+): Promise<{ actorId: string; gameState: GameState }> {
+  if (!validateGameId(gameId)) {
+    throw new GameActionError(
+      'Invalid game ID',
+      GAME_ACTION_ERROR_CODES.INVALID_GAME_ID
+    )
+  }
+
+  const actorId = await requireAuthenticatedPlayerId()
+  const gameState = await requireGameState(gameId)
+
+  assertCanActAsPlayer(gameState, actorId, targetPlayerId)
+
+  return { actorId, gameState }
+}
+
+function toErrorResult(error: unknown): GameActionResult<never> {
+  return {
+    success: false,
+    error: error instanceof GameActionError ? error.message : 'Unknown error',
+  }
 }
 
 /**
@@ -40,35 +77,10 @@ export async function declareNapoleonAction(
   declaration: NapoleonDeclaration
 ): Promise<GameActionResult<GameState>> {
   try {
-    // セッション検証
-    const sessionValid = await validateSessionAction(playerId)
-    if (!sessionValid.success) {
-      throw new GameActionError(
-        'Invalid session',
-        GAME_ACTION_ERROR_CODES.UNAUTHORIZED
-      )
-    }
-
-    // 現在のゲーム状態を取得
-    console.log(
-      'Attempting to load game for Napoleon declaration - gameId:',
+    const { actorId, gameState: currentGameState } = await authorizeGameAction(
       gameId,
-      'playerId:',
       playerId
     )
-    const gameResult = await loadGameStateAction(gameId, playerId)
-    if (!gameResult.success || !gameResult.gameState) {
-      console.error(
-        'Failed to load game state for Napoleon declaration:',
-        gameResult.error
-      )
-      throw new GameActionError(
-        'Game not found',
-        GAME_ACTION_ERROR_CODES.NOT_FOUND
-      )
-    }
-
-    const currentGameState = gameResult.gameState
 
     // プレイヤーの存在確認
     const player = currentGameState.players.find((p) => p.id === playerId)
@@ -83,7 +95,7 @@ export async function declareNapoleonAction(
     const updatedGameState = declareNapoleon(currentGameState, declaration)
 
     // 状態保存
-    const saveResult = await saveGameStateAction(updatedGameState, playerId)
+    const saveResult = await saveGameStateAction(updatedGameState, actorId)
     if (!saveResult.success) {
       throw new GameActionError(
         'Failed to save game state',
@@ -93,14 +105,11 @@ export async function declareNapoleonAction(
 
     return {
       success: true,
-      data: updatedGameState,
+      data: maskGameStateForPlayer(updatedGameState, actorId),
     }
   } catch (error) {
     console.error('declareNapoleonAction failed:', error)
-    return {
-      success: false,
-      error: error instanceof GameActionError ? error.message : 'Unknown error',
-    }
+    return toErrorResult(error)
   }
 }
 
@@ -112,25 +121,10 @@ export async function passNapoleonAction(
   playerId: string
 ): Promise<GameActionResult<GameState>> {
   try {
-    // セッション検証
-    const sessionValid = await validateSessionAction(playerId)
-    if (!sessionValid.success) {
-      throw new GameActionError(
-        'Invalid session',
-        GAME_ACTION_ERROR_CODES.UNAUTHORIZED
-      )
-    }
-
-    // 現在のゲーム状態を取得
-    const gameResult = await loadGameStateAction(gameId, playerId)
-    if (!gameResult.success || !gameResult.gameState) {
-      throw new GameActionError(
-        'Game not found',
-        GAME_ACTION_ERROR_CODES.NOT_FOUND
-      )
-    }
-
-    const currentGameState = gameResult.gameState
+    const { actorId, gameState: currentGameState } = await authorizeGameAction(
+      gameId,
+      playerId
+    )
 
     // プレイヤーの存在確認
     const player = currentGameState.players.find((p) => p.id === playerId)
@@ -145,7 +139,7 @@ export async function passNapoleonAction(
     const updatedGameState = passNapoleonDeclaration(currentGameState, playerId)
 
     // 状態保存
-    const saveResult = await saveGameStateAction(updatedGameState, playerId)
+    const saveResult = await saveGameStateAction(updatedGameState, actorId)
     if (!saveResult.success) {
       throw new GameActionError(
         'Failed to save game state',
@@ -155,14 +149,11 @@ export async function passNapoleonAction(
 
     return {
       success: true,
-      data: updatedGameState,
+      data: maskGameStateForPlayer(updatedGameState, actorId),
     }
   } catch (error) {
     console.error('passNapoleonAction failed:', error)
-    return {
-      success: false,
-      error: error instanceof GameActionError ? error.message : 'Unknown error',
-    }
+    return toErrorResult(error)
   }
 }
 
@@ -174,25 +165,10 @@ export async function redealCardsAction(
   playerId: string
 ): Promise<GameActionResult<GameState>> {
   try {
-    // セッション検証
-    const sessionValid = await validateSessionAction(playerId)
-    if (!sessionValid.success) {
-      throw new GameActionError(
-        'Invalid session',
-        GAME_ACTION_ERROR_CODES.UNAUTHORIZED
-      )
-    }
-
-    // 現在のゲーム状態を取得
-    const gameResult = await loadGameStateAction(gameId, playerId)
-    if (!gameResult.success || !gameResult.gameState) {
-      throw new GameActionError(
-        'Game not found',
-        GAME_ACTION_ERROR_CODES.NOT_FOUND
-      )
-    }
-
-    const currentGameState = gameResult.gameState
+    const { actorId, gameState: currentGameState } = await authorizeGameAction(
+      gameId,
+      playerId
+    )
 
     // 配り直しが必要かチェック
     if (!currentGameState.needsRedeal) {
@@ -206,7 +182,7 @@ export async function redealCardsAction(
     const updatedGameState = redealCards(currentGameState)
 
     // 状態保存
-    const saveResult = await saveGameStateAction(updatedGameState, playerId)
+    const saveResult = await saveGameStateAction(updatedGameState, actorId)
     if (!saveResult.success) {
       throw new GameActionError(
         'Failed to save game state',
@@ -218,14 +194,11 @@ export async function redealCardsAction(
 
     return {
       success: true,
-      data: updatedGameState,
+      data: maskGameStateForPlayer(updatedGameState, actorId),
     }
   } catch (error) {
     console.error('redealCardsAction failed:', error)
-    return {
-      success: false,
-      error: error instanceof GameActionError ? error.message : 'Unknown error',
-    }
+    return toErrorResult(error)
   }
 }
 
@@ -238,25 +211,10 @@ export async function setAdjutantAction(
   adjutantCard: Card
 ): Promise<GameActionResult<GameState>> {
   try {
-    // セッション検証
-    const sessionValid = await validateSessionAction(playerId)
-    if (!sessionValid.success) {
-      throw new GameActionError(
-        'Invalid session',
-        GAME_ACTION_ERROR_CODES.UNAUTHORIZED
-      )
-    }
-
-    // 現在のゲーム状態を取得
-    const gameResult = await loadGameStateAction(gameId, playerId)
-    if (!gameResult.success || !gameResult.gameState) {
-      throw new GameActionError(
-        'Game not found',
-        GAME_ACTION_ERROR_CODES.NOT_FOUND
-      )
-    }
-
-    const currentGameState = gameResult.gameState
+    const { actorId, gameState: currentGameState } = await authorizeGameAction(
+      gameId,
+      playerId
+    )
 
     // プレイヤーの存在確認と権限チェック
     const player = currentGameState.players.find((p) => p.id === playerId)
@@ -279,7 +237,7 @@ export async function setAdjutantAction(
     const updatedGameState = setAdjutant(currentGameState, adjutantCard)
 
     // 状態保存
-    const saveResult = await saveGameStateAction(updatedGameState, playerId)
+    const saveResult = await saveGameStateAction(updatedGameState, actorId)
     if (!saveResult.success) {
       throw new GameActionError(
         'Failed to save game state',
@@ -289,14 +247,11 @@ export async function setAdjutantAction(
 
     return {
       success: true,
-      data: updatedGameState,
+      data: maskGameStateForPlayer(updatedGameState, actorId),
     }
   } catch (error) {
     console.error('setAdjutantAction failed:', error)
-    return {
-      success: false,
-      error: error instanceof GameActionError ? error.message : 'Unknown error',
-    }
+    return toErrorResult(error)
   }
 }
 
@@ -309,25 +264,10 @@ export async function exchangeCardsAction(
   cardsToDiscard: Card[]
 ): Promise<GameActionResult<GameState>> {
   try {
-    // セッション検証
-    const sessionValid = await validateSessionAction(playerId)
-    if (!sessionValid.success) {
-      throw new GameActionError(
-        'Invalid session',
-        GAME_ACTION_ERROR_CODES.UNAUTHORIZED
-      )
-    }
-
-    // 現在のゲーム状態を取得
-    const gameResult = await loadGameStateAction(gameId, playerId)
-    if (!gameResult.success || !gameResult.gameState) {
-      throw new GameActionError(
-        'Game not found',
-        GAME_ACTION_ERROR_CODES.NOT_FOUND
-      )
-    }
-
-    const currentGameState = gameResult.gameState
+    const { actorId, gameState: currentGameState } = await authorizeGameAction(
+      gameId,
+      playerId
+    )
 
     // プレイヤーの存在確認
     const player = currentGameState.players.find((p) => p.id === playerId)
@@ -354,7 +294,7 @@ export async function exchangeCardsAction(
     )
 
     // 状態保存
-    const saveResult = await saveGameStateAction(updatedGameState, playerId)
+    const saveResult = await saveGameStateAction(updatedGameState, actorId)
     if (!saveResult.success) {
       throw new GameActionError(
         'Failed to save game state',
@@ -364,14 +304,11 @@ export async function exchangeCardsAction(
 
     return {
       success: true,
-      data: updatedGameState,
+      data: maskGameStateForPlayer(updatedGameState, actorId),
     }
   } catch (error) {
     console.error('exchangeCardsAction failed:', error)
-    return {
-      success: false,
-      error: error instanceof GameActionError ? error.message : 'Unknown error',
-    }
+    return toErrorResult(error)
   }
 }
 
@@ -384,25 +321,10 @@ export async function playCardAction(
   cardId: string
 ): Promise<GameActionResult<GameState>> {
   try {
-    // セッション検証
-    const sessionValid = await validateSessionAction(playerId)
-    if (!sessionValid.success) {
-      throw new GameActionError(
-        'Invalid session',
-        GAME_ACTION_ERROR_CODES.UNAUTHORIZED
-      )
-    }
-
-    // 現在のゲーム状態を取得
-    const gameResult = await loadGameStateAction(gameId, playerId)
-    if (!gameResult.success || !gameResult.gameState) {
-      throw new GameActionError(
-        'Game not found',
-        GAME_ACTION_ERROR_CODES.NOT_FOUND
-      )
-    }
-
-    const currentGameState = gameResult.gameState
+    const { actorId, gameState: currentGameState } = await authorizeGameAction(
+      gameId,
+      playerId
+    )
 
     // プレイヤーの存在確認
     const player = currentGameState.players.find((p) => p.id === playerId)
@@ -457,7 +379,7 @@ export async function playCardAction(
     // これによりプレイヤーのモーダルが閉じるまでAIが待機する
 
     // 状態保存
-    const saveResult = await saveGameStateAction(updatedGameState, playerId)
+    const saveResult = await saveGameStateAction(updatedGameState, actorId)
     if (!saveResult.success) {
       throw new GameActionError(
         'Failed to save game state',
@@ -467,14 +389,11 @@ export async function playCardAction(
 
     return {
       success: true,
-      data: updatedGameState,
+      data: maskGameStateForPlayer(updatedGameState, actorId),
     }
   } catch (error) {
     console.error('playCardAction failed:', error)
-    return {
-      success: false,
-      error: error instanceof GameActionError ? error.message : 'Unknown error',
-    }
+    return toErrorResult(error)
   }
 }
 
@@ -486,34 +405,10 @@ export async function closeTrickResultAction(
   playerId: string
 ): Promise<GameActionResult<GameState>> {
   try {
-    // セッション検証
-    const sessionValid = await validateSessionAction(playerId)
-    if (!sessionValid.success) {
-      throw new GameActionError(
-        'Invalid session',
-        GAME_ACTION_ERROR_CODES.UNAUTHORIZED
-      )
-    }
-
-    // 現在のゲーム状態を取得
-    const gameResult = await loadGameStateAction(gameId, playerId)
-    if (!gameResult.success || !gameResult.gameState) {
-      throw new GameActionError(
-        'Game not found',
-        GAME_ACTION_ERROR_CODES.NOT_FOUND
-      )
-    }
-
-    const currentGameState = gameResult.gameState
-
-    // プレイヤーの存在確認
-    const player = currentGameState.players.find((p) => p.id === playerId)
-    if (!player) {
-      throw new GameActionError(
-        'Player not found in game',
-        GAME_ACTION_ERROR_CODES.NOT_FOUND
-      )
-    }
+    const { actorId, gameState: currentGameState } = await authorizeGameAction(
+      gameId,
+      playerId
+    )
 
     // ゲームロジック実行
     let updatedGameState = closeTrickResult(currentGameState)
@@ -528,7 +423,7 @@ export async function closeTrickResultAction(
     }
 
     // 状態保存
-    const saveResult = await saveGameStateAction(updatedGameState, playerId)
+    const saveResult = await saveGameStateAction(updatedGameState, actorId)
     if (!saveResult.success) {
       throw new GameActionError(
         'Failed to save game state',
@@ -538,13 +433,10 @@ export async function closeTrickResultAction(
 
     return {
       success: true,
-      data: updatedGameState,
+      data: maskGameStateForPlayer(updatedGameState, actorId),
     }
   } catch (error) {
     console.error('closeTrickResultAction failed:', error)
-    return {
-      success: false,
-      error: error instanceof GameActionError ? error.message : 'Unknown error',
-    }
+    return toErrorResult(error)
   }
 }

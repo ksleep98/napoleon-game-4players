@@ -8,15 +8,23 @@ import {
   selectAICardAction,
   simulateAIThinkingAction,
 } from '@/app/actions/aiStrategyActions'
-import { GAME_PHASES } from '@/lib/constants'
-import { GAME_ACTION_ERROR_CODES } from '@/lib/errors/GameActionError'
+import { AUTH_ERRORS, GAME_PHASES } from '@/lib/constants'
 import type { Card, GameState, Player } from '@/types/game'
 
 // Mock all dependencies
+jest.mock('@/lib/cookies/sessionCookies', () => ({
+  getSessionCookie: jest.fn(),
+  isSessionValid: jest.fn(),
+}))
+
+jest.mock('@/lib/game/gameStateRepository', () => ({
+  requireGameState: jest.fn(),
+  fetchGameState: jest.fn(),
+  GAME_NOT_FOUND_MESSAGE: 'Game not found',
+}))
+
 jest.mock('@/app/actions/gameActions', () => ({
-  loadGameStateAction: jest.fn(),
   saveGameStateAction: jest.fn(),
-  validateSessionAction: jest.fn(),
 }))
 
 jest.mock('@/lib/ai/strategicCardEvaluator', () => ({
@@ -37,18 +45,21 @@ jest.mock('@/lib/supabase/server', () => ({
 }))
 
 // Import mocked functions
-import {
-  loadGameStateAction,
-  saveGameStateAction,
-  validateSessionAction,
-} from '@/app/actions/gameActions'
+import { saveGameStateAction } from '@/app/actions/gameActions'
 import {
   evaluateCardStrategicValue,
   selectBestStrategicCard,
 } from '@/lib/ai/strategicCardEvaluator'
+import { GameActionError } from '@/lib/errors/GameActionError'
+import { requireGameState } from '@/lib/game/gameStateRepository'
+import { maskGameStateForPlayer } from '@/lib/game/maskGameState'
 import { processAITurn } from '@/lib/gameLogic'
 import { getNextDeclarationPlayer } from '@/lib/napoleonRules'
 import { validateGameId } from '@/lib/supabase/server'
+import {
+  mockAuthenticatedSession,
+  mockNoSession,
+} from '../../utils/sessionTestUtils'
 
 // Mock data creators
 const createCard = (
@@ -91,6 +102,9 @@ const createGameState = (players: Player[]): GameState => ({
 describe('AI Strategy Actions', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockAuthenticatedSession('p1')
+    // 既定で有効なゲームIDとして扱う（個別テストで上書きする）
+    ;(validateGameId as jest.Mock).mockReturnValue(true)
     jest.spyOn(console, 'error').mockImplementation()
     jest.spyOn(console, 'log').mockImplementation()
   })
@@ -103,16 +117,10 @@ describe('AI Strategy Actions', () => {
     it('should select AI card successfully', async () => {
       const card = createCard('spades', 'A', 14)
       const aiPlayer = createPlayer('ai-1', true, [card])
-      const gameState = createGameState([createPlayer('p1'), aiPlayer])
+      const gameState = createGameState([aiPlayer, createPlayer('p1')])
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
       ;(validateGameId as jest.Mock).mockReturnValue(true)
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(selectBestStrategicCard as jest.Mock).mockReturnValue(card)
 
       const result = await selectAICardAction('game-1', 'p1', 'ai-1')
@@ -127,20 +135,15 @@ describe('AI Strategy Actions', () => {
     })
 
     it('should return error when session invalid', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: false,
-      })
+      mockNoSession()
 
       const result = await selectAICardAction('game-1', 'p1', 'ai-1')
 
       expect(result.success).toBe(false)
-      expect(result.error).toBe('Invalid session')
+      expect(result.error).toBe(AUTH_ERRORS.SESSION_REQUIRED)
     })
 
     it('should return error when game ID invalid', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
       ;(validateGameId as jest.Mock).mockReturnValue(false)
 
       const result = await selectAICardAction('invalid', 'p1', 'ai-1')
@@ -150,13 +153,10 @@ describe('AI Strategy Actions', () => {
     })
 
     it('should return error when game not found', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
       ;(validateGameId as jest.Mock).mockReturnValue(true)
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: false,
-      })
+      ;(requireGameState as jest.Mock).mockRejectedValue(
+        new GameActionError('Game not found', 'NOT_FOUND')
+      )
 
       const result = await selectAICardAction('game-1', 'p1', 'ai-1')
 
@@ -167,14 +167,8 @@ describe('AI Strategy Actions', () => {
     it('should return error when AI player not found', async () => {
       const gameState = createGameState([createPlayer('p1')])
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
       ;(validateGameId as jest.Mock).mockReturnValue(true)
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
 
       const result = await selectAICardAction('game-1', 'p1', 'ai-1')
 
@@ -184,16 +178,10 @@ describe('AI Strategy Actions', () => {
 
     it('should return error when no playable card found', async () => {
       const aiPlayer = createPlayer('ai-1', true, [])
-      const gameState = createGameState([aiPlayer])
+      const gameState = createGameState([aiPlayer, createPlayer('p1')])
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
       ;(validateGameId as jest.Mock).mockReturnValue(true)
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(selectBestStrategicCard as jest.Mock).mockReturnValue(null)
 
       const result = await selectAICardAction('game-1', 'p1', 'ai-1')
@@ -206,23 +194,19 @@ describe('AI Strategy Actions', () => {
   describe('processAITurnAction', () => {
     it('should process AI turn successfully in PLAYING phase', async () => {
       const aiPlayer = createPlayer('ai-1', true)
-      const gameState = createGameState([aiPlayer])
+      const gameState = createGameState([aiPlayer, createPlayer('p1')])
       const updatedGameState = { ...gameState }
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(processAITurn as jest.Mock).mockResolvedValue(updatedGameState)
       ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: true })
 
       const result = await processAITurnAction('game-1', 'p1')
 
       expect(result.success).toBe(true)
-      expect(result.data).toEqual(updatedGameState)
+      expect(result.data).toEqual(
+        maskGameStateForPlayer(updatedGameState, 'p1')
+      )
       expect(processAITurn).toHaveBeenCalledWith(gameState)
       expect(saveGameStateAction).toHaveBeenCalledWith(updatedGameState, 'p1')
     })
@@ -230,18 +214,12 @@ describe('AI Strategy Actions', () => {
     it('should process AI turn in NAPOLEON phase', async () => {
       const aiPlayer = createPlayer('ai-1', true)
       const gameState = {
-        ...createGameState([aiPlayer]),
+        ...createGameState([aiPlayer, createPlayer('p1')]),
         phase: GAME_PHASES.NAPOLEON,
       }
       const updatedGameState = { ...gameState }
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(getNextDeclarationPlayer as jest.Mock).mockReturnValue(aiPlayer)
       ;(processAITurn as jest.Mock).mockResolvedValue(updatedGameState)
       ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: true })
@@ -253,27 +231,19 @@ describe('AI Strategy Actions', () => {
     })
 
     it('should return error when session invalid', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: false,
-      })
+      mockNoSession()
 
       const result = await processAITurnAction('game-1', 'p1')
 
       expect(result.success).toBe(false)
-      expect(result.error).toBe('Invalid session')
+      expect(result.error).toBe(AUTH_ERRORS.SESSION_REQUIRED)
     })
 
     it('should return error when not AI turn', async () => {
       const humanPlayer = createPlayer('p1', false)
       const gameState = createGameState([humanPlayer])
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
 
       const result = await processAITurnAction('game-1', 'p1')
 
@@ -283,16 +253,10 @@ describe('AI Strategy Actions', () => {
 
     it('should return error when save fails', async () => {
       const aiPlayer = createPlayer('ai-1', true)
-      const gameState = createGameState([aiPlayer])
+      const gameState = createGameState([aiPlayer, createPlayer('p1')])
       const updatedGameState = { ...gameState }
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(processAITurn as jest.Mock).mockResolvedValue(updatedGameState)
       ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: false })
 
@@ -312,13 +276,7 @@ describe('AI Strategy Actions', () => {
       ]
       const gameState = createGameState([createPlayer('p1')])
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(evaluateCardStrategicValue as jest.Mock)
         .mockReturnValueOnce(100)
         .mockReturnValueOnce(80)
@@ -355,23 +313,17 @@ describe('AI Strategy Actions', () => {
     })
 
     it('should return error when session invalid', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: false,
-      })
+      mockNoSession()
 
       const result = await evaluateAIStrategyAction('game-1', 'p1', [])
 
       expect(result.success).toBe(false)
-      expect(result.error).toBe('Invalid session')
+      expect(result.error).toBe(AUTH_ERRORS.SESSION_REQUIRED)
     })
   })
 
   describe('simulateAIThinkingAction', () => {
     it('should simulate simple AI thinking', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-
       const result = await simulateAIThinkingAction('game-1', 'p1', 'simple')
 
       expect(result.success).toBe(true)
@@ -380,10 +332,6 @@ describe('AI Strategy Actions', () => {
     })
 
     it('should simulate normal AI thinking', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-
       const result = await simulateAIThinkingAction('game-1', 'p1', 'normal')
 
       expect(result.success).toBe(true)
@@ -391,10 +339,6 @@ describe('AI Strategy Actions', () => {
     })
 
     it('should simulate complex AI thinking', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-
       const result = await simulateAIThinkingAction('game-1', 'p1', 'complex')
 
       expect(result.success).toBe(true)
@@ -402,14 +346,12 @@ describe('AI Strategy Actions', () => {
     })
 
     it('should return error when session invalid', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: false,
-      })
+      mockNoSession()
 
       const result = await simulateAIThinkingAction('game-1', 'p1')
 
       expect(result.success).toBe(false)
-      expect(result.error).toBe('Invalid session')
+      expect(result.error).toBe(AUTH_ERRORS.SESSION_REQUIRED)
     })
   })
 })
