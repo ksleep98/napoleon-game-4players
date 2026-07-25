@@ -3,9 +3,11 @@
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { deleteGameRoomAction } from '@/app/actions/gameActions'
+import { usePlayerSession } from '@/hooks/useSupabase'
+import { AI_GAME_DEFAULTS } from '@/lib/constants'
 import {
   createGameRoom,
-  createPlayer,
+  ensurePlayer,
   getGameRooms,
   joinGameRoom,
 } from '@/lib/supabase/secureGameService'
@@ -18,7 +20,6 @@ export default function RoomsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [playerName, setPlayerName] = useState('')
-  const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null)
   const [showCreateRoom, setShowCreateRoom] = useState(false)
   const [newRoomName, setNewRoomName] = useState('')
   const [deletingRoomId, setDeletingRoomId] = useState<string | null>(null)
@@ -27,17 +28,42 @@ export default function RoomsPage() {
   )
   const router = useRouter()
 
+  // Phase 5: httpOnlyクッキーのセッションのみを信頼する（localStorage廃止）
+  const {
+    playerId: currentPlayerId,
+    playerName: sessionPlayerName,
+    isSessionLoaded,
+    initializePlayer,
+  } = usePlayerSession()
+
+  // ルーム一覧の取得には認証済みセッションが必要（F-2: 未認証での列挙防止）。
+  // 未確立ならこの画面で匿名セッションを発行する（名前は参加/作成時に更新される）。
+  useEffect(() => {
+    if (!isSessionLoaded || currentPlayerId) return
+
+    initializePlayer(generatePlayerId(), AI_GAME_DEFAULTS.PLAYER_NAME).catch(
+      (err) => {
+        console.error('Failed to initialize session:', err)
+      }
+    )
+  }, [isSessionLoaded, currentPlayerId, initializePlayer])
+
   const loadRooms = useCallback(async () => {
+    if (!currentPlayerId) {
+      setLoading(false)
+      return
+    }
+
     try {
       setLoading(true)
-      const roomList = await getGameRooms()
+      const roomList = await getGameRooms(currentPlayerId)
       setRooms(roomList)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load rooms')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [currentPlayerId])
 
   const handleCreateRoom = async () => {
     if (!playerName.trim() || !newRoomName.trim()) {
@@ -47,13 +73,16 @@ export default function RoomsPage() {
 
     try {
       setError(null)
-      // 既存のplayerIdを再利用（ホストが退出→再参加した場合に重要）
-      let playerId = localStorage.getItem('playerId')
-      const isNewPlayer = !playerId
-
+      // セッション（クッキー）が唯一の身元。無ければ操作できない
+      const playerId = currentPlayerId
       if (!playerId) {
-        playerId = generatePlayerId()
+        setError('Player session is not ready yet. Please try again.')
+        return
       }
+
+      // 表示名をセッションとプレイヤーレコードの双方へ反映（冪等）
+      await initializePlayer(playerId, playerName.trim())
+      await ensurePlayer(playerId, playerName.trim())
 
       const roomId = generateGameId()
 
@@ -67,17 +96,8 @@ export default function RoomsPage() {
         hostPlayerId: playerId,
       })
 
-      // 新規プレイヤーの場合のみプレイヤー作成
-      if (isNewPlayer) {
-        await createPlayer(playerId, playerName.trim())
-      }
-
       // ホストプレイヤーをルームに参加（これで player_count が 0 → 1 になる）
       await joinGameRoom(roomId, playerId)
-
-      // プレイヤーIDをローカルストレージに保存
-      localStorage.setItem('playerId', playerId)
-      localStorage.setItem('playerName', playerName.trim())
 
       // ウェイティングルームページに移動
       router.push(`/rooms/${roomId}/waiting`)
@@ -94,25 +114,19 @@ export default function RoomsPage() {
 
     try {
       setError(null)
-      // 既存のplayerIdを再利用（退出→再参加した場合に重要）
-      let playerId = localStorage.getItem('playerId')
-      const isNewPlayer = !playerId
-
+      // セッション（クッキー）が唯一の身元。無ければ操作できない
+      const playerId = currentPlayerId
       if (!playerId) {
-        playerId = generatePlayerId()
+        setError('Player session is not ready yet. Please try again.')
+        return
       }
 
-      // 新規プレイヤーの場合のみプレイヤー作成
-      if (isNewPlayer) {
-        await createPlayer(playerId, playerName.trim())
-      }
+      // 表示名をセッションとプレイヤーレコードの双方へ反映（冪等）
+      await initializePlayer(playerId, playerName.trim())
+      await ensurePlayer(playerId, playerName.trim())
 
       // ルームに参加
       await joinGameRoom(roomId, playerId)
-
-      // プレイヤーIDをローカルストレージに保存
-      localStorage.setItem('playerId', playerId)
-      localStorage.setItem('playerName', playerName.trim())
 
       // ウェイティングルームページに移動
       router.push(`/rooms/${roomId}/waiting`)
@@ -122,9 +136,9 @@ export default function RoomsPage() {
   }
 
   const handleDeleteRoom = async (roomId: string) => {
-    const playerId = localStorage.getItem('playerId')
+    const playerId = currentPlayerId
     if (!playerId) {
-      setError('Player ID not found. Please refresh the page.')
+      setError('Player session not found. Please refresh the page.')
       return
     }
 
@@ -149,18 +163,13 @@ export default function RoomsPage() {
   }
 
   useEffect(() => {
+    if (sessionPlayerName) {
+      setPlayerName((prev) => prev || sessionPlayerName)
+    }
+  }, [sessionPlayerName])
+
+  useEffect(() => {
     loadRooms()
-
-    // 保存された名前とplayerIdを読み込み
-    const savedName = localStorage.getItem('playerName')
-    if (savedName) {
-      setPlayerName(savedName)
-    }
-
-    const savedPlayerId = localStorage.getItem('playerId')
-    if (savedPlayerId) {
-      setCurrentPlayerId(savedPlayerId)
-    }
 
     // 30秒ごとにルーム一覧を更新
     const interval = setInterval(loadRooms, 30000)
@@ -230,11 +239,12 @@ export default function RoomsPage() {
           </div>
           {currentPlayerId && (
             <div className="flex items-center justify-between">
+              {/* F-2: プレイヤーIDは画面に描画しない（列挙・共有の防止） */}
               <p className="text-xs text-gray-600">
-                <span className="font-semibold">Your Player ID:</span>{' '}
-                <code className="bg-yellow-100 px-2 py-1 rounded font-mono">
-                  {currentPlayerId}
-                </code>
+                <span className="font-semibold">Signed in as:</span>{' '}
+                <span className="font-medium">
+                  {sessionPlayerName || playerName}
+                </span>
                 <span className="ml-2 text-red-600">
                   ⚠️
                   4つの異なるブラウザ（Chrome/Safari/Firefox/Edge）またはシークレットモードを使用してください
@@ -243,14 +253,12 @@ export default function RoomsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  localStorage.removeItem('playerId')
-                  localStorage.removeItem('playerName')
-                  window.location.reload()
+                  window.location.href = '/reset-session'
                 }}
                 className="text-xs px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded"
-                title="新しいPlayer IDを生成するためにリセット"
+                title="新しいセッションを作成するためにリセット"
               >
-                🔄 Reset ID
+                🔄 Reset Session
               </button>
             </div>
           )}
@@ -331,7 +339,7 @@ export default function RoomsPage() {
           ) : (
             <div className="space-y-4">
               {rooms.map((room) => {
-                const isHost = currentPlayerId === room.hostPlayerId
+                const isHost = room.isHost === true
                 return (
                   <div
                     key={room.id}

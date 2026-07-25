@@ -1261,19 +1261,7 @@ const isAdjutantRevealed =
 // Before: game.ts had hardcoded types
 export type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades';
 export type Rank =
-  | 'A'
-  | '2'
-  | '3'
-  | '4'
-  | '5'
-  | '6'
-  | '7'
-  | '8'
-  | '9'
-  | '10'
-  | 'J'
-  | 'Q'
-  | 'K';
+  'A' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K';
 
 // After: game.ts imports from constants
 import type {

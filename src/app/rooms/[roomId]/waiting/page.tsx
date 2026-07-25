@@ -8,6 +8,7 @@ import {
   setPlayerOnlineAction,
   startGameFromRoomAction,
 } from '@/app/actions/gameActions'
+import { usePlayerSession } from '@/hooks/useSupabase'
 import { GAME_ROOM_STATUS } from '@/lib/constants'
 import { supabase } from '@/lib/supabase/client'
 import type { GameRoom } from '@/types/game'
@@ -30,26 +31,28 @@ export default function WaitingRoomPage({ params }: WaitingRoomPageProps) {
   const [players, setPlayers] = useState<RoomPlayer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [playerId, setPlayerId] = useState<string | null>(null)
   const [isHost, setIsHost] = useState(false)
+
+  // Phase 5: httpOnlyクッキーのセッションのみを信頼する（localStorage廃止）
+  const { playerId, isSessionLoaded } = usePlayerSession()
 
   // Unwrap params
   useEffect(() => {
     params.then((p) => setRoomId(p.roomId))
   }, [params])
 
-  // Load player ID from localStorage
+  // セッション確立を待ってオンライン状態を設定する
   useEffect(() => {
-    const storedPlayerId = localStorage.getItem('playerId')
-    if (!storedPlayerId) {
-      setError('Player ID not found. Please join from rooms page.')
+    if (!isSessionLoaded) return
+
+    if (!playerId) {
+      setError('Player session not found. Please join from rooms page.')
       setLoading(false)
       return
     }
-    setPlayerId(storedPlayerId)
 
     // プレイヤーをオンラインに設定
-    setPlayerOnlineAction(storedPlayerId)
+    setPlayerOnlineAction(playerId)
       .then((result) => {
         if (!result.success) {
           console.error('❌ Failed to set player online:', result.error)
@@ -58,7 +61,7 @@ export default function WaitingRoomPage({ params }: WaitingRoomPageProps) {
       .catch((err) => {
         console.error('❌ Error setting player online:', err)
       })
-  }, [])
+  }, [isSessionLoaded, playerId])
 
   // Poll room updates (ポーリング方式でルーム更新を監視)
   useEffect(() => {
@@ -72,7 +75,7 @@ export default function WaitingRoomPage({ params }: WaitingRoomPageProps) {
     const pollRoomUpdates = async () => {
       try {
         const [roomResult, playersResult] = await Promise.all([
-          getRoomDetailsAction(roomId),
+          getRoomDetailsAction(roomId, playerId),
           supabase
             .from('players')
             .select('id, name, connected, created_at')
@@ -92,7 +95,7 @@ export default function WaitingRoomPage({ params }: WaitingRoomPageProps) {
 
           if (hasChanged || lastPlayerCount === 0) {
             setRoom(updatedRoom)
-            setIsHost(updatedRoom.hostPlayerId === playerId)
+            setIsHost(updatedRoom.isHost === true)
             setLoading(false)
 
             lastPlayerCount = updatedRoom.playerCount
@@ -363,15 +366,7 @@ export default function WaitingRoomPage({ params }: WaitingRoomPageProps) {
               <span className="font-semibold">Room ID:</span>{' '}
               <code className="bg-gray-100 px-2 py-1 rounded">{roomId}</code>
             </p>
-            <p>
-              <span className="font-semibold">Your Player ID:</span>{' '}
-              <code className="bg-yellow-100 px-2 py-1 rounded font-mono text-xs">
-                {playerId}
-              </code>
-              <span className="ml-2 text-xs text-gray-500">
-                (各ブラウザで異なるIDか確認してください)
-              </span>
-            </p>
+            {/* F-2: プレイヤーIDは画面に描画しない（列挙・共有の防止） */}
             <p>
               <span className="font-semibold">Created:</span>{' '}
               {room?.createdAt

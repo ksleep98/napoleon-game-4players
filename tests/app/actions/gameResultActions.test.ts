@@ -8,15 +8,24 @@ import {
   finalizeGameAction,
   getGameProgressAction,
 } from '@/app/actions/gameResultActions'
-import { GAME_PHASES } from '@/lib/constants'
+import { AUTH_ERRORS, GAME_PHASES } from '@/lib/constants'
 import type { GameResult, GameState } from '@/types/game'
 
 // Mock all dependencies
+jest.mock('@/lib/cookies/sessionCookies', () => ({
+  getSessionCookie: jest.fn(),
+  isSessionValid: jest.fn(),
+}))
+
+jest.mock('@/lib/game/gameStateRepository', () => ({
+  requireGameState: jest.fn(),
+  fetchGameState: jest.fn(),
+  GAME_NOT_FOUND_MESSAGE: 'Game not found',
+}))
+
 jest.mock('@/app/actions/gameActions', () => ({
-  loadGameStateAction: jest.fn(),
   saveGameResultAction: jest.fn(),
   saveGameStateAction: jest.fn(),
-  validateSessionAction: jest.fn(),
 }))
 
 jest.mock('@/lib/scoring', () => ({
@@ -32,11 +41,11 @@ jest.mock('@/lib/supabase/server', () => ({
 
 // Import mocked functions
 import {
-  loadGameStateAction,
   saveGameResultAction,
   saveGameStateAction,
-  validateSessionAction,
 } from '@/app/actions/gameActions'
+import { GameActionError } from '@/lib/errors/GameActionError'
+import { requireGameState } from '@/lib/game/gameStateRepository'
 import {
   calculateGameResult,
   getGameProgress,
@@ -44,13 +53,27 @@ import {
   isGameDecided,
 } from '@/lib/scoring'
 import { validateGameId } from '@/lib/supabase/server'
+import {
+  mockAuthenticatedSession,
+  mockNoSession,
+} from '../../utils/sessionTestUtils'
 
 // Mock data creators
 const createGameState = (
   phase: GameState['phase'] = GAME_PHASES.FINISHED
 ): GameState => ({
   id: 'test-game',
-  players: [],
+  players: [
+    {
+      id: 'player-1',
+      name: 'Alice',
+      hand: [],
+      isNapoleon: false,
+      isAdjutant: false,
+      position: 1,
+      isAI: false,
+    },
+  ],
   phase,
   currentPlayerIndex: 0,
   currentTrick: { id: 'trick-1', cards: [], completed: false },
@@ -75,6 +98,7 @@ const createGameResult = (): GameResult => ({
 describe('Game Result Actions', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockAuthenticatedSession('player-1')
     jest.spyOn(console, 'error').mockImplementation()
   })
 
@@ -87,14 +111,8 @@ describe('Game Result Actions', () => {
       const gameState = createGameState(GAME_PHASES.FINISHED)
       const gameResult = createGameResult()
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
       ;(validateGameId as jest.Mock).mockReturnValue(true)
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(calculateGameResult as jest.Mock).mockReturnValue(gameResult)
 
       const result = await calculateGameResultAction('game-1', 'player-1')
@@ -105,20 +123,15 @@ describe('Game Result Actions', () => {
     })
 
     it('should return error when session invalid', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: false,
-      })
+      mockNoSession()
 
       const result = await calculateGameResultAction('game-1', 'player-1')
 
       expect(result.success).toBe(false)
-      expect(result.error).toBe('Invalid session')
+      expect(result.error).toBe(AUTH_ERRORS.SESSION_REQUIRED)
     })
 
     it('should return error when game ID invalid', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
       ;(validateGameId as jest.Mock).mockReturnValue(false)
 
       const result = await calculateGameResultAction('invalid', 'player-1')
@@ -128,13 +141,10 @@ describe('Game Result Actions', () => {
     })
 
     it('should return error when game not found', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
       ;(validateGameId as jest.Mock).mockReturnValue(true)
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: false,
-      })
+      ;(requireGameState as jest.Mock).mockRejectedValue(
+        new GameActionError('Game not found', 'NOT_FOUND')
+      )
 
       const result = await calculateGameResultAction('game-1', 'player-1')
 
@@ -145,14 +155,8 @@ describe('Game Result Actions', () => {
     it('should return error when game not finished', async () => {
       const gameState = createGameState(GAME_PHASES.PLAYING)
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
       ;(validateGameId as jest.Mock).mockReturnValue(true)
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
 
       const result = await calculateGameResultAction('game-1', 'player-1')
 
@@ -166,13 +170,7 @@ describe('Game Result Actions', () => {
       const gameState = createGameState(GAME_PHASES.PLAYING)
       const gameResult = createGameResult()
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(isGameDecided as jest.Mock).mockReturnValue({ decided: true })
       ;(calculateGameResult as jest.Mock).mockReturnValue(gameResult)
 
@@ -186,13 +184,7 @@ describe('Game Result Actions', () => {
     it('should check game decision when not decided', async () => {
       const gameState = createGameState(GAME_PHASES.PLAYING)
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(isGameDecided as jest.Mock).mockReturnValue({ decided: false })
 
       const result = await checkGameDecisionAction('game-1', 'player-1')
@@ -204,23 +196,18 @@ describe('Game Result Actions', () => {
     })
 
     it('should return error when session invalid', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: false,
-      })
+      mockNoSession()
 
       const result = await checkGameDecisionAction('game-1', 'player-1')
 
       expect(result.success).toBe(false)
-      expect(result.error).toBe('Invalid session')
+      expect(result.error).toBe(AUTH_ERRORS.SESSION_REQUIRED)
     })
 
     it('should return error when game not found', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: false,
-      })
+      ;(requireGameState as jest.Mock).mockRejectedValue(
+        new GameActionError('Game not found', 'NOT_FOUND')
+      )
 
       const result = await checkGameDecisionAction('game-1', 'player-1')
 
@@ -234,13 +221,7 @@ describe('Game Result Actions', () => {
       const gameState = createGameState(GAME_PHASES.FINISHED)
       const gameResult = createGameResult()
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(calculateGameResult as jest.Mock).mockReturnValue(gameResult)
       ;(saveGameResultAction as jest.Mock).mockResolvedValue({ success: true })
       ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: true })
@@ -262,13 +243,7 @@ describe('Game Result Actions', () => {
         phase: GAME_PHASES.FINISHED,
       }
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(isGameDecided as jest.Mock).mockReturnValue({ decided: true })
       ;(calculateGameResult as jest.Mock).mockReturnValue(gameResult)
       ;(saveGameResultAction as jest.Mock).mockResolvedValue({ success: true })
@@ -287,13 +262,7 @@ describe('Game Result Actions', () => {
     it('should return error when game not ready to finalize', async () => {
       const gameState = createGameState(GAME_PHASES.PLAYING)
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(isGameDecided as jest.Mock).mockReturnValue({ decided: false })
 
       const result = await finalizeGameAction('game-1', 'player-1')
@@ -306,13 +275,7 @@ describe('Game Result Actions', () => {
       const gameState = createGameState(GAME_PHASES.FINISHED)
       const gameResult = createGameResult()
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(calculateGameResult as jest.Mock).mockReturnValue(gameResult)
       ;(saveGameResultAction as jest.Mock).mockResolvedValue({ success: false })
 
@@ -326,13 +289,7 @@ describe('Game Result Actions', () => {
       const gameState = createGameState(GAME_PHASES.FINISHED)
       const gameResult = createGameResult()
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(calculateGameResult as jest.Mock).mockReturnValue(gameResult)
       ;(saveGameResultAction as jest.Mock).mockResolvedValue({ success: true })
       ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: false })
@@ -358,13 +315,7 @@ describe('Game Result Actions', () => {
         remainingFaceCards: 8,
       }
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(getGameProgress as jest.Mock).mockReturnValue(progress)
       ;(getTeamFaceCardCounts as jest.Mock).mockReturnValue(teamCounts)
 
@@ -378,23 +329,18 @@ describe('Game Result Actions', () => {
     })
 
     it('should return error when session invalid', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: false,
-      })
+      mockNoSession()
 
       const result = await getGameProgressAction('game-1', 'player-1')
 
       expect(result.success).toBe(false)
-      expect(result.error).toBe('Invalid session')
+      expect(result.error).toBe(AUTH_ERRORS.SESSION_REQUIRED)
     })
 
     it('should return error when game not found', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: false,
-      })
+      ;(requireGameState as jest.Mock).mockRejectedValue(
+        new GameActionError('Game not found', 'NOT_FOUND')
+      )
 
       const result = await getGameProgressAction('game-1', 'player-1')
 
