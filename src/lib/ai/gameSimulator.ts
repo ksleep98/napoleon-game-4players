@@ -5,6 +5,7 @@
 
 import { countFaceCards, GAME_PHASES } from '@/lib/constants'
 import { determineWinnerWithSpecialRules } from '@/lib/napoleonCardRules'
+import { random } from '@/lib/utils/rng'
 import type { Card, GameState, PlayedCard, Player, Suit } from '@/types/game'
 
 /**
@@ -243,21 +244,26 @@ export function getGameResult(state: GameState): GameResult {
 
 /**
  * ランダムなカードを選択
+ *
+ * 乱数は `@/lib/utils/rng` 経由（シード未設定時は Math.random と同一挙動）。
  */
 export function selectRandomCard(cards: Card[]): Card {
   if (cards.length === 0) {
     throw new Error('No cards available')
   }
-  return cards[Math.floor(Math.random() * cards.length)]
+  return cards[Math.floor(random() * cards.length)]
 }
 
 /**
  * 配列をシャッフル（Fisher-Yates）
+ *
+ * MCTS の determinization もここを通るため、シードを設定すると
+ * 探索のランダム性ごと再現できる。
  */
 export function shuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array]
   for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
+    const j = Math.floor(random() * (i + 1))
     ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
   }
   return shuffled
