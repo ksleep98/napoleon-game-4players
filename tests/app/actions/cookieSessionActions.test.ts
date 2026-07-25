@@ -29,6 +29,15 @@ jest.mock('@/utils/encryption', () => ({
   generateSessionToken: jest.fn(),
 }))
 
+jest.mock('@/lib/game/playerRepository', () => ({
+  playerExists: jest.fn(),
+}))
+
+jest.mock('@/lib/supabase/server', () => ({
+  checkRateLimit: jest.fn(),
+  validatePlayerId: jest.fn(),
+}))
+
 // Import mocked functions
 import {
   clearSessionCookie,
@@ -37,7 +46,9 @@ import {
   refreshSession,
   setSessionCookie,
 } from '@/lib/cookies/sessionCookies'
+import { playerExists } from '@/lib/game/playerRepository'
 import { setPlayerSession } from '@/lib/supabase/client'
+import { checkRateLimit, validatePlayerId } from '@/lib/supabase/server'
 import { generateSessionToken } from '@/utils/encryption'
 
 // Mock session data creator
@@ -55,6 +66,10 @@ const createMockSession = (
 describe('Cookie Session Actions', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    // 既定は「未使用の playerId を自己申告で確保できる」状態
+    ;(validatePlayerId as jest.Mock).mockReturnValue(true)
+    ;(checkRateLimit as jest.Mock).mockReturnValue(true)
+    ;(playerExists as jest.Mock).mockResolvedValue(false)
     // Suppress console errors in tests
     jest.spyOn(console, 'error').mockImplementation()
     jest.spyOn(console, 'warn').mockImplementation()
@@ -97,6 +112,67 @@ describe('Cookie Session Actions', () => {
 
       expect(result.success).toBe(false)
       expect(result.error).toBe(SESSION_ERRORS.REQUIRED)
+      expect(setSessionCookie).not.toHaveBeenCalled()
+    })
+
+    it('refuses to mint a session for an EXISTING playerId (impersonation)', async () => {
+      ;(playerExists as jest.Mock).mockResolvedValue(true)
+      ;(getSessionCookie as jest.Mock).mockResolvedValue(null)
+
+      const result = await createSessionAction('victim-player', 'Attacker')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe(SESSION_ERRORS.PLAYER_ID_TAKEN)
+      expect(setSessionCookie).not.toHaveBeenCalled()
+    })
+
+    it('refuses impersonation even when holding a session for another player', async () => {
+      ;(playerExists as jest.Mock).mockResolvedValue(true)
+      ;(getSessionCookie as jest.Mock).mockResolvedValue(
+        createMockSession('attacker-player')
+      )
+      ;(isSessionValid as jest.Mock).mockReturnValue(true)
+
+      const result = await createSessionAction('victim-player', 'Attacker')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe(SESSION_ERRORS.PLAYER_ID_TAKEN)
+      expect(setSessionCookie).not.toHaveBeenCalled()
+    })
+
+    it('allows re-issuing a session for a playerId the caller already owns', async () => {
+      ;(playerExists as jest.Mock).mockResolvedValue(true)
+      ;(getSessionCookie as jest.Mock).mockResolvedValue(
+        createMockSession('player-1')
+      )
+      ;(isSessionValid as jest.Mock).mockReturnValue(true)
+      ;(generateSessionToken as jest.Mock).mockReturnValue('generated-token')
+      ;(setSessionCookie as jest.Mock).mockResolvedValue(undefined)
+      ;(setPlayerSession as jest.Mock).mockResolvedValue(undefined)
+
+      const result = await createSessionAction('player-1', 'Renamed')
+
+      expect(result.success).toBe(true)
+      expect(setSessionCookie).toHaveBeenCalled()
+    })
+
+    it('rejects an invalid playerId format', async () => {
+      ;(validatePlayerId as jest.Mock).mockReturnValue(false)
+
+      const result = await createSessionAction('bad id!', 'Player One')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe(SESSION_ERRORS.INVALID_PLAYER_ID)
+      expect(setSessionCookie).not.toHaveBeenCalled()
+    })
+
+    it('rejects when the session creation rate limit is exceeded', async () => {
+      ;(checkRateLimit as jest.Mock).mockReturnValue(false)
+
+      const result = await createSessionAction('player-1', 'Player One')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe(SESSION_ERRORS.RATE_LIMITED)
       expect(setSessionCookie).not.toHaveBeenCalled()
     })
 

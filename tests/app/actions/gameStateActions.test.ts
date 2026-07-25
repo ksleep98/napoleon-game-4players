@@ -7,6 +7,11 @@ import { GAME_PHASES } from '@/lib/constants'
 import type { GameState } from '@/types/game'
 
 // Mock all dependencies
+jest.mock('@/lib/cookies/sessionCookies', () => ({
+  getSessionCookie: jest.fn(),
+  isSessionValid: jest.fn(),
+}))
+
 jest.mock('@/lib/supabase/server', () => ({
   checkRateLimit: jest.fn(),
   supabaseAdmin: {
@@ -30,6 +35,7 @@ import {
   validateGameId,
   validatePlayerId,
 } from '@/lib/supabase/server'
+import { mockAuthenticatedSession } from '../../utils/sessionTestUtils'
 
 // Mock fetch globally
 global.fetch = jest.fn()
@@ -73,6 +79,7 @@ const createGameState = (): GameState => ({
 describe('Game State Actions', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockAuthenticatedSession('player-1')
     jest.spyOn(console, 'error').mockImplementation()
     jest.spyOn(console, 'log').mockImplementation()
     jest.spyOn(console, 'warn').mockImplementation()
@@ -185,6 +192,9 @@ describe('Game State Actions', () => {
       ;(validateGameId as jest.Mock).mockReturnValue(true)
       ;(validatePlayerId as jest.Mock).mockReturnValue(true)
       ;(checkRateLimit as jest.Mock).mockReturnValue(true)
+
+      // 認証済みだがゲームに参加していないプレイヤー
+      mockAuthenticatedSession('player-999')
 
       const result = await saveGameStateAction(gameState, 'player-999')
 

@@ -4,20 +4,23 @@ import {
   evaluateCardStrategicValue,
   selectBestStrategicCard,
 } from '@/lib/ai/strategicCardEvaluator'
+import {
+  assertGameParticipant,
+  requireAuthenticatedPlayerId,
+  requireSessionOwner,
+} from '@/lib/auth/requireSessionOwner'
 import { GAME_PHASES } from '@/lib/constants'
 import {
   GAME_ACTION_ERROR_CODES,
   GameActionError,
 } from '@/lib/errors/GameActionError'
+import { requireGameState } from '@/lib/game/gameStateRepository'
+import { maskGameStateForPlayer } from '@/lib/game/maskGameState'
 import { processAITurn } from '@/lib/gameLogic'
 import { getNextDeclarationPlayer } from '@/lib/napoleonRules'
 import { validateGameId } from '@/lib/supabase/server'
 import type { Card, GameState, Player } from '@/types/game'
-import {
-  loadGameStateAction,
-  saveGameStateAction,
-  validateSessionAction,
-} from './gameActions'
+import { saveGameStateAction } from './gameActions'
 
 export interface AIStrategyActionResult<T = GameState> {
   success: boolean
@@ -26,44 +29,44 @@ export interface AIStrategyActionResult<T = GameState> {
 }
 
 /**
+ * 共通の認可処理
+ *
+ * COM(AI) はクッキーを持たないため、AI のターンは
+ * 「そのゲームに参加している人間プレイヤーのセッション」が代理で進める。
+ * ここでは操作主体（actor）がゲームの人間参加者であることだけを保証する。
+ */
+async function authorizeAIAction(
+  gameId: string
+): Promise<{ actorId: string; gameState: GameState }> {
+  if (!validateGameId(gameId)) {
+    throw new GameActionError(
+      'Invalid game ID',
+      GAME_ACTION_ERROR_CODES.INVALID_GAME_ID
+    )
+  }
+
+  const actorId = await requireAuthenticatedPlayerId()
+  const gameState = await requireGameState(gameId)
+
+  assertGameParticipant(gameState, actorId)
+
+  return { actorId, gameState }
+}
+
+/**
  * AI戦略的カード選択 Server Action
  * AI戦略をサーバーサイドで隠蔽し、チート防止
  */
 export async function selectAICardAction(
   gameId: string,
-  playerId: string,
+  _playerId: string,
   aiPlayerId: string
 ): Promise<
   AIStrategyActionResult<{ selectedCard: Card; updatedGameState: GameState }>
 > {
   try {
-    // セッション検証（人間プレイヤーのみ許可）
-    const sessionValid = await validateSessionAction(playerId)
-    if (!sessionValid.success) {
-      throw new GameActionError(
-        'Invalid session',
-        GAME_ACTION_ERROR_CODES.UNAUTHORIZED
-      )
-    }
-
-    // 入力検証
-    if (!validateGameId(gameId)) {
-      throw new GameActionError(
-        'Invalid game ID',
-        GAME_ACTION_ERROR_CODES.INVALID_GAME_ID
-      )
-    }
-
-    // 現在のゲーム状態を取得
-    const gameResult = await loadGameStateAction(gameId, playerId)
-    if (!gameResult.success || !gameResult.gameState) {
-      throw new GameActionError(
-        'Game not found',
-        GAME_ACTION_ERROR_CODES.NOT_FOUND
-      )
-    }
-
-    const gameState = gameResult.gameState
+    // 🔒 認可: 人間プレイヤーのセッションのみ AI の代理操作を許可
+    const { actorId, gameState } = await authorizeAIAction(gameId)
 
     // AIプレイヤーの確認
     const aiPlayer = gameState.players.find(
@@ -100,7 +103,8 @@ export async function selectAICardAction(
       success: true,
       data: {
         selectedCard,
-        updatedGameState,
+        // 🔒 F-3: 他プレイヤーの手札はクライアントへ返さない
+        updatedGameState: maskGameStateForPlayer(updatedGameState, actorId),
       },
     }
   } catch (error) {
@@ -118,28 +122,11 @@ export async function selectAICardAction(
  */
 export async function processAITurnAction(
   gameId: string,
-  playerId: string
+  _playerId?: string
 ): Promise<AIStrategyActionResult<GameState>> {
   try {
-    // セッション検証
-    const sessionValid = await validateSessionAction(playerId)
-    if (!sessionValid.success) {
-      throw new GameActionError(
-        'Invalid session',
-        GAME_ACTION_ERROR_CODES.UNAUTHORIZED
-      )
-    }
-
-    // 現在のゲーム状態を取得
-    const gameResult = await loadGameStateAction(gameId, playerId)
-    if (!gameResult.success || !gameResult.gameState) {
-      throw new GameActionError(
-        'Game not found',
-        GAME_ACTION_ERROR_CODES.NOT_FOUND
-      )
-    }
-
-    const gameState = gameResult.gameState
+    // 🔒 認可: 人間プレイヤーのセッションのみ AI ターンを進められる
+    const { actorId, gameState } = await authorizeAIAction(gameId)
 
     // AIターンかどうか確認
     let nextPlayer: Player | null = null
@@ -180,7 +167,7 @@ export async function processAITurnAction(
     const updatedGameState = await processAITurn(gameState)
 
     // 状態をデータベースに保存
-    const saveResult = await saveGameStateAction(updatedGameState, playerId)
+    const saveResult = await saveGameStateAction(updatedGameState, actorId)
     if (!saveResult.success) {
       throw new GameActionError(
         'Failed to save game state',
@@ -190,7 +177,8 @@ export async function processAITurnAction(
 
     return {
       success: true,
-      data: updatedGameState,
+      // 🔒 F-3: 他プレイヤーの手札はクライアントへ返さない
+      data: maskGameStateForPlayer(updatedGameState, actorId),
     }
   } catch (error) {
     console.error('processAITurnAction failed:', error)
@@ -207,7 +195,7 @@ export async function processAITurnAction(
  */
 export async function evaluateAIStrategyAction(
   gameId: string,
-  playerId: string,
+  _playerId: string,
   cards: Card[]
 ): Promise<AIStrategyActionResult<Array<{ card: Card; value: number }>>> {
   try {
@@ -219,25 +207,9 @@ export async function evaluateAIStrategyAction(
       )
     }
 
-    // セッション検証
-    const sessionValid = await validateSessionAction(playerId)
-    if (!sessionValid.success) {
-      throw new GameActionError(
-        'Invalid session',
-        GAME_ACTION_ERROR_CODES.UNAUTHORIZED
-      )
-    }
+    // 🔒 認可: クッキーのセッションを操作主体として検証
+    const { gameState } = await authorizeAIAction(gameId)
 
-    // 現在のゲーム状態を取得
-    const gameResult = await loadGameStateAction(gameId, playerId)
-    if (!gameResult.success || !gameResult.gameState) {
-      throw new GameActionError(
-        'Game not found',
-        GAME_ACTION_ERROR_CODES.NOT_FOUND
-      )
-    }
-
-    const gameState = gameResult.gameState
     const currentPlayer = gameState.players[gameState.currentPlayerIndex]
 
     // 各カードの戦略的価値を評価
@@ -269,14 +241,8 @@ export async function simulateAIThinkingAction(
   complexityLevel: 'simple' | 'normal' | 'complex' = 'normal'
 ): Promise<AIStrategyActionResult<{ thinkingTime: number }>> {
   try {
-    // セッション検証
-    const sessionValid = await validateSessionAction(playerId)
-    if (!sessionValid.success) {
-      throw new GameActionError(
-        'Invalid session',
-        GAME_ACTION_ERROR_CODES.UNAUTHORIZED
-      )
-    }
+    // 🔒 認可: 認証済みセッション本人のみ（ゲーム状態には触れない）
+    await requireSessionOwner(playerId)
 
     // 思考時間の計算（サーバーサイドで制御）
     const baseTime = 1000 // 1秒
