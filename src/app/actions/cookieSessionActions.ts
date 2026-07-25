@@ -5,7 +5,12 @@
 
 'use server'
 
-import { SESSION_DURATION_MS, SESSION_ERRORS } from '@/lib/constants'
+import {
+  PLAYER_NAME_MAX_LENGTH,
+  SESSION_DURATION_MS,
+  SESSION_ERRORS,
+  SESSION_RATE_LIMIT,
+} from '@/lib/constants'
 import {
   clearSessionCookie,
   getSessionCookie,
@@ -14,7 +19,9 @@ import {
   type SessionCookieData,
   setSessionCookie,
 } from '@/lib/cookies/sessionCookies'
+import { playerExists } from '@/lib/game/playerRepository'
 import { setPlayerSession } from '@/lib/supabase/client'
+import { checkRateLimit, validatePlayerId } from '@/lib/supabase/server'
 import { generateSessionToken } from '@/utils/encryption'
 
 /**
@@ -28,6 +35,12 @@ export type ActionResult<T = void> = {
 
 /**
  * セッションを作成してクッキーに保存
+ *
+ * ⚠️ これは唯一のセッション発行口であり、他の全 Server Action の認可の起点になる。
+ * 認証基盤（パスワード等）が無いため「未使用の playerId を自己申告で確保する」
+ * モデルを採る。したがって **既に存在する playerId は奪えない** ようにする必要がある。
+ * これが無いと `requireSessionOwner()` は任意の playerId になりすまして突破できる。
+ *
  * @param playerId プレイヤーID
  * @param playerName プレイヤー名
  * @returns 成功/失敗の結果
@@ -43,6 +56,40 @@ export async function createSessionAction(
         success: false,
         error: SESSION_ERRORS.REQUIRED,
       }
+    }
+
+    if (!validatePlayerId(playerId)) {
+      return { success: false, error: SESSION_ERRORS.INVALID_PLAYER_ID }
+    }
+
+    if (
+      typeof playerName !== 'string' ||
+      playerName.trim().length === 0 ||
+      playerName.length > PLAYER_NAME_MAX_LENGTH
+    ) {
+      return { success: false, error: SESSION_ERRORS.INVALID_PLAYER_NAME }
+    }
+
+    if (
+      !checkRateLimit(
+        `create_session_${playerId}`,
+        SESSION_RATE_LIMIT.MAX,
+        SESSION_RATE_LIMIT.WINDOW_MS
+      )
+    ) {
+      return { success: false, error: SESSION_ERRORS.RATE_LIMITED }
+    }
+
+    // 🔒 なりすまし防止:
+    //   - 同じ playerId の有効なクッキーを既に持っている場合のみ再発行を許可
+    //     （表示名の変更・セッション延長）
+    //   - それ以外で players テーブルに既存の playerId は奪取不可
+    const existingSession = await getSessionCookie()
+    const ownsPlayerId =
+      existingSession?.playerId === playerId && isSessionValid(existingSession)
+
+    if (!ownsPlayerId && (await playerExists(playerId))) {
+      return { success: false, error: SESSION_ERRORS.PLAYER_ID_TAKEN }
     }
 
     const now = Date.now()

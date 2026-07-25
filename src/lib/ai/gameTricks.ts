@@ -1,5 +1,5 @@
-import { recordGameMove } from '@/app/actions/mlDataCollectionActions'
 import { GAME_PHASES } from '@/lib/constants'
+import { recordGameMove } from '@/lib/ml/dataCollection'
 import { extractMLTrainingData } from '@/lib/ml/dataExtractor'
 import type { Card, GameState } from '@/types/game'
 import {

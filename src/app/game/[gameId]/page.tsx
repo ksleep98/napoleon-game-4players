@@ -11,6 +11,7 @@ import { PlayerHand } from '@/components/game/PlayerHand'
 import { TopHUD } from '@/components/game/TopHUD'
 import { TurnCue } from '@/components/game/TurnCue'
 import { GameProvider, useGame } from '@/contexts/GameContext'
+import { usePlayerSession } from '@/hooks/useSupabase'
 import { GAME_PHASES } from '@/lib/constants'
 import { getNextDeclarationPlayer } from '@/lib/napoleonRules'
 import { calculateGameResult, getPlayerFaceCardCount } from '@/lib/scoring'
@@ -100,20 +101,23 @@ function GamePageContent() {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
 
   const { gameState, loading, error, actions, utils } = useGame()
+  // Phase 5: httpOnlyクッキーのセッションのみを信頼する（localStorage廃止）
+  const { playerId: sessionPlayerId } = usePlayerSession()
 
   // actionsの参照を安定化
   const actionsRef = useRef(actions)
   actionsRef.current = actions
 
-  // マルチプレイヤーモードでplayerIdを取得
+  // マルチプレイヤーモードでplayerIdを取得（httpOnlyクッキーのセッションから）
   useEffect(() => {
-    if (isMultiplayer) {
-      const storedPlayerId = localStorage.getItem('playerId')
-      if (storedPlayerId && storedPlayerId !== currentPlayerId) {
-        setCurrentPlayerId(storedPlayerId)
-      }
+    if (
+      isMultiplayer &&
+      sessionPlayerId &&
+      sessionPlayerId !== currentPlayerId
+    ) {
+      setCurrentPlayerId(sessionPlayerId)
     }
-  }, [isMultiplayer, currentPlayerId])
+  }, [isMultiplayer, sessionPlayerId, currentPlayerId])
 
   // プレイヤーIDを設定（AIモードでは人間プレイヤー、通常モードでは最初のプレイヤー）
   // プレイヤー構成の変化のみを監視（プレイヤー数とAIフラグの変化）
@@ -132,7 +136,7 @@ function GamePageContent() {
   }, [gameState?.players])
 
   useEffect(() => {
-    // マルチプレイヤーモードの場合はlocalStorageから取得するのでスキップ
+    // マルチプレイヤーモードの場合はクッキーセッションから取得するのでスキップ
     if (isMultiplayer) return
 
     if (!playerConfig) return
@@ -155,16 +159,15 @@ function GamePageContent() {
       mlResultRecordedRef.current !== gameState.id
     ) {
       mlResultRecordedRef.current = gameState.id
-      calculateGameResultAction(gameState.id, currentPlayerId ?? '').catch(
-        (error) => {
-          console.error(
-            '[ML Data Collection] Failed to update game result (non-blocking):',
-            error
-          )
-        }
-      )
+      // 認可はサーバー側のクッキーセッションで行うためplayerIdは渡さない
+      calculateGameResultAction(gameState.id).catch((error) => {
+        console.error(
+          '[ML Data Collection] Failed to update game result (non-blocking):',
+          error
+        )
+      })
     }
-  }, [gameState?.phase, gameState?.id, currentPlayerId])
+  }, [gameState?.phase, gameState?.id])
 
   // 配り直しの自動検出と実行
   useEffect(() => {

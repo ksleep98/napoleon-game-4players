@@ -1,15 +1,23 @@
 'use server'
 
+import {
+  assertCanActAsPlayer,
+  requireAuthenticatedPlayerId,
+  requireSessionOwner,
+} from '@/lib/auth/requireSessionOwner'
 import { GAME_PHASES } from '@/lib/constants'
 import {
   GAME_ACTION_ERROR_CODES,
   GameActionError,
 } from '@/lib/errors/GameActionError'
+import { requireGameState } from '@/lib/game/gameStateRepository'
+import { maskGameStateForPlayer } from '@/lib/game/maskGameState'
+import { createPlayers, ensurePlayerExists } from '@/lib/game/playerRepository'
 import { initializeAIGame, initializeGame } from '@/lib/gameLogic'
 import { checkRateLimit, validateGameId } from '@/lib/supabase/server'
 import type { GameState, Player } from '@/types/game'
 import { dealCards, generateGameId, generatePlayerId } from '@/utils/cardUtils'
-import { saveGameStateAction, validateSessionAction } from './gameActions'
+import { saveGameStateAction } from './gameActions'
 
 export interface GameInitActionResult<T = GameState> {
   success: boolean
@@ -33,14 +41,8 @@ export async function initializeGameAction(
   _roomId?: string
 ): Promise<GameInitActionResult<{ gameState: GameState; gameId: string }>> {
   try {
-    // セッション検証
-    const sessionValid = await validateSessionAction(hostPlayerId)
-    if (!sessionValid.success) {
-      throw new GameActionError(
-        'Invalid session',
-        GAME_ACTION_ERROR_CODES.UNAUTHORIZED
-      )
-    }
+    // 🔒 認可: httpOnlyクッキーの playerId と一致することを強制
+    await requireSessionOwner(hostPlayerId)
 
     // 入力検証
     if (!Array.isArray(playerNames) || playerNames.length !== 4) {
@@ -121,8 +123,7 @@ export async function initializeGameAction(
     // マルチプレイヤールームの場合（playerIdsが提供された場合）、プレイヤーは既に存在
     if (!playerIds) {
       // ✅ N+1問題解決: バッチinsertで1回のDB呼び出し（従来の4回から75%削減）
-      const { createPlayersAction } = await import('./gameActions')
-      const createPlayersResult = await createPlayersAction(
+      const createPlayersResult = await createPlayers(
         gameState.players.map((p) => ({ id: p.id, name: p.name }))
       )
       if (!createPlayersResult.success) {
@@ -145,7 +146,8 @@ export async function initializeGameAction(
     return {
       success: true,
       data: {
-        gameState,
+        // 🔒 F-3: 他プレイヤーの手札はクライアントへ返さない
+        gameState: maskGameStateForPlayer(gameState, hostPlayerId),
         gameId,
       },
     }
@@ -167,14 +169,8 @@ export async function initializeAIGameAction(
   humanPlayerId: string
 ): Promise<GameInitActionResult<{ gameState: GameState; gameId: string }>> {
   try {
-    // セッション検証
-    const sessionValid = await validateSessionAction(humanPlayerId)
-    if (!sessionValid.success) {
-      throw new GameActionError(
-        'Invalid session',
-        GAME_ACTION_ERROR_CODES.UNAUTHORIZED
-      )
-    }
+    // 🔒 認可: httpOnlyクッキーの playerId と一致することを強制
+    await requireSessionOwner(humanPlayerId)
 
     // 入力検証
     if (!humanPlayerName || typeof humanPlayerName !== 'string') {
@@ -270,16 +266,34 @@ export async function initializeAIGameAction(
       gameState.players.map((p) => ({ id: p.id, name: p.name, isAI: p.isAI }))
     )
 
-    // ✅ N+1問題解決: 全プレイヤー（人間1人+AI3人）をバッチinsert（従来の4回から75%削減）
-    const { createPlayersAction } = await import('./gameActions')
-    const createPlayersResult = await createPlayersAction(
-      gameState.players.map((p) => ({ id: p.id, name: p.name }))
-    )
-    if (!createPlayersResult.success) {
-      throw new GameActionError(
-        'Failed to create players',
-        GAME_ACTION_ERROR_CODES.DATABASE_ERROR
+    // 人間プレイヤーは同じセッションで再プレイされうるため冪等に作成する
+    // （認証済み playerId は固定なので単純な insert では一意制約違反になる）
+    const humanPlayer = gameState.players.find((p) => !p.isAI)
+    if (humanPlayer) {
+      const ensureHumanResult = await ensurePlayerExists(
+        humanPlayer.id,
+        humanPlayer.name
       )
+      if (!ensureHumanResult.success) {
+        throw new GameActionError(
+          'Failed to create players',
+          GAME_ACTION_ERROR_CODES.DATABASE_ERROR
+        )
+      }
+    }
+
+    // ✅ N+1問題解決: AI プレイヤーをバッチinsert（従来の4回から75%削減）
+    const aiPlayers = gameState.players.filter((p) => p.isAI)
+    if (aiPlayers.length > 0) {
+      const createPlayersResult = await createPlayers(
+        aiPlayers.map((p) => ({ id: p.id, name: p.name }))
+      )
+      if (!createPlayersResult.success) {
+        throw new GameActionError(
+          'Failed to create players',
+          GAME_ACTION_ERROR_CODES.DATABASE_ERROR
+        )
+      }
     }
 
     // ゲーム状態をデータベースに保存
@@ -302,7 +316,8 @@ export async function initializeAIGameAction(
     return {
       success: true,
       data: {
-        gameState,
+        // 🔒 F-3: AI プレイヤーの手札はクライアントへ返さない
+        gameState: maskGameStateForPlayer(gameState, humanPlayerId),
         gameId,
       },
     }
@@ -325,15 +340,6 @@ export async function reshuffleGameDeckAction(
   reason: string
 ): Promise<GameInitActionResult<GameState>> {
   try {
-    // セッション検証
-    const sessionValid = await validateSessionAction(playerId)
-    if (!sessionValid.success) {
-      throw new GameActionError(
-        'Invalid session',
-        GAME_ACTION_ERROR_CODES.UNAUTHORIZED
-      )
-    }
-
     // 入力検証
     if (!validateGameId(gameId)) {
       throw new GameActionError(
@@ -342,17 +348,13 @@ export async function reshuffleGameDeckAction(
       )
     }
 
-    // 現在のゲーム状態を取得
-    const { loadGameStateAction } = await import('./gameActions')
-    const gameResult = await loadGameStateAction(gameId, playerId)
-    if (!gameResult.success || !gameResult.gameState) {
-      throw new GameActionError(
-        'Game not found',
-        GAME_ACTION_ERROR_CODES.NOT_FOUND
-      )
-    }
+    // 🔒 認可: クッキーのセッションを操作主体として検証
+    const actorId = await requireAuthenticatedPlayerId()
 
-    const gameState = gameResult.gameState
+    // 現在のゲーム状態を取得（未マスク／サーバー内部用）
+    const gameState = await requireGameState(gameId)
+
+    assertCanActAsPlayer(gameState, actorId, playerId)
 
     // リシャッフルが必要な状況かチェック
     if (gameState.phase !== GAME_PHASES.NAPOLEON) {
@@ -383,7 +385,7 @@ export async function reshuffleGameDeckAction(
     gameState.passedPlayers = []
 
     // ゲーム状態をデータベースに保存
-    const saveResult = await saveGameStateAction(gameState, playerId)
+    const saveResult = await saveGameStateAction(gameState, actorId)
     if (!saveResult.success) {
       throw new GameActionError(
         'Failed to save reshuffled game state',
@@ -393,7 +395,8 @@ export async function reshuffleGameDeckAction(
 
     return {
       success: true,
-      data: gameState,
+      // 🔒 F-3: 他プレイヤーの手札はクライアントへ返さない
+      data: maskGameStateForPlayer(gameState, actorId),
     }
   } catch (error) {
     console.error('reshuffleGameDeckAction failed:', error)

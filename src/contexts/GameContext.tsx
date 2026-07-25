@@ -116,6 +116,7 @@ export function GameProvider({
     dispatch,
     gameId: actualGameId,
     isAI,
+    sessionPlayerId: playerId,
   })
 
   const getPlayableCards = useCallback(
@@ -156,6 +157,7 @@ export function GameProvider({
   )
 
   useGameInitialization({
+    isSessionReady: isAuthenticated,
     gameId,
     playerNames,
     isAI,

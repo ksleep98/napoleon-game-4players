@@ -11,14 +11,23 @@ import {
   redealCardsAction,
   setAdjutantAction,
 } from '@/app/actions/gameLogicActions'
-import { GAME_PHASES } from '@/lib/constants'
+import { AUTH_ERRORS, GAME_PHASES } from '@/lib/constants'
 import type { Card, GameState, NapoleonDeclaration, Player } from '@/types/game'
 
 // Mock all dependencies
+jest.mock('@/lib/cookies/sessionCookies', () => ({
+  getSessionCookie: jest.fn(),
+  isSessionValid: jest.fn(),
+}))
+
+jest.mock('@/lib/game/gameStateRepository', () => ({
+  requireGameState: jest.fn(),
+  fetchGameState: jest.fn(),
+  GAME_NOT_FOUND_MESSAGE: 'Game not found',
+}))
+
 jest.mock('@/app/actions/gameActions', () => ({
-  loadGameStateAction: jest.fn(),
   saveGameStateAction: jest.fn(),
-  validateSessionAction: jest.fn(),
 }))
 
 jest.mock('@/lib/gameLogic', () => ({
@@ -37,12 +46,11 @@ jest.mock('@/lib/ai/gameTricks', () => ({
 }))
 
 // Import mocked functions
-import {
-  loadGameStateAction,
-  saveGameStateAction,
-  validateSessionAction,
-} from '@/app/actions/gameActions'
+import { saveGameStateAction } from '@/app/actions/gameActions'
 import { processAIPlayingPhase } from '@/lib/ai/gameTricks'
+import { GameActionError } from '@/lib/errors/GameActionError'
+import { requireGameState } from '@/lib/game/gameStateRepository'
+import { maskGameStateForPlayer } from '@/lib/game/maskGameState'
 import {
   closeTrickResult,
   declareNapoleon,
@@ -53,6 +61,10 @@ import {
   redealCards,
   setAdjutant,
 } from '@/lib/gameLogic'
+import {
+  mockAuthenticatedSession,
+  mockNoSession,
+} from '../../utils/sessionTestUtils'
 
 // Mock data creators
 const createCard = (
@@ -108,6 +120,7 @@ const createDeclaration = (): NapoleonDeclaration => ({
 describe('Game Logic Actions', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockAuthenticatedSession('p1')
     jest.spyOn(console, 'error').mockImplementation()
     jest.spyOn(console, 'log').mockImplementation()
   })
@@ -125,28 +138,22 @@ describe('Game Logic Actions', () => {
         napoleonDeclaration: declaration,
       }
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(declareNapoleon as jest.Mock).mockReturnValue(updatedGameState)
       ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: true })
 
       const result = await declareNapoleonAction('game-1', 'p1', declaration)
 
       expect(result.success).toBe(true)
-      expect(result.data).toEqual(updatedGameState)
+      expect(result.data).toEqual(
+        maskGameStateForPlayer(updatedGameState, 'p1')
+      )
       expect(declareNapoleon).toHaveBeenCalledWith(gameState, declaration)
       expect(saveGameStateAction).toHaveBeenCalledWith(updatedGameState, 'p1')
     })
 
     it('should return error when session invalid', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: false,
-      })
+      mockNoSession()
 
       const result = await declareNapoleonAction(
         'game-1',
@@ -155,16 +162,13 @@ describe('Game Logic Actions', () => {
       )
 
       expect(result.success).toBe(false)
-      expect(result.error).toBe('Invalid session')
+      expect(result.error).toBe(AUTH_ERRORS.SESSION_REQUIRED)
     })
 
     it('should return error when game not found', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: false,
-      })
+      ;(requireGameState as jest.Mock).mockRejectedValue(
+        new GameActionError('Game not found', 'NOT_FOUND')
+      )
 
       const result = await declareNapoleonAction(
         'game-1',
@@ -176,16 +180,10 @@ describe('Game Logic Actions', () => {
       expect(result.error).toBe('Game not found')
     })
 
-    it('should return error when player not found', async () => {
+    it('should reject acting as an unknown player', async () => {
       const gameState = createGameState()
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
 
       const result = await declareNapoleonAction(
         'game-1',
@@ -194,20 +192,14 @@ describe('Game Logic Actions', () => {
       )
 
       expect(result.success).toBe(false)
-      expect(result.error).toBe('Player not found in game')
+      expect(result.error).toBe(AUTH_ERRORS.FORBIDDEN_PLAYER)
     })
 
     it('should return error when save fails', async () => {
       const gameState = createGameState()
       const updatedGameState = { ...gameState }
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(declareNapoleon as jest.Mock).mockReturnValue(updatedGameState)
       ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: false })
 
@@ -227,32 +219,26 @@ describe('Game Logic Actions', () => {
       const gameState = createGameState()
       const updatedGameState = { ...gameState, passedPlayers: ['p1'] }
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(passNapoleonDeclaration as jest.Mock).mockReturnValue(updatedGameState)
       ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: true })
 
       const result = await passNapoleonAction('game-1', 'p1')
 
       expect(result.success).toBe(true)
-      expect(result.data).toEqual(updatedGameState)
+      expect(result.data).toEqual(
+        maskGameStateForPlayer(updatedGameState, 'p1')
+      )
       expect(passNapoleonDeclaration).toHaveBeenCalledWith(gameState, 'p1')
     })
 
     it('should return error when session invalid', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: false,
-      })
+      mockNoSession()
 
       const result = await passNapoleonAction('game-1', 'p1')
 
       expect(result.success).toBe(false)
-      expect(result.error).toBe('Invalid session')
+      expect(result.error).toBe(AUTH_ERRORS.SESSION_REQUIRED)
     })
   })
 
@@ -264,13 +250,7 @@ describe('Game Logic Actions', () => {
       }
       const updatedGameState = { ...gameState, needsRedeal: false }
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(redealCards as jest.Mock).mockReturnValue(updatedGameState)
       ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: true })
 
@@ -286,13 +266,7 @@ describe('Game Logic Actions', () => {
         needsRedeal: false,
       }
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
 
       const result = await redealCardsAction('game-1', 'p1')
 
@@ -308,13 +282,7 @@ describe('Game Logic Actions', () => {
       const card = createCard('hearts', 'A', 14)
       const updatedGameState = { ...gameState, phase: GAME_PHASES.EXCHANGE }
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(setAdjutant as jest.Mock).mockReturnValue(updatedGameState)
       ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: true })
 
@@ -332,13 +300,7 @@ describe('Game Logic Actions', () => {
       const cards = [createCard('spades', 'A', 14)]
       const updatedGameState = { ...gameState, phase: GAME_PHASES.PLAYING }
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(exchangeCards as jest.Mock).mockReturnValue(updatedGameState)
       ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: true })
       ;(processAIPlayingPhase as jest.Mock).mockResolvedValue(updatedGameState)
@@ -357,13 +319,7 @@ describe('Game Logic Actions', () => {
       const updatedGameState = { ...gameState }
       const currentPlayer = gameState.players[0]
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(getCurrentPlayer as jest.Mock).mockReturnValue(currentPlayer)
       ;(playCard as jest.Mock).mockReturnValue(updatedGameState)
       ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: true })
@@ -381,13 +337,7 @@ describe('Game Logic Actions', () => {
       const gameState = createGameState(GAME_PHASES.PLAYING)
       const updatedGameState = { ...gameState }
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(closeTrickResult as jest.Mock).mockReturnValue(updatedGameState)
       ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: true })
       ;(processAIPlayingPhase as jest.Mock).mockResolvedValue(updatedGameState)
@@ -402,13 +352,7 @@ describe('Game Logic Actions', () => {
       const gameState = createGameState()
       const updatedGameState = { ...gameState }
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(closeTrickResult as jest.Mock).mockReturnValue(updatedGameState)
       ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: false })
 

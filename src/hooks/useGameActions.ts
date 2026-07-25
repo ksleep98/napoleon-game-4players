@@ -45,6 +45,12 @@ interface UseGameActionsProps {
   dispatch: (action: GameAction) => void
   gameId?: string
   isAI?: boolean
+  /**
+   * httpOnlyクッキーセッションのプレイヤーID。
+   * Server Action の認可はこのIDとサーバー側クッキーの一致で行われるため、
+   * クライアントが独自にIDを生成してはならない。
+   */
+  sessionPlayerId: string | null
 }
 
 export function useGameActions({
@@ -52,6 +58,7 @@ export function useGameActions({
   dispatch,
   gameId,
   isAI,
+  sessionPlayerId,
 }: UseGameActionsProps) {
   const [isPending, startTransition] = useTransition()
 
@@ -72,8 +79,11 @@ export function useGameActions({
           })
 
           // Server Action経由でセキュアなゲーム初期化
-          // 一意のプレイヤーIDを生成（実際のセッション管理で使用）
-          const playerId = `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+          // ⚠️ playerIdはクライアントで生成しない。httpOnlyクッキーのセッションIDを使う
+          const playerId = sessionPlayerId
+          if (!playerId) {
+            throw new Error('Player session not initialized')
+          }
 
           let result: Awaited<
             ReturnType<
@@ -125,7 +135,14 @@ export function useGameActions({
         }
       })
     },
-    [state.loading, state.gameState, state.initialized, isAI, dispatch]
+    [
+      state.loading,
+      state.gameState,
+      state.initialized,
+      isAI,
+      dispatch,
+      sessionPlayerId,
+    ]
   )
 
   const loadGame = useCallback(
@@ -217,7 +234,9 @@ export function useGameActions({
     (declaration: NapoleonDeclaration) => {
       if (!state.gameState || !gameId) return
 
+      // 認可対象は「クリックした人間プレイヤー」＝セッションのプレイヤー
       const currentPlayerId =
+        sessionPlayerId ??
         state.gameState.players[state.gameState.currentPlayerIndex]?.id
       if (!currentPlayerId) return
 
@@ -256,7 +275,7 @@ export function useGameActions({
         }
       })
     },
-    [state.gameState, gameId, dispatch]
+    [state.gameState, gameId, dispatch, sessionPlayerId]
   )
 
   const handlePassNapoleon = useCallback(
@@ -381,7 +400,8 @@ export function useGameActions({
   const handleCloseTrickResult = useCallback(() => {
     if (!state.gameState || !gameId) return
 
-    const currentPlayerId = state.gameState.players[0]?.id // 任意のプレイヤーID（UIアクション）
+    // UIアクションだが認可はセッションのプレイヤーで行う
+    const currentPlayerId = sessionPlayerId
     if (!currentPlayerId) return
 
     startTransition(async () => {
@@ -414,12 +434,13 @@ export function useGameActions({
         })
       }
     })
-  }, [state.gameState, gameId, dispatch])
+  }, [state.gameState, gameId, dispatch, sessionPlayerId])
 
   const handleRedealCards = useCallback(() => {
     if (!state.gameState || !gameId) return
 
-    const currentPlayerId = state.gameState.players[0]?.id // 任意のプレイヤーID
+    // UIアクションだが認可はセッションのプレイヤーで行う
+    const currentPlayerId = sessionPlayerId
     if (!currentPlayerId) return
 
     startTransition(async () => {
@@ -448,7 +469,7 @@ export function useGameActions({
         })
       }
     })
-  }, [state.gameState, gameId, dispatch])
+  }, [state.gameState, gameId, dispatch, sessionPlayerId])
 
   return {
     actions: {

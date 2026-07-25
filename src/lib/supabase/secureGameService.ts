@@ -2,6 +2,7 @@ import { getSessionAction } from '@/app/actions/cookieSessionActions'
 import {
   createGameRoomAction,
   createPlayerAction,
+  ensurePlayerAction,
   getGameRoomsAction,
   invalidateSessionAction,
   joinGameRoomAction,
@@ -14,6 +15,7 @@ import {
   validateSessionAction,
 } from '@/app/actions/gameActions'
 import { CONNECTION_STATES } from '@/lib/constants'
+import { maskGameStateForPlayer } from '@/lib/game/maskGameState'
 import type { GameResult, GameRoom, GameState, Player } from '@/types/game'
 import { setPlayerSession, supabase } from './client'
 
@@ -183,6 +185,17 @@ export async function securePlayerCreate(
 }
 
 /**
+ * プレイヤーレコードを冪等に用意する（既存なら接続状態のみ更新）
+ */
+export async function ensurePlayer(id: string, name: string): Promise<void> {
+  const result = await ensurePlayerAction(id, name)
+
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to ensure player')
+  }
+}
+
+/**
  * リアルタイム監視（クライアントサイド）
  * RLSポリシーが適用されるため、プレイヤーセッション設定が必要
  * Phase 4: playerId引数を受け取るように変更（localStorage依存削除）
@@ -250,7 +263,10 @@ export function secureSubscribeToGameState(
 
             // 成功したら再接続カウントをリセット
             reconnectAttempts = 0
-            onUpdate(gameState)
+            // 🔒 F-3: Realtime のペイロードには全員の手札が含まれるため、
+            // アプリ状態としては必ずマスクしてから利用する。
+            // （根本対策は games テーブルの Realtime/RLS 設定側で行う必要がある）
+            onUpdate(maskGameStateForPlayer(gameState, playerId))
           } catch (_error) {
             console.error('❌ Failed to parse game state update:', _error)
             onError?.(new Error('Failed to parse game state update'))
@@ -388,8 +404,11 @@ export async function createPlayer(id: string, name: string): Promise<void> {
 export async function secureGameRoomCreate(
   room: Omit<GameRoom, 'createdAt'>
 ): Promise<GameRoom> {
-  // ルーム作成時はホストプレイヤーIDを使用（まだストレージに保存されていない可能性があるため）
+  // ルーム作成時はホストプレイヤーIDを使用（サーバー側でクッキーと照合される）
   const playerId = room.hostPlayerId
+  if (!playerId) {
+    throw new Error('Host player ID is required to create a game room')
+  }
   const result = await createGameRoomAction(room, playerId)
 
   if (!result.success) {
@@ -404,10 +423,12 @@ export async function secureGameRoomCreate(
 
 /**
  * セキュアなゲームルーム一覧取得
- * Phase 4: localStorage依存削除、playerIdは不要（ルーム一覧は公開情報）
+ * F-2 対策: 未認証での列挙を防ぐため playerId を必須にした
  */
-export async function secureGameRoomsGet(): Promise<GameRoom[]> {
-  const result = await getGameRoomsAction(undefined)
+export async function secureGameRoomsGet(
+  playerId: string
+): Promise<GameRoom[]> {
+  const result = await getGameRoomsAction(playerId)
 
   if (!result.success) {
     throw new Error(result.error || 'Failed to get game rooms')
@@ -459,8 +480,8 @@ export async function createGameRoom(
   return secureGameRoomCreate(room)
 }
 
-export async function getGameRooms(): Promise<GameRoom[]> {
-  return secureGameRoomsGet()
+export async function getGameRooms(playerId: string): Promise<GameRoom[]> {
+  return secureGameRoomsGet(playerId)
 }
 
 export async function joinGameRoom(

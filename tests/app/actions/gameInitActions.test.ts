@@ -7,15 +7,28 @@ import {
   initializeGameAction,
   reshuffleGameDeckAction,
 } from '@/app/actions/gameInitActions'
-import { GAME_PHASES } from '@/lib/constants'
+import { AUTH_ERRORS, GAME_PHASES } from '@/lib/constants'
 import type { GameState, Player } from '@/types/game'
 
 // Mock all dependencies
+jest.mock('@/lib/cookies/sessionCookies', () => ({
+  getSessionCookie: jest.fn(),
+  isSessionValid: jest.fn(),
+}))
+
+jest.mock('@/lib/game/gameStateRepository', () => ({
+  requireGameState: jest.fn(),
+  fetchGameState: jest.fn(),
+  GAME_NOT_FOUND_MESSAGE: 'Game not found',
+}))
+
 jest.mock('@/app/actions/gameActions', () => ({
-  createPlayersAction: jest.fn(),
-  loadGameStateAction: jest.fn(),
   saveGameStateAction: jest.fn(),
-  validateSessionAction: jest.fn(),
+}))
+
+jest.mock('@/lib/game/playerRepository', () => ({
+  createPlayers: jest.fn(),
+  ensurePlayerExists: jest.fn(),
 }))
 
 jest.mock('@/lib/gameLogic', () => ({
@@ -35,15 +48,17 @@ jest.mock('@/utils/cardUtils', () => ({
 }))
 
 // Import mocked functions
-import {
-  createPlayersAction,
-  loadGameStateAction,
-  saveGameStateAction,
-  validateSessionAction,
-} from '@/app/actions/gameActions'
+import { saveGameStateAction } from '@/app/actions/gameActions'
+import { GameActionError } from '@/lib/errors/GameActionError'
+import { requireGameState } from '@/lib/game/gameStateRepository'
+import { createPlayers, ensurePlayerExists } from '@/lib/game/playerRepository'
 import { initializeAIGame, initializeGame } from '@/lib/gameLogic'
 import { checkRateLimit, validateGameId } from '@/lib/supabase/server'
 import { dealCards, generateGameId, generatePlayerId } from '@/utils/cardUtils'
+import {
+  mockAuthenticatedSession,
+  mockNoSession,
+} from '../../utils/sessionTestUtils'
 
 // Mock data creators
 const createPlayer = (id: string, name: string, isAI = false): Player => ({
@@ -58,7 +73,8 @@ const createPlayer = (id: string, name: string, isAI = false): Player => ({
 
 const createGameState = (): GameState => ({
   id: 'test-game',
-  players: [],
+  // 認可はゲーム参加者チェックを伴うため、既定で人間プレイヤー p1 を含める
+  players: [createPlayer('p1', 'Alice')],
   phase: GAME_PHASES.NAPOLEON,
   currentPlayerIndex: 0,
   currentTrick: { id: 'trick-1', cards: [], completed: false },
@@ -75,6 +91,8 @@ const createGameState = (): GameState => ({
 describe('Game Initialization Actions', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockAuthenticatedSession('host-id')
+    ;(ensurePlayerExists as jest.Mock).mockResolvedValue({ success: true })
     jest.spyOn(console, 'error').mockImplementation()
     jest.spyOn(console, 'log').mockImplementation()
   })
@@ -91,9 +109,6 @@ describe('Game Initialization Actions', () => {
       )
       const gameState = createGameState()
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
       ;(checkRateLimit as jest.Mock).mockReturnValue(true)
       ;(generateGameId as jest.Mock).mockReturnValue('game-123')
       ;(generatePlayerId as jest.Mock)
@@ -106,7 +121,7 @@ describe('Game Initialization Actions', () => {
         hiddenCards: [],
       })
       ;(initializeGame as jest.Mock).mockReturnValue(gameState)
-      ;(createPlayersAction as jest.Mock).mockResolvedValue({ success: true })
+      ;(createPlayers as jest.Mock).mockResolvedValue({ success: true })
       ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: true })
 
       const result = await initializeGameAction(
@@ -120,7 +135,7 @@ describe('Game Initialization Actions', () => {
       expect(result.data?.gameId).toBe('game-123')
       expect(result.data?.gameState.players).toHaveLength(4)
       expect(dealCards).toHaveBeenCalled()
-      expect(createPlayersAction).toHaveBeenCalled()
+      expect(createPlayers).toHaveBeenCalled()
       expect(saveGameStateAction).toHaveBeenCalled()
     })
 
@@ -132,9 +147,6 @@ describe('Game Initialization Actions', () => {
       )
       const gameState = createGameState()
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
       ;(checkRateLimit as jest.Mock).mockReturnValue(true)
       ;(generateGameId as jest.Mock).mockReturnValue('game-123')
       ;(dealCards as jest.Mock).mockReturnValue({
@@ -152,13 +164,11 @@ describe('Game Initialization Actions', () => {
       )
 
       expect(result.success).toBe(true)
-      expect(createPlayersAction).not.toHaveBeenCalled() // Skip when IDs provided
+      expect(createPlayers).not.toHaveBeenCalled() // Skip when IDs provided
     })
 
     it('should return error when session invalid', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: false,
-      })
+      mockNoSession()
 
       const result = await initializeGameAction(
         ['Alice', 'Bob', 'Carol', 'Dave'],
@@ -166,14 +176,10 @@ describe('Game Initialization Actions', () => {
       )
 
       expect(result.success).toBe(false)
-      expect(result.error).toBe('Invalid session')
+      expect(result.error).toBe(AUTH_ERRORS.SESSION_REQUIRED)
     })
 
     it('should return error when not exactly 4 players', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-
       const result = await initializeGameAction(
         ['Alice', 'Bob', 'Carol'],
         'host-id'
@@ -184,10 +190,6 @@ describe('Game Initialization Actions', () => {
     })
 
     it('should return error when player name is invalid', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-
       const result = await initializeGameAction(
         ['Alice', '', 'Carol', 'Dave'],
         'host-id'
@@ -198,10 +200,6 @@ describe('Game Initialization Actions', () => {
     })
 
     it('should return error when player name is too long', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-
       const result = await initializeGameAction(
         [
           'Alice',
@@ -217,9 +215,6 @@ describe('Game Initialization Actions', () => {
     })
 
     it('should return error when rate limit exceeded', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
       ;(checkRateLimit as jest.Mock).mockReturnValue(false)
 
       const result = await initializeGameAction(
@@ -232,10 +227,6 @@ describe('Game Initialization Actions', () => {
     })
 
     it('should return error when player IDs count mismatch', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-
       const result = await initializeGameAction(
         ['Alice', 'Bob', 'Carol', 'Dave'],
         'host-id',
@@ -253,9 +244,6 @@ describe('Game Initialization Actions', () => {
       )
       const gameState = createGameState()
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
       ;(checkRateLimit as jest.Mock).mockReturnValue(true)
       ;(generateGameId as jest.Mock).mockReturnValue('game-123')
       ;(generatePlayerId as jest.Mock).mockReturnValue('player-id')
@@ -264,7 +252,7 @@ describe('Game Initialization Actions', () => {
         hiddenCards: [],
       })
       ;(initializeGame as jest.Mock).mockReturnValue(gameState)
-      ;(createPlayersAction as jest.Mock).mockResolvedValue({ success: false })
+      ;(createPlayers as jest.Mock).mockResolvedValue({ success: false })
 
       const result = await initializeGameAction(playerNames, 'host-id')
 
@@ -279,9 +267,6 @@ describe('Game Initialization Actions', () => {
       )
       const gameState = createGameState()
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
       ;(checkRateLimit as jest.Mock).mockReturnValue(true)
       ;(generateGameId as jest.Mock).mockReturnValue('game-123')
       ;(generatePlayerId as jest.Mock).mockReturnValue('player-id')
@@ -290,7 +275,7 @@ describe('Game Initialization Actions', () => {
         hiddenCards: [],
       })
       ;(initializeGame as jest.Mock).mockReturnValue(gameState)
-      ;(createPlayersAction as jest.Mock).mockResolvedValue({ success: true })
+      ;(createPlayers as jest.Mock).mockResolvedValue({ success: true })
       ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: false })
 
       const result = await initializeGameAction(playerNames, 'host-id')
@@ -301,6 +286,10 @@ describe('Game Initialization Actions', () => {
   })
 
   describe('initializeAIGameAction', () => {
+    beforeEach(() => {
+      mockAuthenticatedSession('human-1')
+    })
+
     it('should initialize AI game successfully', async () => {
       const humanPlayer = createPlayer('human-1', 'Alice', false)
       const aiPlayers = [
@@ -310,9 +299,6 @@ describe('Game Initialization Actions', () => {
       ]
       const gameState = createGameState()
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
       ;(checkRateLimit as jest.Mock).mockReturnValue(true)
       ;(generateGameId as jest.Mock).mockReturnValue('game-ai-123')
       ;(generatePlayerId as jest.Mock)
@@ -324,7 +310,7 @@ describe('Game Initialization Actions', () => {
         hiddenCards: [],
       })
       ;(initializeAIGame as jest.Mock).mockReturnValue(gameState)
-      ;(createPlayersAction as jest.Mock).mockResolvedValue({ success: true })
+      ;(createPlayers as jest.Mock).mockResolvedValue({ success: true })
       ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: true })
 
       const result = await initializeAIGameAction('Alice', 'human-1')
@@ -333,26 +319,20 @@ describe('Game Initialization Actions', () => {
       expect(result.data?.gameId).toBe('game-ai-123')
       expect(result.data?.gameState.players).toHaveLength(4)
       expect(dealCards).toHaveBeenCalled()
-      expect(createPlayersAction).toHaveBeenCalled()
+      expect(createPlayers).toHaveBeenCalled()
       expect(saveGameStateAction).toHaveBeenCalled()
     })
 
     it('should return error when session invalid', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: false,
-      })
+      mockNoSession()
 
       const result = await initializeAIGameAction('Alice', 'human-1')
 
       expect(result.success).toBe(false)
-      expect(result.error).toBe('Invalid session')
+      expect(result.error).toBe(AUTH_ERRORS.SESSION_REQUIRED)
     })
 
     it('should return error when player name is invalid', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-
       const result = await initializeAIGameAction('', 'human-1')
 
       expect(result.success).toBe(false)
@@ -360,10 +340,6 @@ describe('Game Initialization Actions', () => {
     })
 
     it('should return error when player name is too long', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
-
       const result = await initializeAIGameAction(
         'AliceWithAVeryLongNameThatExceeds20Characters',
         'human-1'
@@ -374,9 +350,6 @@ describe('Game Initialization Actions', () => {
     })
 
     it('should return error when rate limit exceeded', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
       ;(checkRateLimit as jest.Mock).mockReturnValue(false)
 
       const result = await initializeAIGameAction('Alice', 'human-1')
@@ -388,18 +361,15 @@ describe('Game Initialization Actions', () => {
     it('should return error when create players fails', async () => {
       const gameState = createGameState()
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
       ;(checkRateLimit as jest.Mock).mockReturnValue(true)
       ;(generateGameId as jest.Mock).mockReturnValue('game-ai-123')
       ;(generatePlayerId as jest.Mock).mockReturnValue('ai-id')
       ;(dealCards as jest.Mock).mockReturnValue({
-        players: [],
+        players: [createPlayer('ai-id', 'AI Player 1', true)],
         hiddenCards: [],
       })
       ;(initializeAIGame as jest.Mock).mockReturnValue(gameState)
-      ;(createPlayersAction as jest.Mock).mockResolvedValue({ success: false })
+      ;(createPlayers as jest.Mock).mockResolvedValue({ success: false })
 
       const result = await initializeAIGameAction('Alice', 'human-1')
 
@@ -410,9 +380,6 @@ describe('Game Initialization Actions', () => {
     it('should return error when save fails', async () => {
       const gameState = createGameState()
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
       ;(checkRateLimit as jest.Mock).mockReturnValue(true)
       ;(generateGameId as jest.Mock).mockReturnValue('game-ai-123')
       ;(generatePlayerId as jest.Mock).mockReturnValue('ai-id')
@@ -421,7 +388,7 @@ describe('Game Initialization Actions', () => {
         hiddenCards: [],
       })
       ;(initializeAIGame as jest.Mock).mockReturnValue(gameState)
-      ;(createPlayersAction as jest.Mock).mockResolvedValue({ success: true })
+      ;(createPlayers as jest.Mock).mockResolvedValue({ success: true })
       ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: false })
 
       const result = await initializeAIGameAction('Alice', 'human-1')
@@ -432,6 +399,10 @@ describe('Game Initialization Actions', () => {
   })
 
   describe('reshuffleGameDeckAction', () => {
+    beforeEach(() => {
+      mockAuthenticatedSession('p1')
+    })
+
     it('should reshuffle deck successfully', async () => {
       const players = [
         createPlayer('p1', 'Alice'),
@@ -445,14 +416,8 @@ describe('Game Initialization Actions', () => {
         phase: GAME_PHASES.NAPOLEON,
       }
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
       ;(validateGameId as jest.Mock).mockReturnValue(true)
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(dealCards as jest.Mock).mockReturnValue({
         players,
         hiddenCards: [],
@@ -473,20 +438,15 @@ describe('Game Initialization Actions', () => {
     })
 
     it('should return error when session invalid', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: false,
-      })
+      mockNoSession()
 
       const result = await reshuffleGameDeckAction('game-1', 'p1', 'reason')
 
       expect(result.success).toBe(false)
-      expect(result.error).toBe('Invalid session')
+      expect(result.error).toBe(AUTH_ERRORS.SESSION_REQUIRED)
     })
 
     it('should return error when game ID invalid', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
       ;(validateGameId as jest.Mock).mockReturnValue(false)
 
       const result = await reshuffleGameDeckAction('invalid', 'p1', 'reason')
@@ -496,13 +456,10 @@ describe('Game Initialization Actions', () => {
     })
 
     it('should return error when game not found', async () => {
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
       ;(validateGameId as jest.Mock).mockReturnValue(true)
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: false,
-      })
+      ;(requireGameState as jest.Mock).mockRejectedValue(
+        new GameActionError('Game not found', 'NOT_FOUND')
+      )
 
       const result = await reshuffleGameDeckAction('game-1', 'p1', 'reason')
 
@@ -516,14 +473,8 @@ describe('Game Initialization Actions', () => {
         phase: GAME_PHASES.PLAYING,
       }
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
       ;(validateGameId as jest.Mock).mockReturnValue(true)
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
 
       const result = await reshuffleGameDeckAction('game-1', 'p1', 'reason')
 
@@ -537,14 +488,8 @@ describe('Game Initialization Actions', () => {
         phase: GAME_PHASES.NAPOLEON,
       }
 
-      ;(validateSessionAction as jest.Mock).mockResolvedValue({
-        success: true,
-      })
       ;(validateGameId as jest.Mock).mockReturnValue(true)
-      ;(loadGameStateAction as jest.Mock).mockResolvedValue({
-        success: true,
-        gameState,
-      })
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(dealCards as jest.Mock).mockReturnValue({
         players: [],
         hiddenCards: [],
