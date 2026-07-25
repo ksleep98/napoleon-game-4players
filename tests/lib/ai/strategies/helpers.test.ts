@@ -123,6 +123,22 @@ describe('AI Strategy Helpers', () => {
 
       expect(result.card).toEqual(singleCard)
     })
+
+    // 空トリックに「最強カード」は存在しない。以前は undefined を参照して
+    // 意味不明な TypeError になっていたので、意図の分かる例外に変える。
+    // 呼び出し側は必ずリード局面をガードすること。
+    it('should throw a descriptive error for an empty trick', () => {
+      const gameState = createGameState('spades')
+      const emptyTrick: Trick = {
+        id: 'trick-1',
+        cards: [],
+        completed: false,
+      }
+
+      expect(() => getBestTrickCard(emptyTrick, gameState)).toThrow(
+        /empty trick/i
+      )
+    })
   })
 
   describe('getLowestWinningCard', () => {
@@ -168,6 +184,27 @@ describe('AI Strategy Helpers', () => {
 
       // Should return first card since none can win
       expect(result).toBe(availableCards[0])
+    })
+
+    // リード局面では「勝つために必要な最弱カード」は定義できないので、
+    // 手札の最弱カードを返して落ちないようにする。
+    it('should fall back to the weakest card for an empty trick', () => {
+      const gameState = createGameState('spades')
+      const emptyTrick: Trick = {
+        id: 'trick-1',
+        cards: [],
+        completed: false,
+      }
+
+      const availableCards = [
+        createCard('hearts', 'A', 14),
+        createCard('hearts', '3', 3),
+        createCard('hearts', 'K', 13),
+      ]
+
+      const result = getLowestWinningCard(availableCards, emptyTrick, gameState)
+
+      expect(result.rank).toBe('3')
     })
   })
 

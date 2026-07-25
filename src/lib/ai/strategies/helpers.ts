@@ -32,8 +32,19 @@ export function getCardStrengthSafe(
 
 /**
  * トリック内で最も強いカードを取得
+ *
+ * ⚠️ 空トリック（リード局面）では「最強カード」が存在しないため必ず throw する。
+ * 以前は `cards[0].card` で undefined を参照して意味不明な TypeError になり、
+ * 呼び出し元の try/catch でランダム着手に落ちていた。
+ * リード局面かどうかは **呼び出し側でガードすること**。
  */
 export function getBestTrickCard(currentTrick: Trick, gameState: GameState) {
+  if (currentTrick.cards.length === 0) {
+    throw new Error(
+      'getBestTrickCard: cannot evaluate an empty trick (guard the leading case at the call site)'
+    )
+  }
+
   let bestCard = currentTrick.cards[0].card
   let bestStrength = getCardStrengthSafe(bestCard, gameState)
 
@@ -50,12 +61,19 @@ export function getBestTrickCard(currentTrick: Trick, gameState: GameState) {
 
 /**
  * 現在のトリックに勝つために必要な最も弱いカードを取得
+ *
+ * リード局面（空トリック）では「勝つために必要な札」を定義できないので、
+ * 最弱カードを返して落ちないようにする。
  */
 export function getLowestWinningCard(
   cards: Card[],
   currentTrick: Trick,
   gameState: GameState
 ): Card {
+  if (currentTrick.cards.length === 0) {
+    return getWeakestCard([...cards], gameState)
+  }
+
   const bestOpponent = getBestTrickCard(currentTrick, gameState)
   const winningCards = cards.filter(
     (card) => getCardStrengthSafe(card, gameState) > bestOpponent.strength
