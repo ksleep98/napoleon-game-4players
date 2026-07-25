@@ -1,8 +1,29 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { GAME_PHASES } from '@/lib/constants'
-import { GameActionError } from '@/lib/errors/GameActionError'
+import {
+  requireAuthenticatedPlayerId,
+  requireSessionOwner,
+} from '@/lib/auth/requireSessionOwner'
+import {
+  AUTH_ERRORS,
+  GAME_PHASES,
+  PLAYER_NAME_MAX_LENGTH,
+} from '@/lib/constants'
+import {
+  GAME_ACTION_ERROR_CODES,
+  GameActionError,
+} from '@/lib/errors/GameActionError'
+import {
+  fetchGameState,
+  GAME_NOT_FOUND_MESSAGE,
+} from '@/lib/game/gameStateRepository'
+import { maskGameStateForPlayer } from '@/lib/game/maskGameState'
+import {
+  createPlayer as createPlayerRecord,
+  createPlayers as createPlayerRecords,
+  ensurePlayerExists as ensurePlayerRecord,
+} from '@/lib/game/playerRepository'
 import {
   checkRateLimit,
   supabaseAdmin,
@@ -68,6 +89,9 @@ export async function saveGameStateAction(
     if (!validatePlayerId(playerId)) {
       throw new GameActionError('Invalid player ID', 'INVALID_PLAYER_ID')
     }
+
+    // 🔒 認可: httpOnlyクッキーの playerId と一致することを強制
+    await requireSessionOwner(playerId)
 
     // レート制限チェック
     if (!checkRateLimit(`save_game_${playerId}`, 30, 60000)) {
@@ -260,7 +284,11 @@ async function saveGameStateViaRestAPI(
 }
 
 /**
- * セキュアなゲーム状態読み込みアクション
+ * セキュアなゲーム状態読み込みアクション（クライアント向け）
+ *
+ * ⚠️ 返却する状態は F-3 対策として呼び出し元以外の手札をマスクする。
+ * サーバーサイドのゲームロジックは `@/lib/game/gameStateRepository` の
+ * 未マスクローダーを使うこと。
  */
 export async function loadGameStateAction(
   gameId: string,
@@ -276,30 +304,20 @@ export async function loadGameStateAction(
       throw new GameActionError('Invalid player ID', 'INVALID_PLAYER_ID')
     }
 
+    // 🔒 認可: httpOnlyクッキーの playerId と一致することを強制
+    await requireSessionOwner(playerId)
+
     // レート制限チェック
     if (!checkRateLimit(`load_game_${playerId}`, 60, 60000)) {
       throw new GameActionError('Rate limit exceeded', 'RATE_LIMIT_EXCEEDED')
     }
 
     // ゲーム状態をSupabaseから読み込み
-    const { data, error } = await supabaseAdmin
-      .from('games')
-      .select('*')
-      .eq('id', gameId)
-      .single()
+    const gameState = await fetchGameState(gameId)
 
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return { success: false, error: 'Game not found' }
-      }
-      console.error('Database error:', error)
-      throw new GameActionError(
-        `Failed to load game state: ${error.message}`,
-        'DATABASE_ERROR'
-      )
+    if (!gameState) {
+      return { success: false, error: GAME_NOT_FOUND_MESSAGE }
     }
-
-    const gameState = data.state as GameState
 
     // プレイヤーがゲームに参加しているかチェック
     const playerInGame = gameState.players.some((p) => p.id === playerId)
@@ -307,7 +325,11 @@ export async function loadGameStateAction(
       throw new GameActionError('Player not in game', 'PLAYER_NOT_IN_GAME')
     }
 
-    return { success: true, gameState }
+    // 🔒 F-3: 他プレイヤーの手札・伏せ札をマスクして返す
+    return {
+      success: true,
+      gameState: maskGameStateForPlayer(gameState, playerId),
+    }
   } catch (error) {
     console.error('Game load error:', error)
     return {
@@ -336,6 +358,9 @@ export async function saveGameResultAction(
     if (!validatePlayerId(playerId)) {
       throw new GameActionError('Invalid player ID', 'INVALID_PLAYER_ID')
     }
+
+    // 🔒 認可: httpOnlyクッキーの playerId と一致することを強制
+    await requireSessionOwner(playerId)
 
     // レート制限チェック
     if (!checkRateLimit(`save_result_${playerId}`, 10, 60000)) {
@@ -392,6 +417,9 @@ export async function createGameRoomAction(
         'INVALID_HOST_PLAYER_ID'
       )
     }
+
+    // 🔒 認可: httpOnlyクッキーの playerId と一致することを強制
+    await requireSessionOwner(playerId)
 
     // レート制限チェック
     if (!checkRateLimit(`create_room_${playerId}`, 10, 60000)) {
@@ -463,18 +491,26 @@ export async function createGameRoomAction(
 
 /**
  * セキュアなゲームルーム一覧取得アクション
+ *
+ * F-2 対策:
+ * - playerId を必須にし、httpOnlyクッキーのセッションと一致することを強制する
+ *   （未認証での列挙・レート制限バイパスを禁止）
+ * - レスポンスから hostPlayerId を除去し、代わりに isHost のみ返す
  */
 export async function getGameRoomsAction(
-  playerId?: string
+  playerId: string
 ): Promise<{ success: boolean; gameRooms?: GameRoom[]; error?: string }> {
   try {
-    // 入力検証（プレイヤーIDがある場合のみ）
-    if (playerId && !validatePlayerId(playerId)) {
+    // 入力検証
+    if (!validatePlayerId(playerId)) {
       throw new GameActionError('Invalid player ID', 'INVALID_PLAYER_ID')
     }
 
-    // レート制限チェック（プレイヤーIDがある場合のみ）
-    if (playerId && !checkRateLimit(`get_rooms_${playerId}`, 60, 60000)) {
+    // 🔒 認可: httpOnlyクッキーの playerId と一致することを強制
+    await requireSessionOwner(playerId)
+
+    // レート制限チェック
+    if (!checkRateLimit(`get_rooms_${playerId}`, 60, 60000)) {
       throw new GameActionError('Rate limit exceeded', 'RATE_LIMIT_EXCEEDED')
     }
 
@@ -493,13 +529,14 @@ export async function getGameRoomsAction(
       )
     }
 
+    // ⚠️ hostPlayerId は返さない（プレイヤーID列挙の防止）
     const gameRooms: GameRoom[] = data.map((room) => ({
       id: room.id,
       name: room.name,
       playerCount: room.player_count,
       maxPlayers: room.max_players,
       status: room.status as 'waiting' | 'playing' | 'finished',
-      hostPlayerId: room.host_player_id,
+      isHost: room.host_player_id === playerId,
       createdAt: new Date(room.created_at),
     }))
 
@@ -532,6 +569,9 @@ export async function joinGameRoomAction(
     if (!validatePlayerId(playerId)) {
       throw new GameActionError('Invalid player ID', 'INVALID_PLAYER_ID')
     }
+
+    // 🔒 認可: httpOnlyクッキーの playerId と一致することを強制
+    await requireSessionOwner(playerId)
 
     // レート制限チェック
     if (!checkRateLimit(`join_room_${playerId}`, 10, 60000)) {
@@ -620,6 +660,9 @@ export async function setPlayerOnlineAction(
       throw new GameActionError('Invalid player ID', 'INVALID_PLAYER_ID')
     }
 
+    // 🔒 認可: httpOnlyクッキーの playerId と一致することを強制
+    await requireSessionOwner(playerId)
+
     // レート制限チェック
     if (!checkRateLimit(`set_online_${playerId}`, 30, 60000)) {
       throw new GameActionError('Rate limit exceeded', 'RATE_LIMIT_EXCEEDED')
@@ -665,6 +708,9 @@ export async function setPlayerOfflineAction(
       throw new GameActionError('Invalid player ID', 'INVALID_PLAYER_ID')
     }
 
+    // 🔒 認可: httpOnlyクッキーの playerId と一致することを強制
+    await requireSessionOwner(playerId)
+
     // レート制限チェック
     if (!checkRateLimit(`set_offline_${playerId}`, 30, 60000)) {
       throw new GameActionError('Rate limit exceeded', 'RATE_LIMIT_EXCEEDED')
@@ -699,19 +745,26 @@ export async function setPlayerOfflineAction(
 
 /**
  * セキュアなセッション管理アクション
+ *
+ * ⚠️ このアクションは「自分自身の DB セッションが生きているか」を返すだけの
+ * 補助 API であり、認可の入力として使ってはならない。
+ * Server Action の認可は `requireSessionOwner()`（httpOnlyクッキー）で行う。
  */
 export async function validateSessionAction(
   playerId: string
 ): Promise<{ success: boolean; valid?: boolean; error?: string }> {
   try {
-    // CI環境ではSupabase接続をスキップ
-    if (process.env.CI === 'true') {
-      return { success: true, valid: true }
-    }
-
     // 入力検証
     if (!validatePlayerId(playerId)) {
       throw new GameActionError('Invalid player ID', 'INVALID_PLAYER_ID')
+    }
+
+    // 🔒 認可: 他人のセッション状態を問い合わせられないようにする
+    await requireSessionOwner(playerId)
+
+    // CI環境ではSupabase接続をスキップ
+    if (process.env.CI === 'true') {
+      return { success: true, valid: true }
     }
 
     // レート制限チェック
@@ -770,6 +823,9 @@ export async function invalidateSessionAction(
       throw new GameActionError('Invalid player ID', 'INVALID_PLAYER_ID')
     }
 
+    // 🔒 認可: httpOnlyクッキーの playerId と一致することを強制
+    await requireSessionOwner(playerId)
+
     // レート制限チェック
     if (!checkRateLimit(`invalidate_session_${playerId}`, 10, 60000)) {
       throw new GameActionError('Rate limit exceeded', 'RATE_LIMIT_EXCEEDED')
@@ -813,6 +869,9 @@ export async function refreshSessionAction(
     if (!validatePlayerId(playerId)) {
       throw new GameActionError('Invalid player ID', 'INVALID_PLAYER_ID')
     }
+
+    // 🔒 認可: httpOnlyクッキーの playerId と一致することを強制
+    await requireSessionOwner(playerId)
 
     // レート制限チェック
     if (!checkRateLimit(`refresh_session_${playerId}`, 60, 60000)) {
@@ -871,26 +930,24 @@ export async function createPlayerAction(
       throw new GameActionError('Invalid player name', 'INVALID_PLAYER_NAME')
     }
 
+    // 🔒 認可: 自分自身のプレイヤーレコードしか作成できない
+    await requireSessionOwner(id)
+
     // レート制限チェック
     if (!checkRateLimit(`create_player_${id}`, 5, 60000)) {
       throw new GameActionError('Rate limit exceeded', 'RATE_LIMIT_EXCEEDED')
     }
 
     // プレイヤーをSupabaseに作成
-    const { error } = await supabaseAdmin.from('players').insert({
-      id,
-      name: name.trim(),
-      connected: true,
-    })
+    const result = await createPlayerRecord(id, name)
 
-    if (error) {
-      console.error('Database error:', error)
+    if (!result.success) {
       // 重複エラーは通常のケースとして扱う
-      if (error.code === '23505') {
-        return { success: false, error: 'Player already exists' }
+      if (result.alreadyExists) {
+        return { success: false, error: result.error }
       }
       throw new GameActionError(
-        `Failed to create player: ${error.message}`,
+        `Failed to create player: ${result.error}`,
         'DATABASE_ERROR'
       )
     }
@@ -898,6 +955,61 @@ export async function createPlayerAction(
     return { success: true }
   } catch (error) {
     console.error('Player creation error:', error)
+    return {
+      success: false,
+      error:
+        error instanceof GameActionError
+          ? error.message
+          : 'Unknown error occurred',
+    }
+  }
+}
+
+/**
+ * 自分自身のプレイヤーレコードを冪等に用意するアクション
+ *
+ * セッション（クッキー）は先に発行されるが、players テーブルの行はまだ無い、
+ * という状態があるため冪等な作成/更新が必要。
+ */
+export async function ensurePlayerAction(
+  id: string,
+  name: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // 入力検証
+    if (!validatePlayerId(id)) {
+      throw new GameActionError('Invalid player ID', 'INVALID_PLAYER_ID')
+    }
+
+    if (
+      !name ||
+      typeof name !== 'string' ||
+      name.trim().length === 0 ||
+      name.length > PLAYER_NAME_MAX_LENGTH
+    ) {
+      throw new GameActionError('Invalid player name', 'INVALID_PLAYER_NAME')
+    }
+
+    // 🔒 認可: 自分自身のプレイヤーレコードしか作成/更新できない
+    await requireSessionOwner(id)
+
+    // レート制限チェック
+    if (!checkRateLimit(`ensure_player_${id}`, 10, 60000)) {
+      throw new GameActionError('Rate limit exceeded', 'RATE_LIMIT_EXCEEDED')
+    }
+
+    const result = await ensurePlayerRecord(id, name)
+
+    if (!result.success) {
+      throw new GameActionError(
+        `Failed to ensure player: ${result.error}`,
+        'DATABASE_ERROR'
+      )
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Ensure player error:', error)
     return {
       success: false,
       error:
@@ -942,28 +1054,30 @@ export async function createPlayersAction(
       }
     }
 
+    // 🔒 認可: 認証済みプレイヤー自身が含まれるバッチのみ作成可能
+    const actorId = await requireAuthenticatedPlayerId()
+    if (!players.some((p) => p.id === actorId)) {
+      throw new GameActionError(
+        AUTH_ERRORS.FORBIDDEN_PLAYER,
+        GAME_ACTION_ERROR_CODES.FORBIDDEN
+      )
+    }
+
     // レート制限チェック（最初のプレイヤーIDで代表）
     if (!checkRateLimit(`create_players_${players[0].id}`, 5, 60000)) {
       throw new GameActionError('Rate limit exceeded', 'RATE_LIMIT_EXCEEDED')
     }
 
     // バッチinsert（N+1問題解決）
-    const { error } = await supabaseAdmin.from('players').insert(
-      players.map((p) => ({
-        id: p.id,
-        name: p.name.trim(),
-        connected: true,
-      }))
-    )
+    const result = await createPlayerRecords(players)
 
-    if (error) {
-      console.error('Batch player creation error:', error)
+    if (!result.success) {
       // 重複エラーは部分的に成功として扱う
-      if (error.code === '23505') {
-        return { success: false, error: 'Some players already exist' }
+      if (result.alreadyExists) {
+        return { success: false, error: result.error }
       }
       throw new GameActionError(
-        `Failed to create players: ${error.message}`,
+        `Failed to create players: ${result.error}`,
         'DATABASE_ERROR'
       )
     }
@@ -997,6 +1111,9 @@ export async function leaveGameRoomAction(
     if (!validatePlayerId(playerId)) {
       throw new GameActionError('Invalid player ID', 'INVALID_PLAYER_ID')
     }
+
+    // 🔒 認可: httpOnlyクッキーの playerId と一致することを強制
+    await requireSessionOwner(playerId)
 
     // レート制限チェック
     if (!checkRateLimit(`leave_room_${playerId}`, 10, 60000)) {
@@ -1065,6 +1182,9 @@ export async function deleteGameRoomAction(
       throw new GameActionError('Invalid player ID', 'INVALID_PLAYER_ID')
     }
 
+    // 🔒 認可: httpOnlyクッキーの playerId と一致することを強制
+    await requireSessionOwner(hostPlayerId)
+
     // レート制限チェック
     if (!checkRateLimit(`delete_room_${hostPlayerId}`, 5, 60000)) {
       throw new GameActionError('Rate limit exceeded', 'RATE_LIMIT_EXCEEDED')
@@ -1126,9 +1246,13 @@ export async function deleteGameRoomAction(
 
 /**
  * セキュアなゲームルーム詳細取得アクション
+ *
+ * F-2 対策: 認可チェックが存在しなかったため、
+ * セッション照合 + ルーム参加者（またはホスト）チェックを追加。
  */
 export async function getRoomDetailsAction(
-  roomId: string
+  roomId: string,
+  playerId: string
 ): Promise<{ success: boolean; room?: GameRoom; error?: string }> {
   try {
     // 入力検証
@@ -1136,18 +1260,45 @@ export async function getRoomDetailsAction(
       throw new GameActionError('Invalid room ID', 'INVALID_ROOM_ID')
     }
 
-    // ゲームルーム詳細を取得
-    const { data, error } = await supabaseAdmin
-      .from('game_rooms')
-      .select('*')
-      .eq('id', roomId)
-      .single()
+    if (!validatePlayerId(playerId)) {
+      throw new GameActionError('Invalid player ID', 'INVALID_PLAYER_ID')
+    }
 
-    if (error) {
-      console.error('Database error:', error)
+    // 🔒 認可: httpOnlyクッキーの playerId と一致することを強制
+    await requireSessionOwner(playerId)
+
+    // レート制限チェック（ウェイティングルームは2秒間隔でポーリングする）
+    if (!checkRateLimit(`room_details_${playerId}`, 120, 60000)) {
+      throw new GameActionError('Rate limit exceeded', 'RATE_LIMIT_EXCEEDED')
+    }
+
+    // ゲームルーム詳細とリクエスト元のルーム所属を並列取得
+    const [roomResult, playerResult] = await Promise.all([
+      supabaseAdmin.from('game_rooms').select('*').eq('id', roomId).single(),
+      supabaseAdmin
+        .from('players')
+        .select('room_id')
+        .eq('id', playerId)
+        .single(),
+    ])
+
+    if (roomResult.error) {
+      console.error('Database error:', roomResult.error)
       throw new GameActionError(
-        `Failed to get room details: ${error.message}`,
+        `Failed to get room details: ${roomResult.error.message}`,
         'DATABASE_ERROR'
+      )
+    }
+
+    const data = roomResult.data
+    const isHost = data.host_player_id === playerId
+    const isMember = playerResult.data?.room_id === roomId
+
+    // 🔒 認可: ルーム参加者かホストのみ詳細を取得できる
+    if (!isHost && !isMember) {
+      throw new GameActionError(
+        AUTH_ERRORS.NOT_A_ROOM_MEMBER,
+        GAME_ACTION_ERROR_CODES.FORBIDDEN
       )
     }
 
@@ -1158,6 +1309,7 @@ export async function getRoomDetailsAction(
       maxPlayers: data.max_players,
       status: data.status as 'waiting' | 'playing' | 'finished',
       hostPlayerId: data.host_player_id,
+      isHost,
       createdAt: new Date(data.created_at),
       gameId: data.game_id || undefined,
     }
@@ -1191,6 +1343,9 @@ export async function startGameFromRoomAction(
     if (!validatePlayerId(hostPlayerId)) {
       throw new GameActionError('Invalid player ID', 'INVALID_PLAYER_ID')
     }
+
+    // 🔒 認可: httpOnlyクッキーの playerId と一致することを強制
+    await requireSessionOwner(hostPlayerId)
 
     // レート制限チェック
     if (!checkRateLimit(`start_game_${hostPlayerId}`, 5, 60000)) {

@@ -1,10 +1,17 @@
 'use server'
 
-import { GAME_PHASES } from '@/lib/constants'
+import {
+  assertGameParticipant,
+  requireAuthenticatedPlayerId,
+} from '@/lib/auth/requireSessionOwner'
+import { GAME_PHASES, ML_GAME_RESULTS } from '@/lib/constants'
 import {
   GAME_ACTION_ERROR_CODES,
   GameActionError,
 } from '@/lib/errors/GameActionError'
+import { requireGameState } from '@/lib/game/gameStateRepository'
+import { maskGameStateForPlayer } from '@/lib/game/maskGameState'
+import { updateGameResult } from '@/lib/ml/dataCollection'
 import {
   calculateGameResult,
   getGameProgress,
@@ -13,13 +20,30 @@ import {
 } from '@/lib/scoring'
 import { validateGameId } from '@/lib/supabase/server'
 import type { GameResult, GameState } from '@/types/game'
-import {
-  loadGameStateAction,
-  saveGameResultAction,
-  saveGameStateAction,
-  validateSessionAction,
-} from './gameActions'
-import { updateGameResult } from './mlDataCollectionActions'
+import { saveGameResultAction, saveGameStateAction } from './gameActions'
+
+/**
+ * 共通の認可処理
+ * 操作主体は httpOnly クッキーのセッションからのみ決定し、
+ * そのゲームの人間プレイヤーとして参加していることを保証する。
+ */
+async function authorizeGameResultAction(
+  gameId: string
+): Promise<{ actorId: string; gameState: GameState }> {
+  if (!validateGameId(gameId)) {
+    throw new GameActionError(
+      'Invalid game ID',
+      GAME_ACTION_ERROR_CODES.INVALID_GAME_ID
+    )
+  }
+
+  const actorId = await requireAuthenticatedPlayerId()
+  const gameState = await requireGameState(gameId)
+
+  assertGameParticipant(gameState, actorId)
+
+  return { actorId, gameState }
+}
 
 export interface GameResultActionResult<T = GameResult> {
   success: boolean
@@ -33,36 +57,12 @@ export interface GameResultActionResult<T = GameResult> {
  */
 export async function calculateGameResultAction(
   gameId: string,
-  playerId: string
+  // 認可はクッキーセッションで行うため引数の playerId は信頼しない（互換のため残す）
+  _playerId?: string
 ): Promise<GameResultActionResult<GameResult>> {
   try {
-    // セッション検証
-    const sessionValid = await validateSessionAction(playerId)
-    if (!sessionValid.success) {
-      throw new GameActionError(
-        'Invalid session',
-        GAME_ACTION_ERROR_CODES.UNAUTHORIZED
-      )
-    }
-
-    // 入力検証
-    if (!validateGameId(gameId)) {
-      throw new GameActionError(
-        'Invalid game ID',
-        GAME_ACTION_ERROR_CODES.INVALID_GAME_ID
-      )
-    }
-
-    // 現在のゲーム状態を取得
-    const gameResult = await loadGameStateAction(gameId, playerId)
-    if (!gameResult.success || !gameResult.gameState) {
-      throw new GameActionError(
-        'Game not found',
-        GAME_ACTION_ERROR_CODES.NOT_FOUND
-      )
-    }
-
-    const gameState = gameResult.gameState
+    // 🔒 認可: クッキーのセッションを操作主体として検証
+    const { gameState } = await authorizeGameResultAction(gameId)
 
     // ゲームが終了していることを確認
     if (gameState.phase !== GAME_PHASES.FINISHED) {
@@ -76,7 +76,9 @@ export async function calculateGameResultAction(
     const result = calculateGameResult(gameState)
 
     // 機械学習用データベースにゲーム結果を更新（非同期・エラーは無視）
-    const mlGameResult = result.napoleonWon ? 'napoleon_win' : 'allied_win'
+    const mlGameResult = result.napoleonWon
+      ? ML_GAME_RESULTS.NAPOLEON_WIN
+      : ML_GAME_RESULTS.ALLIED_WIN
     const playerScores: Record<string, number> = {}
     result.scores.forEach((score) => {
       playerScores[score.playerId] = score.points
@@ -109,30 +111,13 @@ export async function calculateGameResultAction(
  */
 export async function checkGameDecisionAction(
   gameId: string,
-  playerId: string
+  _playerId?: string
 ): Promise<
   GameResultActionResult<{ isDecided: boolean; result?: GameResult }>
 > {
   try {
-    // セッション検証
-    const sessionValid = await validateSessionAction(playerId)
-    if (!sessionValid.success) {
-      throw new GameActionError(
-        'Invalid session',
-        GAME_ACTION_ERROR_CODES.UNAUTHORIZED
-      )
-    }
-
-    // 現在のゲーム状態を取得
-    const gameResult = await loadGameStateAction(gameId, playerId)
-    if (!gameResult.success || !gameResult.gameState) {
-      throw new GameActionError(
-        'Game not found',
-        GAME_ACTION_ERROR_CODES.NOT_FOUND
-      )
-    }
-
-    const gameState = gameResult.gameState
+    // 🔒 認可: クッキーのセッションを操作主体として検証
+    const { gameState } = await authorizeGameResultAction(gameId)
 
     // サーバーサイドでゲーム決着判定
     const decisionCheck = isGameDecided(gameState)
@@ -164,30 +149,16 @@ export async function checkGameDecisionAction(
  */
 export async function finalizeGameAction(
   gameId: string,
-  playerId: string
+  _playerId?: string
 ): Promise<
   GameResultActionResult<{ gameState: GameState; result: GameResult }>
 > {
   try {
-    // セッション検証
-    const sessionValid = await validateSessionAction(playerId)
-    if (!sessionValid.success) {
-      throw new GameActionError(
-        'Invalid session',
-        GAME_ACTION_ERROR_CODES.UNAUTHORIZED
-      )
-    }
+    // 🔒 認可: クッキーのセッションを操作主体として検証
+    const { actorId, gameState: loadedGameState } =
+      await authorizeGameResultAction(gameId)
 
-    // 現在のゲーム状態を取得
-    const gameResult = await loadGameStateAction(gameId, playerId)
-    if (!gameResult.success || !gameResult.gameState) {
-      throw new GameActionError(
-        'Game not found',
-        GAME_ACTION_ERROR_CODES.NOT_FOUND
-      )
-    }
-
-    let gameState = gameResult.gameState
+    let gameState = loadedGameState
 
     // ゲームが終了していない場合は終了状態に変更
     if (gameState.phase !== GAME_PHASES.FINISHED) {
@@ -210,7 +181,7 @@ export async function finalizeGameAction(
     const result = calculateGameResult(gameState)
 
     // ゲーム結果をデータベースに保存
-    const saveResultSuccess = await saveGameResultAction(result, playerId)
+    const saveResultSuccess = await saveGameResultAction(result, actorId)
     if (!saveResultSuccess.success) {
       throw new GameActionError(
         'Failed to save game result',
@@ -219,7 +190,7 @@ export async function finalizeGameAction(
     }
 
     // 最終ゲーム状態を保存
-    const saveStateSuccess = await saveGameStateAction(gameState, playerId)
+    const saveStateSuccess = await saveGameStateAction(gameState, actorId)
     if (!saveStateSuccess.success) {
       throw new GameActionError(
         'Failed to save final game state',
@@ -230,7 +201,8 @@ export async function finalizeGameAction(
     return {
       success: true,
       data: {
-        gameState,
+        // 🔒 F-3: 他プレイヤーの手札はクライアントへ返さない
+        gameState: maskGameStateForPlayer(gameState, actorId),
         result,
       },
     }
@@ -249,7 +221,7 @@ export async function finalizeGameAction(
  */
 export async function getGameProgressAction(
   gameId: string,
-  playerId: string
+  _playerId?: string
 ): Promise<
   GameResultActionResult<{
     progress: ReturnType<typeof getGameProgress>
@@ -257,25 +229,8 @@ export async function getGameProgressAction(
   }>
 > {
   try {
-    // セッション検証
-    const sessionValid = await validateSessionAction(playerId)
-    if (!sessionValid.success) {
-      throw new GameActionError(
-        'Invalid session',
-        GAME_ACTION_ERROR_CODES.UNAUTHORIZED
-      )
-    }
-
-    // 現在のゲーム状態を取得
-    const gameResult = await loadGameStateAction(gameId, playerId)
-    if (!gameResult.success || !gameResult.gameState) {
-      throw new GameActionError(
-        'Game not found',
-        GAME_ACTION_ERROR_CODES.NOT_FOUND
-      )
-    }
-
-    const gameState = gameResult.gameState
+    // 🔒 認可: クッキーのセッションを操作主体として検証
+    const { gameState } = await authorizeGameResultAction(gameId)
 
     // サーバーサイドで安全に進捗を計算
     const progress = getGameProgress(gameState)

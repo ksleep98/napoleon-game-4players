@@ -19,7 +19,6 @@
 // but we read it at call time, so this still works).
 process.env.NEXT_PUBLIC_ML_API_URL = ''
 
-import { updateGameResult } from '@/app/actions/mlDataCollectionActions'
 import { GAME_PHASES } from '@/lib/constants'
 import {
   initializeAIGame,
@@ -27,6 +26,7 @@ import {
   processAITurn,
   redealCards,
 } from '@/lib/gameLogic'
+import { updateGameResult } from '@/lib/ml/dataCollection'
 import { calculateGameResult } from '@/lib/scoring'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import type { GameState } from '@/types/game'

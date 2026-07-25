@@ -39,10 +39,8 @@ export function useAIProcessing({
             return
           }
 
-          const result = await processAITurnAction(
-            actualGameId,
-            gameState.players[0]?.id || 'player_0'
-          )
+          // 操作主体は httpOnly クッキーのセッションでサーバー側が決定する
+          const result = await processAITurnAction(actualGameId)
 
           if (result.success && result.data) {
             onGameStateUpdateRef.current(result.data)
@@ -53,10 +51,7 @@ export function useAIProcessing({
           // 副官フェーズでのAI処理
           const napoleonPlayer = gameState.players.find((p) => p.isNapoleon)
           if (napoleonPlayer?.isAI) {
-            const result = await processAITurnAction(
-              actualGameId,
-              gameState.players[0]?.id || 'player_0'
-            )
+            const result = await processAITurnAction(actualGameId)
 
             if (result.success && result.data) {
               onGameStateUpdateRef.current(result.data)
@@ -68,10 +63,7 @@ export function useAIProcessing({
           // カード交換フェーズでのAI処理
           const napoleonPlayer = gameState.players.find((p) => p.isNapoleon)
           if (napoleonPlayer?.isAI) {
-            const result = await processAITurnAction(
-              actualGameId,
-              gameState.players[0]?.id || 'player_0'
-            )
+            const result = await processAITurnAction(actualGameId)
 
             if (result.success && result.data) {
               onGameStateUpdateRef.current(result.data)
@@ -86,10 +78,7 @@ export function useAIProcessing({
 
           const currentPlayer = getCurrentPlayer(gameState)
           if (currentPlayer?.isAI) {
-            const result = await processAITurnAction(
-              actualGameId,
-              gameState.players[0]?.id || 'player_0'
-            )
+            const result = await processAITurnAction(actualGameId)
 
             if (result.success && result.data) {
               onGameStateUpdateRef.current(result.data)

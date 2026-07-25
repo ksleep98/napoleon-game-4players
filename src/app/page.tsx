@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { usePlayerSession } from '@/hooks/useSupabase'
 import { AI_GAME_DEFAULTS, GAME_ID_PREFIXES } from '@/lib/constants'
 import { FEATURE_FLAGS } from '@/lib/utils/environment'
+import { generatePlayerId } from '@/utils/cardUtils'
 
 export default function Home() {
   const router = useRouter()
@@ -21,11 +22,10 @@ export default function Home() {
         .substring(2, 8)}`
 
       // Phase 5: httpOnlyクッキーでセッション保存（localStorage削除）
+      // ⚠️ 固定IDを使うと全ユーザーが同じ playerId になり、
+      //    互いのゲームを操作できてしまうため必ず一意なIDを生成する
       if (!isAuthenticated) {
-        await initializePlayer(
-          AI_GAME_DEFAULTS.PLAYER_ID,
-          AI_GAME_DEFAULTS.PLAYER_NAME
-        )
+        await initializePlayer(generatePlayerId(), AI_GAME_DEFAULTS.PLAYER_NAME)
       }
 
       router.push(`/game/${gameId}?ai=true`)

@@ -3,6 +3,12 @@
 import { useEffect, useRef } from 'react'
 
 interface UseGameInitializationProps {
+  /**
+   * httpOnlyクッキーのセッションが読み込み済みかどうか。
+   * Server Action の認可はセッションクッキーに依存するため、
+   * セッション確立前に初期化を走らせてはならない。
+   */
+  isSessionReady: boolean
   gameId: string | undefined
   playerNames: string[] | undefined
   isAI: boolean | undefined
@@ -14,6 +20,7 @@ interface UseGameInitializationProps {
 }
 
 export function useGameInitialization({
+  isSessionReady,
   gameId,
   playerNames,
   isAI,
@@ -33,6 +40,7 @@ export function useGameInitialization({
   loadGameRef.current = loadGame
 
   useEffect(() => {
+    if (!isSessionReady) return
     if (hasGameState || isLoading || isInitialized) return
 
     // 同じゲームIDで初期化を試みた場合は重複を防ぐ
@@ -48,5 +56,13 @@ export function useGameInitialization({
       initializationAttempted.current = gameId
       loadGameRef.current(gameId)
     }
-  }, [gameId, hasGameState, isInitialized, isLoading, playerNames, isAI])
+  }, [
+    isSessionReady,
+    gameId,
+    hasGameState,
+    isInitialized,
+    isLoading,
+    playerNames,
+    isAI,
+  ])
 }
