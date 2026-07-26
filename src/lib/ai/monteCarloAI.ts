@@ -24,7 +24,14 @@ export interface MCTSNode {
 
   // 統計情報
   visits: number
-  wins: number
+  /**
+   * このノード以下で得られた報酬の合計。
+   *
+   * 旧 `wins`（勝利回数の整数カウント）を置き換えたもの。報酬は 1 回の
+   * シミュレーションあたり [0, 1] の実数なので、`totalReward / visits` は
+   * 必ず [0, 1] に収まり、UCB1 の exploitation 項として使える。
+   */
+  totalReward: number
 
   // ツリー構造
   parent: MCTSNode | null
@@ -71,17 +78,68 @@ export const MCTS_PRESETS = {
   },
 } as const
 
-/**
- * ゲーム結果
- */
-interface GameResult {
-  winnerId: string
-  napoleonWon: boolean
-}
-
 // ===========================
 // MCTS メインアルゴリズム
 // ===========================
+
+/**
+ * MCTS の探索木を構築してルートノードを返す。
+ *
+ * `monteCarloTreeSearch` から切り出してある。探索統計
+ * （`visits` / `totalReward`、つまり UCB1 の exploitation 項）を
+ * テストや計測から直接検証できるようにするため。
+ *
+ * @param gameState 現在のゲーム状態
+ * @param player 探索の主体となるプレイヤー（報酬の視点）
+ * @param config MCTS設定
+ * @returns 展開済みのルートノード
+ */
+export function buildSearchTree(
+  gameState: GameState,
+  player: Player,
+  config: MCTSConfig
+): MCTSNode {
+  // ゲーム状態から現在のプレイヤーのプレイ可能なカードを取得
+  // determinizationで手札が変更されている可能性があるため
+  const currentPlayableCards = getPlayableCards(gameState)
+
+  const rootNode: MCTSNode = {
+    gameState,
+    playedCard: null,
+    visits: 0,
+    totalReward: 0,
+    parent: null,
+    children: [],
+    untriedActions: [...currentPlayableCards],
+  }
+
+  const startTime = Date.now()
+  let simulationCount = 0
+
+  // 制限時間またはシミュレーション回数まで実行
+  while (
+    simulationCount < config.simulationCount &&
+    Date.now() - startTime < config.timeLimit
+  ) {
+    // 1. Selection（選択）
+    let node = selectNode(rootNode, config.explorationConstant)
+
+    // 2. Expansion（展開）
+    if (node.untriedActions.length > 0 && node.visits > 0) {
+      node = expandNode(node, player)
+    }
+
+    // 3. Simulation（シミュレーション）
+    const result = simulateGame(node.gameState, player)
+
+    // 4. Backpropagation（逆伝播）
+    backpropagate(node, result, player)
+
+    simulationCount++
+  }
+
+  return rootNode
+}
 
 /**
  * モンテカルロ木探索でカードを選択
@@ -104,47 +162,7 @@ export function monteCarloTreeSearch(
     return playableCards[0]
   }
 
-  // MCTSは現在のプレイヤーに対してのみ実行される
-  const _currentPlayer = gameState.players[gameState.currentPlayerIndex]
-
-  // ゲーム状態から現在のプレイヤーのプレイ可能なカードを取得
-  // determinizationで手札が変更されている可能性があるため
-  const currentPlayableCards = getPlayableCards(gameState)
-
-  const rootNode: MCTSNode = {
-    gameState,
-    playedCard: null,
-    visits: 0,
-    wins: 0,
-    parent: null,
-    children: [],
-    untriedActions: [...currentPlayableCards],
-  }
-
-  const startTime = Date.now()
-  let simulationCount = 0
-
-  // 制限時間またはシミュレーション回数まで実行
-  while (
-    simulationCount < config.simulationCount &&
-    Date.now() - startTime < config.timeLimit
-  ) {
-    // 1. Selection（選択）
-    let node = selectNode(rootNode)
-
-    // 2. Expansion（展開）
-    if (node.untriedActions.length > 0 && node.visits > 0) {
-      node = expandNode(node, player)
-    }
-
-    // 3. Simulation（シミュレーション）
-    const result = simulateGame(node.gameState, player)
-
-    // 4. Backpropagation（逆伝播）
-    backpropagate(node, result, player)
-
-    simulationCount++
-  }
+  const rootNode = buildSearchTree(gameState, player, config)
 
   // 最も訪問回数が多い子ノードのアクションを選択
   if (rootNode.children.length === 0) {
@@ -186,10 +204,14 @@ export function monteCarloTreeSearch(
 
 /**
  * UCB1アルゴリズムで最適な子ノードを選択
+ *
+ * 探索定数はハードコードせず `MCTSConfig.explorationConstant` を使う。
+ * UCB1 の c は「exploitation ∈ [0, 1]」を前提に校正された値なので、
+ * 報酬の正規化と定数の設定は同じ場所で管理できる必要がある。
  */
-function selectNode(node: MCTSNode): MCTSNode {
+function selectNode(node: MCTSNode, explorationConstant: number): MCTSNode {
   while (node.untriedActions.length === 0 && node.children.length > 0) {
-    node = selectBestChild(node, Math.sqrt(2))
+    node = selectBestChild(node, explorationConstant)
   }
   return node
 }
@@ -208,15 +230,19 @@ function selectBestChild(node: MCTSNode, c: number): MCTSNode {
 /**
  * UCB1値を計算
  * UCB1 = exploitation + exploration
+ *
+ * `totalReward` は 1 シミュレーションあたり [0, 1] の報酬の合計なので、
+ * `totalReward / visits` は必ず [0, 1] に収まる。探索定数 c = √2 は
+ * この前提で校正されており、ここを崩すと探索と活用の比が壊れる。
  */
-function calculateUCB1(
+export function calculateUCB1(
   node: MCTSNode,
   parentVisits: number,
   c: number
 ): number {
   if (node.visits === 0) return Number.POSITIVE_INFINITY
 
-  const exploitation = node.wins / node.visits
+  const exploitation = node.totalReward / node.visits
   const exploration = c * Math.sqrt(Math.log(parentVisits) / node.visits)
   return exploitation + exploration
 }
@@ -254,7 +280,7 @@ function expandNode(node: MCTSNode, _player: Player): MCTSNode {
     gameState: newGameState,
     playedCard: action,
     visits: 0,
-    wins: 0,
+    totalReward: 0,
     parent: node,
     children: [],
     untriedActions: [...nextPlayableCards],
@@ -269,12 +295,9 @@ function expandNode(node: MCTSNode, _player: Player): MCTSNode {
 // ===========================
 
 /**
- * ゲーム終了までシミュレート
+ * ゲーム終了までシミュレートし、ナポレオン側から見た報酬 [0, 1] を返す
  */
-function simulateGame(
-  gameState: GameState,
-  _currentPlayer: Player
-): GameResult {
+function simulateGame(gameState: GameState, _currentPlayer: Player): number {
   let state = cloneGameState(gameState)
 
   // ゲーム終了までプレイアウト
@@ -302,13 +325,8 @@ function simulateGame(
     iterations++
   }
 
-  // ゲーム結果を取得
-  const result = getGameResult(state)
-
-  return {
-    winnerId: '',
-    napoleonWon: result.napoleonWon,
-  }
+  // ゲーム結果を取得（ナポレオン側から見た [0, 1] の報酬）
+  return getGameResult(state).napoleonReward
 }
 
 // ===========================
@@ -317,36 +335,39 @@ function simulateGame(
 
 /**
  * シミュレーション結果を逆伝播
+ *
+ * 旧実装は「勝ったら wins++」だったため、ナポレオン勝率が低いロールアウトでは
+ * ほぼ全ノードの exploitation が 0 で並び、UCB1 が探索項だけで動いていた。
+ * 報酬（[0, 1] の実数）を積むことで負け局同士・勝ち局同士にも順序がつく。
  */
 function backpropagate(
   node: MCTSNode,
-  result: GameResult,
+  napoleonSideReward: number,
   player: Player
 ): void {
+  const reward = rewardForPlayer(player, napoleonSideReward)
   let currentNode: MCTSNode | null = node
 
   while (currentNode !== null) {
     currentNode.visits++
-
-    // このプレイヤーが勝利した場合
-    if (didPlayerWin(player, result)) {
-      currentNode.wins++
-    }
-
+    currentNode.totalReward += reward
     currentNode = currentNode.parent
   }
 }
 
 /**
- * プレイヤーが勝利したか判定
+ * このプレイヤーの視点での報酬 [0, 1] を返す。
+ *
+ * ナポレオン側はそのまま、連合軍側は 1 - x（ゼロサム）。
  */
-function didPlayerWin(player: Player, result: GameResult): boolean {
-  // ナポレオンチームの勝利判定
+export function rewardForPlayer(
+  player: Player,
+  napoleonSideReward: number
+): number {
   if (player.isNapoleon || player.isAdjutant) {
-    return result.napoleonWon
+    return napoleonSideReward
   }
-  // 連合軍の勝利判定
-  return !result.napoleonWon
+  return 1 - napoleonSideReward
 }
 
 // ===========================

@@ -24,6 +24,11 @@ export function isNapoleonWinning(
   currentTrick: Trick,
   gameState: GameState
 ): boolean {
+  // リード局面（まだ 1 枚も出ていない）では誰も勝っていない。
+  // ガードが無いと getBestTrickCard が throw し、AI 全体が
+  // ランダム着手にフォールバックしてしまう。
+  if (currentTrick.cards.length === 0) return false
+
   const napoleon = gameState.players.find((p) => p.isNapoleon)
   const adjutant = gameState.players.find((p) => p.isAdjutant)
   if (!napoleon) return false
@@ -44,6 +49,9 @@ export function isAllianceWinning(
   currentTrick: Trick,
   gameState: GameState
 ): boolean {
+  // リード局面では誰も勝っていない（isNapoleonWinning と同じ理由）
+  if (currentTrick.cards.length === 0) return false
+
   const napoleon = gameState.players.find((p) => p.isNapoleon)
   const adjutant = gameState.players.find((p) => p.isAdjutant)
   if (!napoleon) return false

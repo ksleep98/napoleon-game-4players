@@ -3,6 +3,7 @@
  * ヒューリスティック、MCTS、ハイブリッドの選択
  */
 
+import { GAME_PHASES, NODE_ENVIRONMENTS } from '@/lib/constants'
 import { predictBestCard, type Role } from '@/lib/ml/mlClient'
 import type { Card, GameState, Player } from '@/types/game'
 import { getPlayableCards } from './gameSimulator'
@@ -82,6 +83,32 @@ export const DEFAULT_STRATEGY_CONFIGS: Record<
 }
 
 /**
+ * `trumpSuit` 未設定のまま AI 評価に入った局面を開発時だけ警告する。
+ *
+ * AI 評価層は `(gameState.trumpSuit as Suit) || 'spades'` という防御的な
+ * フォールバックを持つため、未設定でも例外にはならず「常にスペードが切り札」
+ * として静かに誤動作する。フォールバック自体は残すが、宣言済みなのに
+ * `trumpSuit` が欠けている状態は必ずバグなので、開発時に気付けるようにする。
+ * （ゲームごとに 1 回だけ出力する）
+ */
+const warnedTrumpSuitGameIds = new Set<string>()
+
+function warnIfTrumpSuitMissing(gameState: GameState): void {
+  if (process.env.NODE_ENV !== NODE_ENVIRONMENTS.DEVELOPMENT) return
+  if (gameState.phase !== GAME_PHASES.PLAYING) return
+  if (gameState.trumpSuit) return
+  if (!gameState.napoleonDeclaration) return
+  if (warnedTrumpSuitGameIds.has(gameState.id)) return
+
+  warnedTrumpSuitGameIds.add(gameState.id)
+  console.warn(
+    `[aiStrategy] gameState.trumpSuit is missing (game=${gameState.id}). ` +
+      `AI evaluation will fall back to spades instead of the declared suit ` +
+      `"${gameState.napoleonDeclaration.suit}".`
+  )
+}
+
+/**
  * AI戦略でカードを選択
  * @param gameState 現在のゲーム状態
  * @param player プレイヤー
@@ -93,6 +120,8 @@ export function selectAICard(
   player: Player,
   config: AIStrategyConfig
 ): Card | null {
+  warnIfTrumpSuitMissing(gameState)
+
   const playableCards = getPlayableCards(gameState, player.id)
 
   if (playableCards.length === 0) {

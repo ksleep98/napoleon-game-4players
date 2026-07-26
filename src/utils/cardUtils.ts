@@ -1,14 +1,19 @@
 import { createDeck, GAME_CONFIG } from '@/lib/constants'
+import { random } from '@/lib/utils/rng'
 import type { Card, Player } from '@/types/game'
 
 /**
  * Fisher-Yatesアルゴリズムを使ってカードをシャッフル
+ *
+ * 乱数は `@/lib/utils/rng` の `random()` 経由。シード未設定時は
+ * `Math.random()` と完全に同一の挙動になる（本番は無影響）。
+ * A/B セルフプレイ計測時のみ `setSeed()` で配牌を再現可能にする。
  */
 export function shuffleDeck(deck: Card[]): Card[] {
   const shuffled = [...deck]
 
   for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
+    const j = Math.floor(random() * (i + 1))
     ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
   }
 
@@ -110,12 +115,12 @@ export function getCardDisplay(card: Card): string {
  * ランダムなプレイヤーIDを生成
  */
 export function generatePlayerId(): string {
-  return `player_${Math.random().toString(36).substring(2, 11)}`
+  return `player_${random().toString(36).substring(2, 11)}`
 }
 
 /**
  * ランダムなゲームIDを生成
  */
 export function generateGameId(): string {
-  return `game_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+  return `game_${Date.now()}_${random().toString(36).substring(2, 11)}`
 }

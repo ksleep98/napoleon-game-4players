@@ -212,7 +212,7 @@ export function isGameDecided(gameState: GameState): {
     NAPOLEON_RULES.TARGET_FACE_CARDS
 
   // 総絵札数（10, J, Q, K, A の各スート5枚 = 20枚）
-  const TOTAL_FACE_CARDS = 20
+  const TOTAL_FACE_CARDS = NAPOLEON_RULES.TOTAL_FACE_CARDS
 
   // ナポレオン側が既に必要な絵札数を達成
   if (napoleonTeamFaceCards >= targetFaceCards) {

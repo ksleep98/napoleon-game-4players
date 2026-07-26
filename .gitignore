@@ -128,3 +128,6 @@ python/model/models/*.pkl
 python/model/models/*.joblib
 python/model/models/*.skops
 *.pyc
+
+# Claude Code agent worktrees (nested biome.json breaks `pnpm lint`)
+.claude/worktrees/
