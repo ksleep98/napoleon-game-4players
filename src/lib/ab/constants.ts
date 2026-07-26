@@ -6,6 +6,7 @@
 
 import type { AIStrategyType } from '@/lib/ai/aiStrategy'
 import { MCTS_PRESETS } from '@/lib/ai/monteCarloAI'
+import { NAPOLEON_RULES } from '@/lib/constants'
 
 /** 変更対象（variant を適用する対象）のロール */
 export const VARIANT_ROLES = {
@@ -146,7 +147,7 @@ export const LOG_PREFIX = '[ab]'
 export const Z_95 = 1.959964
 
 /** 総絵札数（10, J, Q, K, A × 4スート） */
-export const TOTAL_FACE_CARDS = 20
+export const TOTAL_FACE_CARDS = NAPOLEON_RULES.TOTAL_FACE_CARDS
 
 /** ハーネスが生成するプレイヤー ID / 名前 */
 export const HARNESS_PLAYER_ID_PREFIX = 'player_'

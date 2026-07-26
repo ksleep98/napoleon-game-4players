@@ -227,6 +227,55 @@ export interface GameResult {
   napoleonWon: boolean
   napoleonTricksWon: number
   targetTricks: number
+  /**
+   * ナポレオン側から見た報酬。常に [0, 1]。
+   * MCTS の UCB1 exploitation 項がこの値の平均を使う。
+   */
+  napoleonReward: number
+}
+
+/** 値を [min, max] に丸める */
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
+}
+
+/**
+ * ナポレオン側から見た報酬を [0, 1] に正規化して返す。
+ *
+ * なぜ勝敗の真偽値ではなくマージンなのか:
+ *   旧実装は「ナポレオンが勝ったか」の 0/1 しか返さなかった。ロールアウトでの
+ *   ナポレオン勝率は 1 割弱しかなく、ある局面のすべての合法手が同じ 0 を返す
+ *   ことが多い。その場合 UCB1 の exploitation 項が全子ノードで一致して死に、
+ *   探索項（訪問回数）だけが順位を決めるので MCTS が実質機能しなくなる。
+ *   獲得絵札数に対して単調増加な報酬にすれば、負け局同士・勝ち局同士でも
+ *   優劣がつき、exploitation 項が働くようになる。
+ *
+ * なぜ [0, 1] 正規化が必須なのか:
+ *   UCB1 の探索定数 c = √2 は「exploitation ∈ [0, 1]」を前提に校正されている。
+ *   生のマージン（-13 〜 +7）をそのまま入れると exploration 項との
+ *   スケールが合わず、探索と活用のバランスが壊れる。
+ *
+ * 値域:
+ *   勝ち (faceCardsWon >= target) → [0.5, 1.0]
+ *   負け (faceCardsWon <  target) → [0.0, 0.5)
+ *   よって「どんな勝ちも、どんな負けより厳密に良い」という順序が保たれる。
+ */
+export function napoleonReward(
+  faceCardsWon: number,
+  targetFaceCards: number
+): number {
+  const total = NAPOLEON_RULES.TOTAL_FACE_CARDS
+
+  if (faceCardsWon >= targetFaceCards) {
+    // 宣言ちょうどで 0.5、残る絵札を取り切るほど 1.0 に近づく
+    const surplusRoom = Math.max(1, total - targetFaceCards)
+    return (
+      0.5 + 0.5 * clamp((faceCardsWon - targetFaceCards) / surplusRoom, 0, 1)
+    )
+  }
+
+  // 0 枚で 0.0、宣言に 1 枚届かない状態が 0.5 の直下
+  return 0.5 * clamp(faceCardsWon / Math.max(1, targetFaceCards), 0, 1)
 }
 
 export function getGameResult(state: GameState): GameResult {
@@ -240,6 +289,7 @@ export function getGameResult(state: GameState): GameResult {
     napoleonWon,
     napoleonTricksWon: napoleonFaceCardsWon, // 互換性のため名前はそのまま
     targetTricks: targetFaceCards,
+    napoleonReward: napoleonReward(napoleonFaceCardsWon, targetFaceCards),
   }
 }
 

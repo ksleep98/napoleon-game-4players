@@ -173,6 +173,7 @@ export const GAME_CONFIG = {
 
 export const NAPOLEON_RULES = {
   TARGET_FACE_CARDS: 13, // 絵札（10〜A）の最低獲得枚数
+  TOTAL_FACE_CARDS: 20, // 場に存在する絵札の総数（10, J, Q, K, A × 4スート）
   NAPOLEON_BONUS: 100,
   BASE_POINTS: 10,
   ADJUTANT_BONUS: 50,
