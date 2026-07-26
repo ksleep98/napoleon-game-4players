@@ -130,6 +130,10 @@ export function useCookieSession(): CookieSessionState & CookieSessionActions {
 
   /**
    * セッションをリフレッシュ（有効期限延長）
+   *
+   * 通常はサーバー側のスライディング期限（Server Action の認可時に自動延長）で
+   * 十分なため、この関数を定期実行する必要は無い。
+   * 「操作していないが明示的に延長したい」画面のためのオプション API。
    */
   const refreshWithExtension = useCallback(async () => {
     try {

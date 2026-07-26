@@ -7,8 +7,15 @@
  * jest.mock('@/lib/cookies/sessionCookies', () => ({
  *   getSessionCookie: jest.fn(),
  *   isSessionValid: jest.fn(),
+ *   refreshSession: jest.fn(),
+ *   setSessionCookie: jest.fn(),
+ *   shouldExtendSession: jest.fn(),
  * }))
  * ```
+ *
+ * `refreshSession` / `setSessionCookie` / `shouldExtendSession` は
+ * `getAuthenticatedPlayerId()` のスライディング期限延長で使われる。
+ * 既定では `shouldExtendSession` が undefined を返すため延長は発生しない。
  */
 
 import type { SessionCookieData } from '@/lib/cookies/sessionCookies'
