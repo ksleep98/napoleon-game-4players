@@ -9,6 +9,10 @@
  *   「同じゲームに参加している人間プレイヤーのセッション」が代理で進める。
  *   その場合のみ actor !== target を許可する。
  *
+ * - セッションはスライディング期限。認可が成功するたびに
+ *   `extendSessionIfNeeded()` がクッキーの有効期限を延長する
+ *   （毎回ではなく、前回発行から一定時間が経過した場合のみ）。
+ *
  * 注意: `getSessionCookie()` は Next.js のリクエストスコープ外
  * （headless スクリプト等）では内部で例外を捕捉して null を返す。
  * つまりリクエスト外からこのモジュールを使うと必ず UNAUTHORIZED になる。
@@ -17,7 +21,14 @@
  */
 
 import { AUTH_ERRORS } from '@/lib/constants'
-import { getSessionCookie, isSessionValid } from '@/lib/cookies/sessionCookies'
+import {
+  getSessionCookie,
+  isSessionValid,
+  refreshSession,
+  type SessionCookieData,
+  setSessionCookie,
+  shouldExtendSession,
+} from '@/lib/cookies/sessionCookies'
 import {
   GAME_ACTION_ERROR_CODES,
   GameActionError,
@@ -25,7 +36,33 @@ import {
 import type { GameState } from '@/types/game'
 
 /**
+ * セッションクッキーの有効期限を延長する（スライディング期限・ベストエフォート）
+ *
+ * ⚠️ `cookies().set()` は Server Action / Route Handler の中でしか呼べない。
+ * レンダリング中やリクエストスコープ外（headless シミュレータ等）から
+ * 呼ばれた場合は例外になるが、**延長できなくても認可は成功させる**。
+ * したがってここでは例外を握りつぶし、呼び出し元へ伝播させない。
+ */
+async function extendSessionIfNeeded(
+  session: SessionCookieData
+): Promise<void> {
+  try {
+    if (!shouldExtendSession(session)) {
+      return
+    }
+
+    await setSessionCookie(refreshSession(session))
+  } catch (error) {
+    // 延長失敗は認可の失敗ではない（期限内のセッションはそのまま有効）
+    console.warn('[Auth] Failed to extend session cookie:', error)
+  }
+}
+
+/**
  * 認証済みの操作主体 playerId を取得する（未認証なら null）
+ *
+ * 認可が成功したタイミングでセッションの有効期限を延長する（スライディング期限）。
+ * 全 Server Action がこの関数を通るため、操作し続けている限り失効しない。
  */
 export async function getAuthenticatedPlayerId(): Promise<string | null> {
   const session = await getSessionCookie()
@@ -37,6 +74,8 @@ export async function getAuthenticatedPlayerId(): Promise<string | null> {
   if (!isSessionValid(session)) {
     return null
   }
+
+  await extendSessionIfNeeded(session)
 
   return session.playerId
 }

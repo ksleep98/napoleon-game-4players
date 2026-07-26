@@ -4,6 +4,11 @@
  */
 
 import { cookies } from 'next/headers'
+import {
+  SESSION_DURATION_MS,
+  SESSION_MAX_AGE_SECONDS,
+  SESSION_RENEW_INTERVAL_MS,
+} from '@/lib/constants'
 import { decryptData, encryptData } from '@/utils/encryption'
 
 export interface SessionCookieData {
@@ -15,7 +20,6 @@ export interface SessionCookieData {
 }
 
 const COOKIE_NAME = 'napoleon_session'
-const COOKIE_MAX_AGE = 86400 // 24時間（秒）
 
 /**
  * クッキーオプション設定
@@ -27,7 +31,7 @@ const getCookieOptions = () => ({
   httpOnly: true,
   secure: true,
   sameSite: 'strict' as const,
-  maxAge: COOKIE_MAX_AGE,
+  maxAge: SESSION_MAX_AGE_SECONDS,
   path: '/',
 })
 
@@ -93,6 +97,10 @@ export function isSessionValid(session: SessionCookieData): boolean {
 
 /**
  * セッション有効期限を延長（リフレッシュ）
+ *
+ * 期限は常に「現在時刻 + SESSION_DURATION_MS」の絶対時刻で書き直す。
+ * 現在時刻起点なので過去の値になることはない。
+ *
  * @param session 既存のセッションデータ
  * @returns 更新されたセッションデータ
  */
@@ -101,6 +109,33 @@ export function refreshSession(session: SessionCookieData): SessionCookieData {
   return {
     ...session,
     createdAt: now,
-    expiresAt: now + COOKIE_MAX_AGE * 1000, // ミリ秒に変換
+    expiresAt: now + SESSION_DURATION_MS,
   }
+}
+
+/**
+ * セッションクッキーを再発行すべきか判定する（スライディング期限）
+ *
+ * 全 Server Action の応答に Set-Cookie を付けるのは無駄なので、
+ * 前回発行から SESSION_RENEW_INTERVAL_MS 以上経過した場合のみ再発行する。
+ *
+ * 残り寿命が SESSION_DURATION_MS を超えている場合も再発行する。
+ * これは新ポリシーより長い期限を持つ旧クッキー（24時間版）や、
+ * 異常に先の時刻が書かれたクッキーを現行ポリシーへ揃えるため。
+ *
+ * @param session 有効期限内のセッションデータ
+ * @param now 判定基準時刻（テスト用。既定は現在時刻）
+ * @returns 再発行すべきなら true
+ */
+export function shouldExtendSession(
+  session: SessionCookieData,
+  now: number = Date.now()
+): boolean {
+  const remainingMs = session.expiresAt - now
+
+  if (remainingMs > SESSION_DURATION_MS) {
+    return true
+  }
+
+  return remainingMs < SESSION_DURATION_MS - SESSION_RENEW_INTERVAL_MS
 }

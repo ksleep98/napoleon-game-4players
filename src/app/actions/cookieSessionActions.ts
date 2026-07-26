@@ -228,6 +228,12 @@ export async function validateSessionAction(): Promise<
 
 /**
  * セッションをリフレッシュ（有効期限延長）
+ *
+ * 通常の延長は `getAuthenticatedPlayerId()` のスライディング期限
+ * （全 Server Action の認可時に自動延長）が担当するため、この Server Action は
+ * 「操作なしで明示的に延長したい」場合の入口として残している。
+ * 閾値判定を挟まず無条件に再発行するので、ポーリングから呼ばないこと。
+ *
  * @returns リフレッシュされたセッション、または失敗の結果
  */
 export async function refreshSessionAction(): Promise<

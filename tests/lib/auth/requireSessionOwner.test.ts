@@ -11,6 +11,12 @@ import {
 } from '@/lib/auth/requireSessionOwner'
 import { AUTH_ERRORS, GAME_PHASES } from '@/lib/constants'
 import {
+  refreshSession,
+  type SessionCookieData,
+  setSessionCookie,
+  shouldExtendSession,
+} from '@/lib/cookies/sessionCookies'
+import {
   GAME_ACTION_ERROR_CODES,
   GameActionError,
 } from '@/lib/errors/GameActionError'
@@ -19,9 +25,13 @@ import type { GameState, Player } from '@/types/game'
 jest.mock('@/lib/cookies/sessionCookies', () => ({
   getSessionCookie: jest.fn(),
   isSessionValid: jest.fn(),
+  refreshSession: jest.fn(),
+  setSessionCookie: jest.fn(),
+  shouldExtendSession: jest.fn(),
 }))
 
 import {
+  createSessionData,
   mockAuthenticatedSession,
   mockExpiredSession,
   mockNoSession,
@@ -80,6 +90,71 @@ describe('requireSessionOwner helpers', () => {
       mockExpiredSession('human-1')
 
       await expect(getAuthenticatedPlayerId()).resolves.toBeNull()
+    })
+  })
+
+  describe('スライディング期限の延長（getAuthenticatedPlayerId）', () => {
+    const refreshedSession = (playerId: string): SessionCookieData => ({
+      ...createSessionData(playerId),
+      expiresAt: Date.now() + 1,
+    })
+
+    it('re-issues the cookie when the renew threshold has been crossed', async () => {
+      mockAuthenticatedSession('human-1')
+      const refreshed = refreshedSession('human-1')
+      ;(shouldExtendSession as jest.Mock).mockReturnValue(true)
+      ;(refreshSession as jest.Mock).mockReturnValue(refreshed)
+      ;(setSessionCookie as jest.Mock).mockResolvedValue(undefined)
+
+      await expect(getAuthenticatedPlayerId()).resolves.toBe('human-1')
+      expect(setSessionCookie).toHaveBeenCalledTimes(1)
+      expect(setSessionCookie).toHaveBeenCalledWith(refreshed)
+    })
+
+    it('does NOT re-issue the cookie below the renew threshold', async () => {
+      mockAuthenticatedSession('human-1')
+      ;(shouldExtendSession as jest.Mock).mockReturnValue(false)
+
+      await expect(getAuthenticatedPlayerId()).resolves.toBe('human-1')
+      expect(refreshSession).not.toHaveBeenCalled()
+      expect(setSessionCookie).not.toHaveBeenCalled()
+    })
+
+    it('does NOT re-issue an expired cookie', async () => {
+      mockExpiredSession('human-1')
+      ;(shouldExtendSession as jest.Mock).mockReturnValue(true)
+
+      await expect(getAuthenticatedPlayerId()).resolves.toBeNull()
+      expect(setSessionCookie).not.toHaveBeenCalled()
+    })
+
+    it('still authorizes when cookies().set() throws (render path fallback)', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation()
+      mockAuthenticatedSession('human-1')
+      ;(shouldExtendSession as jest.Mock).mockReturnValue(true)
+      ;(refreshSession as jest.Mock).mockReturnValue(
+        refreshedSession('human-1')
+      )
+      ;(setSessionCookie as jest.Mock).mockRejectedValue(
+        new Error(
+          'Cookies can only be modified in a Server Action or Route Handler'
+        )
+      )
+
+      await expect(getAuthenticatedPlayerId()).resolves.toBe('human-1')
+      await expect(requireSessionOwner('human-1')).resolves.toBe('human-1')
+      expect(warnSpy).toHaveBeenCalled()
+    })
+
+    it('still authorizes when the extension helper itself is unavailable', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation()
+      mockAuthenticatedSession('human-1')
+      ;(shouldExtendSession as jest.Mock).mockImplementation(() => {
+        throw new Error('unexpected')
+      })
+
+      await expect(getAuthenticatedPlayerId()).resolves.toBe('human-1')
+      expect(warnSpy).toHaveBeenCalled()
     })
   })
 
