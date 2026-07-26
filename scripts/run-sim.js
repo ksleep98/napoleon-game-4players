@@ -40,16 +40,61 @@ function runTsx(extraArgs) {
   return result.status ?? 1
 }
 
+// pull 先の一時ディレクトリ。cleanup() から参照するためモジュールスコープに置く。
+let tmpDir = null
+let cleanedUp = false
+
+/**
+ * 認証情報を含む一時ディレクトリを削除する。
+ *
+ * 冪等: シグナル → exit と二重に呼ばれても安全。
+ * SIGINT / SIGTERM / SIGHUP からも呼ぶ必要がある。長時間走るシミュレーションを
+ * Ctrl-C で止めるのは日常操作であり、そこで SUPABASE_SERVICE_ROLE_KEY が
+ * tmp に平文で残るのを防ぐため。
+ */
+function cleanup() {
+  if (cleanedUp || !tmpDir) return
+  cleanedUp = true
+  try {
+    fs.rmSync(tmpDir, { recursive: true, force: true })
+  } catch (err) {
+    console.warn(
+      `[run-sim] warning: could not remove temp env dir ${tmpDir}: ${err.message}`
+    )
+  }
+}
+
+function installCleanupHandlers() {
+  process.on('exit', cleanup)
+  for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+    process.on(signal, () => {
+      cleanup()
+      // 128 + シグナル番号 が慣例。SIGINT=2 → 130。
+      process.exit(signal === 'SIGINT' ? 130 : 143)
+    })
+  }
+  process.on('uncaughtException', (err) => {
+    cleanup()
+    throw err
+  })
+}
+
 function main() {
   if (hasCreds) {
     console.log('[run-sim] Supabase env already present — running directly.')
     process.exit(runTsx([]))
   }
 
-  // 一時ファイルへ env を pull → --env-file で読ませる → 実行後に必ず削除。
-  // 注意: try/finally で process.exit を呼ぶと finally が走らないため、
-  // 終了コードを変数に保持し、削除を済ませてから最後に exit する。
-  const tmpEnv = path.join(os.tmpdir(), `napoleon-sim-env-${process.pid}`)
+  installCleanupHandlers()
+
+  // 一時ディレクトリへ env を pull → --env-file で読ませる → 必ず削除。
+  //
+  // mkdtempSync は 0700 のディレクトリをランダム名で作る。os.tmpdir() 直下に
+  // PID ベースの予測可能なパスで置くと、Linux コンテナ (/tmp は 1777) で
+  // 他ユーザーから service role key を読まれる。Docker 環境を公式サポート
+  // しているため、macOS の /var/folders (0700) 前提にはできない。
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'napoleon-sim-'))
+  const tmpEnv = path.join(tmpDir, '.env')
   console.log('[run-sim] Pulling Vercel env to a temp file (not persisted)...')
 
   const pull = spawnSync(
@@ -65,18 +110,18 @@ function main() {
     )
     status = pull.status ?? 1
   } else {
+    // vercel が作ったファイルは 0644 のことがあるため、自分で 0600 に落とす。
+    try {
+      fs.chmodSync(tmpEnv, 0o600)
+    } catch (err) {
+      console.warn(
+        `[run-sim] warning: could not chmod temp env file: ${err.message}`
+      )
+    }
     status = runTsx([`--env-file=${tmpEnv}`])
   }
 
-  // 認証情報を含む一時ファイルを必ず削除する。
-  try {
-    fs.rmSync(tmpEnv, { force: true })
-  } catch (err) {
-    console.warn(
-      `[run-sim] warning: could not remove temp env file ${tmpEnv}: ${err.message}`
-    )
-  }
-
+  cleanup()
   process.exit(status)
 }
 

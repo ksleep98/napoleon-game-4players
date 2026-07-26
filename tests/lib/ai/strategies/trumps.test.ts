@@ -168,6 +168,18 @@ describe('Trump Strategy Functions', () => {
 
       expect(result).toBe(false)
     })
+
+    // リード局面（トリックが空）では誰も勝っていない。
+    // ガードが無いと getBestTrickCard が undefined 参照で TypeError になり、
+    // 呼び出し元の try/catch でランダム着手にフォールバックしてしまう。
+    it('should return false for an empty trick instead of throwing', () => {
+      const napoleon = createPlayer('p1', true, false)
+      const gameState = createGameState([napoleon, createPlayer('p2')])
+      const emptyTrick = createTrick([])
+
+      expect(() => isNapoleonWinning(emptyTrick, gameState)).not.toThrow()
+      expect(isNapoleonWinning(emptyTrick, gameState)).toBe(false)
+    })
   })
 
   describe('isAllianceWinning', () => {
@@ -240,6 +252,15 @@ describe('Trump Strategy Functions', () => {
       const result = isAllianceWinning(trick, gameState)
 
       expect(result).toBe(false)
+    })
+
+    it('should return false for an empty trick instead of throwing', () => {
+      const napoleon = createPlayer('p1', true, false)
+      const gameState = createGameState([napoleon, createPlayer('p2')])
+      const emptyTrick = createTrick([])
+
+      expect(() => isAllianceWinning(emptyTrick, gameState)).not.toThrow()
+      expect(isAllianceWinning(emptyTrick, gameState)).toBe(false)
     })
   })
 

@@ -123,6 +123,12 @@ export function declareNapoleon(
     ...gameState,
     players: updatedPlayers,
     napoleonDeclaration: declaration,
+    // 宣言スートをそのまま切り札スートとして確定させる。
+    // AI 評価層 (strategicCardEvaluator / strategies/*) は
+    // `gameState.trumpSuit` を直接参照しており、未設定だと
+    // `|| 'spades'` のフォールバックで常にスペードを切り札だと
+    // 誤認したまま思考してしまうため、ここで必ず設定する。
+    trumpSuit: declaration.suit,
     // 互換性のため古い形式も保持
     napoleonCard: declaration.adjutantCard,
     updatedAt: new Date(),
@@ -185,6 +191,8 @@ export function redealCards(gameState: GameState): GameState {
     needsRedeal: false,
     napoleonDeclaration: undefined,
     napoleonCard: undefined,
+    // 宣言をやり直すので切り札も未確定に戻す
+    trumpSuit: undefined,
     phase: GAME_PHASES.NAPOLEON,
     currentPlayerIndex: 0,
     updatedAt: new Date(),

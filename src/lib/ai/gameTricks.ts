@@ -275,8 +275,14 @@ async function selectAICard(
     if (selectedCard) {
       return selectedCard
     }
-  } catch (_error) {
-    // Fallback to simple selection
+  } catch (error) {
+    // フォールバックはするが、握り潰さずに必ずスタックを残す。
+    // ここを無言にしていたため、リード局面で戦略評価が TypeError を投げて
+    // ランダム着手に落ちていることに長く気付けなかった。
+    console.error(
+      '[gameTricks] AI strategy threw; falling back to random selection:',
+      error
+    )
   }
 
   // フォールバック：従来のロジック
