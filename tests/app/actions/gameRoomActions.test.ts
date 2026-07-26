@@ -22,6 +22,9 @@ import type { GameRoom } from '@/types/game'
 jest.mock('@/lib/cookies/sessionCookies', () => ({
   getSessionCookie: jest.fn(),
   isSessionValid: jest.fn(),
+  refreshSession: jest.fn(),
+  setSessionCookie: jest.fn(),
+  shouldExtendSession: jest.fn(),
 }))
 
 jest.mock('@/lib/supabase/server', () => ({

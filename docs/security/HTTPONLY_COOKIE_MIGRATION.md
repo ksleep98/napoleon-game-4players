@@ -276,10 +276,22 @@ const COOKIE_OPTIONS = {
   httpOnly: true, // ✅ XSS保護: JavaScriptアクセス禁止
   secure: true, // ✅ HTTPS必須
   sameSite: 'strict', // ✅ CSRF保護
-  maxAge: 86400, // 24時間
+  maxAge: SESSION_MAX_AGE_SECONDS, // 7200秒 = 2時間
   path: '/',
 } as const;
 ```
+
+### セッション有効期限（スライディング方式）
+
+- アイドルタイムアウト: **2時間**（`SESSION_DURATION_MS`）
+- 期限は絶対時刻としてクッキーの暗号化ペイロード（`expiresAt`）と
+  `Max-Age` の両方に入る
+- Server Action の認可（`getAuthenticatedPlayerId()`）が成功するたびに
+  「現在時刻 + 2時間」へ延長される。操作し続けている限り失効しない
+- ただし再発行は前回発行から `SESSION_RENEW_INTERVAL_MS`（5分）以上
+  経過した場合のみ。全 Server Action の応答に `Set-Cookie` は付かない
+- そのため実効アイドルタイムアウトは 1時間55分〜2時間の範囲になる
+- 延長は best-effort。`cookies().set()` が失敗しても認可は成功する
 
 ### CSRF保護
 
