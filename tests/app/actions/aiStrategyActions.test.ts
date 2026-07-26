@@ -15,6 +15,9 @@ import type { Card, GameState, Player } from '@/types/game'
 jest.mock('@/lib/cookies/sessionCookies', () => ({
   getSessionCookie: jest.fn(),
   isSessionValid: jest.fn(),
+  refreshSession: jest.fn(),
+  setSessionCookie: jest.fn(),
+  shouldExtendSession: jest.fn(),
 }))
 
 jest.mock('@/lib/game/gameStateRepository', () => ({
@@ -209,6 +212,38 @@ describe('AI Strategy Actions', () => {
       )
       expect(processAITurn).toHaveBeenCalledWith(gameState)
       expect(saveGameStateAction).toHaveBeenCalledWith(updatedGameState, 'p1')
+    })
+
+    // COM が副官のとき、AI と DB 保存には未マスクの isAdjutant が渡り、
+    // クライアントへのレスポンスだけが伏せられることを保証する
+    it('gives the AI the unmasked adjutant flag while masking the response', async () => {
+      const aiAdjutant = { ...createPlayer('ai-1', true), isAdjutant: true }
+      const gameState = createGameState([aiAdjutant, createPlayer('p1')])
+      const updatedGameState = { ...gameState }
+
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
+      ;(processAITurn as jest.Mock).mockResolvedValue(updatedGameState)
+      ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: true })
+
+      const result = await processAITurnAction('game-1', 'p1')
+
+      // AI 側は未マスク
+      const stateGivenToAI = (processAITurn as jest.Mock).mock
+        .calls[0][0] as GameState
+      expect(
+        stateGivenToAI.players.find((p) => p.id === 'ai-1')?.isAdjutant
+      ).toBe(true)
+
+      const savedState = (saveGameStateAction as jest.Mock).mock
+        .calls[0][0] as GameState
+      expect(savedState.players.find((p) => p.id === 'ai-1')?.isAdjutant).toBe(
+        true
+      )
+
+      // クライアントへのレスポンスは伏せられている
+      expect(
+        result.data?.players.find((p) => p.id === 'ai-1')?.isAdjutant
+      ).toBe(false)
     })
 
     it('should process AI turn in NAPOLEON phase', async () => {

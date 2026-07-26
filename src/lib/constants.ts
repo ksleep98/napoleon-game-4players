@@ -163,6 +163,11 @@ export const PLAYER_ROLES = {
   CITIZEN: 'Citizen',
 } as const
 
+// 副官「指定カード」のラベル
+// 公開情報である「どのカードが指定されたか」を指す。
+// 秘匿情報である「誰が副官か」と取り違えられないよう、必ず Card を明記する
+export const ADJUTANT_CARD_LABEL = `${PLAYER_ROLES.ADJUTANT} Card`
+
 export const GAME_CONFIG = {
   PLAYERS_COUNT: 4,
   CARDS_PER_PLAYER: 12, // 52枚（Joker除外）から4人に12枚ずつ配って残り4枚
@@ -220,8 +225,31 @@ export const SESSION_RATE_LIMIT = { MAX: 10, WINDOW_MS: 60000 } as const
 // プレイヤー名の最大長
 export const PLAYER_NAME_MAX_LENGTH = 50
 
-// Session duration in milliseconds (24 hours)
-export const SESSION_DURATION_MS = 86400000
+// 1秒あたりのミリ秒数（秒/ミリ秒の変換にマジックナンバーを書かないため）
+export const MILLISECONDS_PER_SECOND = 1000
+
+/**
+ * セッションのアイドルタイムアウト（ミリ秒／2時間）
+ *
+ * スライディング期限:
+ * 認可が成功するたびに「最後の操作時刻 + この時間」へ期限が延長される。
+ * したがって操作し続けている限り失効せず、無操作がこの時間続くと失効する。
+ */
+export const SESSION_DURATION_MS = 7200000
+
+// セッションクッキーの Max-Age（秒）。ペイロードの expiresAt と必ず一致させる
+export const SESSION_MAX_AGE_SECONDS =
+  SESSION_DURATION_MS / MILLISECONDS_PER_SECOND
+
+/**
+ * セッションクッキー再発行の最短間隔（ミリ秒／5分）
+ *
+ * 全 Server Action の応答に Set-Cookie を付けないための閾値。
+ * 「残り寿命 < SESSION_DURATION_MS - SESSION_RENEW_INTERVAL_MS」
+ * （＝前回発行から5分以上経過）のときだけ延長する。
+ * 実効アイドルタイムアウトは 1時間55分〜2時間の範囲になる。
+ */
+export const SESSION_RENEW_INTERVAL_MS = 300000
 
 // Supabase Realtime broadcast event names
 export const BROADCAST_EVENTS = {

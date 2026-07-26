@@ -4,6 +4,7 @@ import { memo, useMemo } from 'react'
 import { SUIT_SYMBOLS } from '@/lib/constants'
 import { getGameProgress } from '@/lib/scoring'
 import type { GameState } from '@/types/game'
+import { ADJUTANT_BADGE_TONES, AdjutantCardBadge } from './AdjutantCardBadge'
 
 interface TopHUDProps {
   gameState: GameState
@@ -74,25 +75,25 @@ export const TopHUD = memo(function TopHUD({
         </div>
       </div>
 
-      {/* Trump suit chip + adjutant card */}
-      {trumpSuit && (
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-white/10 border border-white/15 rounded-[10px] px-3 py-1.5 font-bold text-white">
-            <span className="text-[10px] tracking-widest uppercase opacity-70">
-              Trump
-            </span>
-            <span className="text-[22px] leading-none">
-              {SUIT_SYMBOLS[trumpSuit]}
-            </span>
-          </div>
-          {gameState.napoleonCard && (
-            <div className="flex items-center gap-1.5 text-[11px] text-white/60">
-              <span>Adj:</span>
-              <span className="font-bold text-white/90">
-                {gameState.napoleonCard.rank}
-                {SUIT_SYMBOLS[gameState.napoleonCard.suit]}
+      {/* Trump suit chip + adjutant designation card chip
+          どちらもナポレオン宣言の公開情報なので、同じチップとして対等に並べる */}
+      {(trumpSuit || gameState.napoleonCard) && (
+        <div className="flex flex-wrap items-stretch gap-2 lg:gap-3">
+          {trumpSuit && (
+            <div className="flex items-center gap-2 bg-white/10 border border-white/15 rounded-[10px] px-3 py-1.5 font-bold text-white">
+              <span className="text-[10px] tracking-widest uppercase text-green-300">
+                Trump
+              </span>
+              <span className="text-[22px] leading-none">
+                {SUIT_SYMBOLS[trumpSuit]}
               </span>
             </div>
+          )}
+          {gameState.napoleonCard && (
+            <AdjutantCardBadge
+              card={gameState.napoleonCard}
+              tone={ADJUTANT_BADGE_TONES.DARK}
+            />
           )}
         </div>
       )}

@@ -2,11 +2,15 @@
  * セッションクッキーユーティリティのユニットテスト
  */
 
+import { SESSION_DURATION_MS, SESSION_RENEW_INTERVAL_MS } from '@/lib/constants'
 import {
   isSessionValid,
   refreshSession,
   type SessionCookieData,
+  shouldExtendSession,
 } from '@/lib/cookies/sessionCookies'
+
+const ONE_MINUTE_MS = 60000
 
 describe('Session Cookie Utilities', () => {
   describe('isSessionValid', () => {
@@ -65,8 +69,8 @@ describe('Session Cookie Utilities', () => {
         playerId: 'test-123',
         playerName: 'TestPlayer',
         sessionToken: 'token-123',
-        createdAt: Date.now() - 43200000, // 12時間前
-        expiresAt: Date.now() + 43200000, // 12時間後
+        createdAt: Date.now() - SESSION_DURATION_MS / 2, // 1時間前に発行
+        expiresAt: Date.now() + SESSION_DURATION_MS / 2, // 残り1時間
       }
 
       const refreshed = refreshSession(originalSession)
@@ -79,9 +83,12 @@ describe('Session Cookie Utilities', () => {
       // createdAtが更新される
       expect(refreshed.createdAt).toBeGreaterThan(originalSession.createdAt)
 
-      // expiresAtが24時間後に更新される
-      const expectedExpiry = refreshed.createdAt + 86400000
+      // expiresAtがアイドルタイムアウト分だけ先に更新される
+      const expectedExpiry = refreshed.createdAt + SESSION_DURATION_MS
       expect(Math.abs(refreshed.expiresAt - expectedExpiry)).toBeLessThan(100) // 100ms以内の誤差許容
+
+      // 期限が過去になることは無い
+      expect(refreshed.expiresAt).toBeGreaterThan(Date.now())
     })
 
     it('should create new timestamps while preserving session data', () => {
@@ -116,6 +123,136 @@ describe('Session Cookie Utilities', () => {
       const refreshed = refreshSession(expiredSession)
 
       expect(isSessionValid(refreshed)).toBe(true)
+    })
+  })
+
+  describe('shouldExtendSession（再発行の閾値判定）', () => {
+    const NOW = 1700000000000
+
+    const sessionExpiringAt = (expiresAt: number): SessionCookieData => ({
+      playerId: 'test-123',
+      playerName: 'TestPlayer',
+      sessionToken: 'token-123',
+      createdAt: expiresAt - SESSION_DURATION_MS,
+      expiresAt,
+    })
+
+    it('does not re-issue a freshly issued cookie', () => {
+      const session = sessionExpiringAt(NOW + SESSION_DURATION_MS)
+
+      expect(shouldExtendSession(session, NOW)).toBe(false)
+    })
+
+    it('does not re-issue before the renew interval has elapsed', () => {
+      // 前回発行から「再発行間隔 - 1分」しか経っていない
+      const elapsed = SESSION_RENEW_INTERVAL_MS - ONE_MINUTE_MS
+      const session = sessionExpiringAt(NOW + SESSION_DURATION_MS - elapsed)
+
+      expect(shouldExtendSession(session, NOW)).toBe(false)
+    })
+
+    it('re-issues once the renew interval has elapsed', () => {
+      // 前回発行から「再発行間隔 + 1分」経過
+      const elapsed = SESSION_RENEW_INTERVAL_MS + ONE_MINUTE_MS
+      const session = sessionExpiringAt(NOW + SESSION_DURATION_MS - elapsed)
+
+      expect(shouldExtendSession(session, NOW)).toBe(true)
+    })
+
+    it('re-issues a nearly expired cookie', () => {
+      const session = sessionExpiringAt(NOW + ONE_MINUTE_MS)
+
+      expect(shouldExtendSession(session, NOW)).toBe(true)
+    })
+
+    it('re-issues a legacy cookie whose expiry exceeds the current policy', () => {
+      // 旧ポリシー（24時間）のクッキーは現行ポリシーへ縮めて揃える
+      const legacyDurationMs = 86400000
+      const session = sessionExpiringAt(NOW + legacyDurationMs)
+
+      expect(shouldExtendSession(session, NOW)).toBe(true)
+    })
+  })
+
+  describe('スライディング期限（2時間アイドルタイムアウト）', () => {
+    const START = 1700000000000
+
+    const issueSession = (): SessionCookieData => ({
+      playerId: 'test-123',
+      playerName: 'TestPlayer',
+      sessionToken: 'token-123',
+      createdAt: Date.now(),
+      expiresAt: Date.now() + SESSION_DURATION_MS,
+    })
+
+    /** 活動1回分（認可成功時の延長処理）を再現する */
+    const act = (session: SessionCookieData): SessionCookieData =>
+      shouldExtendSession(session) ? refreshSession(session) : session
+
+    beforeEach(() => {
+      jest.useFakeTimers()
+      jest.setSystemTime(START)
+    })
+
+    afterEach(() => {
+      jest.useRealTimers()
+    })
+
+    it('stays valid indefinitely while the player keeps acting', () => {
+      let session = issueSession()
+
+      // 30分間隔で5時間活動し続ける（固定24時間ならこの時点でも有効だが、
+      // ここで見たいのは「延長されているので失効しない」こと）
+      for (let i = 0; i < 10; i += 1) {
+        jest.advanceTimersByTime(30 * ONE_MINUTE_MS)
+        session = act(session)
+        expect(isSessionValid(session)).toBe(true)
+      }
+
+      // 最後の活動時刻から2時間先まではまだ有効
+      expect(session.expiresAt).toBe(Date.now() + SESSION_DURATION_MS)
+    })
+
+    it('survives an idle gap shorter than the effective idle timeout', () => {
+      let session = issueSession()
+
+      // 実効アイドルタイムアウトの下限（2時間 - 再発行間隔）より短い無活動
+      jest.advanceTimersByTime(
+        SESSION_DURATION_MS - SESSION_RENEW_INTERVAL_MS - ONE_MINUTE_MS
+      )
+
+      expect(isSessionValid(session)).toBe(true)
+
+      session = act(session)
+
+      expect(session.expiresAt).toBe(Date.now() + SESSION_DURATION_MS)
+    })
+
+    it('expires after 2 hours of inactivity', () => {
+      const session = issueSession()
+
+      jest.advanceTimersByTime(SESSION_DURATION_MS - ONE_MINUTE_MS)
+      expect(isSessionValid(session)).toBe(true)
+
+      jest.advanceTimersByTime(ONE_MINUTE_MS)
+      expect(isSessionValid(session)).toBe(false)
+    })
+
+    it('expires 2 hours after the LAST activity, not after creation', () => {
+      let session = issueSession()
+
+      // 1時間後に活動 → 期限が「その時刻 + 2時間」へ延びる
+      jest.advanceTimersByTime(60 * ONE_MINUTE_MS)
+      session = act(session)
+      const lastActivityAt = Date.now()
+
+      // 作成から2時間1分後（＝旧仕様の期限切れ相当）でもまだ有効
+      jest.advanceTimersByTime(61 * ONE_MINUTE_MS)
+      expect(isSessionValid(session)).toBe(true)
+
+      // 最終活動から2時間経過すると失効する
+      jest.setSystemTime(lastActivityAt + SESSION_DURATION_MS)
+      expect(isSessionValid(session)).toBe(false)
     })
   })
 

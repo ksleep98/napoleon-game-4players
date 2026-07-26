@@ -59,10 +59,9 @@ vercel dev
 # → http://localhost:3000
 # ※ .env / .env.local が存在すると競合するため削除しておくこと
 
-# 5. マージ後の自動クリーンアップ
-pnpm setup:auto-cleanup enable  # 自動実行を有効化
-pnpm cleanup        # 手動インタラクティブ版
-pnpm cleanup:smart  # 手動スマート版（GitHub CLI連携）
+# 5. マージ後のブランチクリーンアップ（手動実行のみ）
+pnpm cleanup        # インタラクティブ版
+pnpm cleanup:smart  # スマート版（GitHub CLI連携）
 ```
 
 ### Docker環境 (シンプル・推奨)
@@ -113,7 +112,7 @@ docker-compose up -d
 - [開発コマンド一覧](./docs/development/COMMANDS.md) - pnpm scripts・使い方
 - [フォーマット設定](./docs/development/FORMATTING_SETUP.md) - Biome/Prettier統合・VSCode設定
 - [コーディングルール](./docs/development/CODING_RULES.md) - 定数参照・静的import・品質基準
-- [Post-merge自動化](./scripts/) - マージ後のブランチクリーンアップ自動化
+- [ブランチクリーンアップ](./scripts/) - マージ後のブランチ整理（手動実行）
 
 ### 🧪 テスト・品質管理
 
@@ -154,7 +153,7 @@ docker-compose up -d
 - **セキュリティ強化**: RLS・Server Actions・入力検証・レート制限・プレイヤーID同期
 - **Quick Start**: 4人対戦ゲームの即座開始機能
 - **エラー修正**: 404/PGRST202エラー解消・RLS設定最適化・プレイヤーID不一致修正
-- **Post-merge自動化**: ブランチクリーンアップ自動化・developブランチ自動移行・GitHub CLI連携・Git hooks統合
+- **ブランチクリーンアップ**: マージ済みブランチの整理・GitHub CLI連携（手動実行のみ。post-merge hook による自動発火は廃止）
 - **パフォーマンス最適化**: PostgreSQL関数統合・50-120ms改善・Vercel日本リージョン対応
 - **Infrastructure as Code**: Terraform + Terraform Cloud・GitHub Repository Ruleset管理・VCS-driven workflow
 
@@ -346,13 +345,16 @@ pnpm test:e2e
 
 **注意**: 現在はCloudflare開発環境セットアップまでE2Eテストをスキップ中
 
-### Post-merge 自動クリーンアップ
+### ブランチクリーンアップ（手動実行のみ）
 
-**自動実行設定:**
+**マージ後に自動発火する仕組みは廃止しました。** 以前は `.husky/post-merge` が
+feature ブランチ上でのマージを検知して develop へ切り替え、そのブランチを削除して
+いましたが、マージの向きを区別できませんでした。`git merge origin/develop`
+（develop を feature に取り込む）でも「作業完了」と誤認して発火し、未 push の
+作業ブランチを削除します。実際に作業中のブランチが消える事故が起きています。
 
-- `pnpm setup:auto-cleanup enable` - 自動クリーンアップ有効化
-- `pnpm setup:auto-cleanup disable` - 自動クリーンアップ無効化
-- `pnpm setup:auto-cleanup status` - 設定状況確認
+複数の作業ツリー・エージェントを並行させる場合、Git 操作に暗黙の副作用があること
+自体がリスクになるため、ブランチ削除は明示的な実行のみとします。
 
 **手動実行:**
 
@@ -361,14 +363,8 @@ pnpm test:e2e
   - `-- --force` - 自動削除（確認なし）
   - `-- --keep` - ブランチ保持
   - `-- --help` - 使用方法表示
-
-**ポーリング自動クリーンアップの仕組み:**
-
-- 5分間隔でGitHub APIをポーリング
-- マージ済みPRを自動検出
-- 対応するローカルブランチを安全に削除
-- リモート追跡ブランチも自動削除
-- 外部サービス不要の完全自動化
+- `pnpm cleanup:polling` - GitHub API を 5 分間隔でポーリングし、マージ済み PR に
+  対応するローカルブランチを削除する常駐版（明示的に起動したときのみ動作）
 
 ## パフォーマンス最適化
 
