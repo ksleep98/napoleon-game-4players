@@ -38,7 +38,7 @@ deprecation==2.1.0
     # via
     #   postgrest
     #   storage3
-fastapi==0.139.0
+fastapi==0.139.2
     # via
     #   gradio
     #   napoleon-ml-trainer
