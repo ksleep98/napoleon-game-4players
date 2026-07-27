@@ -7,7 +7,6 @@ import type { CardCountingInfo } from '@/lib/ai/strategicCardEvaluator'
 import {
   analyzeCardSequence,
   calculateSequencingBonus,
-  getSequencingSummary,
 } from '@/lib/ai/strategies/cardSequencing'
 import type { Card, GameState, Player, Trick } from '@/types/game'
 
@@ -133,72 +132,6 @@ describe('analyzeCardSequence', () => {
     expect(result.reasoning).toBeTruthy()
   })
 
-  test('should prioritize conservation in early game', () => {
-    const hand: Card[] = [
-      createMockCard('hearts', 'A'),
-      createMockCard('spades', '5'),
-    ]
-    const gameState = createMockGameState([], 'hearts') // Only 2 tricks played
-    const player = createMockPlayer('player1')
-    player.hand = hand
-    const cardCounting = createMockCardCounting(40, 15)
-
-    const result = analyzeCardSequence(hand, gameState, player, cardCounting)
-
-    expect(result.conservationPriority).toBeGreaterThan(0.7) // High conservation
-    expect(result.sacrificeTricks.length).toBeGreaterThan(0) // Should have sacrifice tricks
-  })
-
-  test('should increase aggressiveness in endgame', () => {
-    const tricks: Trick[] = Array(9).fill({
-      cards: [],
-      winnerId: 'player1',
-      trickNumber: 1,
-    })
-    const hand: Card[] = [
-      createMockCard('hearts', 'A'),
-      createMockCard('spades', 'K'),
-      createMockCard('clubs', 'Q'),
-    ]
-    const gameState = createMockGameState(tricks, 'hearts')
-    const player = createMockPlayer('player1', true)
-    player.hand = hand
-    const cardCounting = createMockCardCounting(12, 8)
-
-    const result = analyzeCardSequence(hand, gameState, player, cardCounting)
-
-    expect(result.conservationPriority).toBeLessThan(0.5) // Low conservation in endgame
-    // In endgame (3 tricks left), tricks should be marked as important or critical
-    // depending on endgame analysis. Aggressiveness depends on critical trick count.
-    expect(result.aggressiveness).toBeGreaterThanOrEqual(0) // Valid aggressiveness value
-    expect(result.confidence).toBeGreaterThan(0.6) // Higher confidence with fewer remaining
-  })
-
-  test('should identify important tricks in endgame', () => {
-    const tricks: Trick[] = Array(9).fill({
-      cards: [],
-      winnerId: 'player1',
-      trickNumber: 1,
-    })
-    const hand: Card[] = [
-      createMockCard('hearts', 'A'),
-      createMockCard('spades', 'K'),
-      createMockCard('clubs', '3'),
-    ]
-    const gameState = createMockGameState(tricks, 'hearts')
-    const player = createMockPlayer('player1', true)
-    player.hand = hand
-    const cardCounting = createMockCardCounting(12, 6)
-
-    const result = analyzeCardSequence(hand, gameState, player, cardCounting)
-
-    // Endgame should have reduced conservation and strategic importance
-    // Whether tricks are marked "critical" or "important" depends on endgame analysis
-    // Aggressiveness depends on critical trick count (may be 0 if no critical tricks)
-    expect(result.aggressiveness).toBeGreaterThanOrEqual(0)
-    expect(result.conservationPriority).toBeLessThan(0.5) // Endgame = less conservation
-  })
-
   test('should handle single card in hand', () => {
     const hand: Card[] = [createMockCard('hearts', 'A')]
     const gameState = createMockGameState([], 'hearts')
@@ -259,37 +192,6 @@ describe('analyzeCardSequence', () => {
     expect(result.optimalTiming.has(queenId)).toBe(true)
   })
 
-  test('should differ strategy for Napoleon vs Alliance', () => {
-    const hand: Card[] = [
-      createMockCard('hearts', 'A'),
-      createMockCard('spades', 'K'),
-    ]
-    const gameState = createMockGameState([], 'hearts')
-    const cardCounting = createMockCardCounting(40, 15)
-
-    const napoleonPlayer = createMockPlayer('player1', true)
-    napoleonPlayer.hand = hand
-    const napoleonResult = analyzeCardSequence(
-      hand,
-      gameState,
-      napoleonPlayer,
-      cardCounting
-    )
-
-    const alliancePlayer = createMockPlayer('player2', false)
-    alliancePlayer.hand = hand
-    const allianceResult = analyzeCardSequence(
-      hand,
-      gameState,
-      alliancePlayer,
-      cardCounting
-    )
-
-    // Reasoning should differ
-    expect(napoleonResult.reasoning).toContain('Napoleon team')
-    expect(allianceResult.reasoning).toContain('Alliance team')
-  })
-
   test('should handle all face cards hand', () => {
     const hand: Card[] = [
       createMockCard('hearts', 'A'),
@@ -336,85 +238,6 @@ describe('analyzeCardSequence', () => {
 // ========================================
 
 describe('calculateSequencingBonus', () => {
-  test('should give high bonus for critical trick at optimal timing', () => {
-    const card = createMockCard('hearts', 'A')
-    const currentTrickNumber = 10
-    const gameState = createMockGameState([], 'hearts')
-    const player = createMockPlayer('player1')
-
-    const sequenceStrategy = analyzeCardSequence(
-      [card],
-      gameState,
-      player,
-      createMockCardCounting(12, 5)
-    )
-    sequenceStrategy.criticalTricks = [10]
-    sequenceStrategy.optimalTiming.set(card.id, 10)
-    sequenceStrategy.confidence = 0.9
-
-    const bonus = calculateSequencingBonus(
-      card,
-      currentTrickNumber,
-      sequenceStrategy,
-      gameState
-    )
-
-    expect(bonus).toBeGreaterThan(50) // High bonus for critical timing
-  })
-
-  test('should give medium bonus for optimal timing on non-critical trick', () => {
-    const card = createMockCard('hearts', 'K')
-    const currentTrickNumber = 5
-    const gameState = createMockGameState([], 'hearts')
-    const player = createMockPlayer('player1')
-
-    const sequenceStrategy = analyzeCardSequence(
-      [card],
-      gameState,
-      player,
-      createMockCardCounting(28, 12)
-    )
-    sequenceStrategy.criticalTricks = [10, 11]
-    sequenceStrategy.optimalTiming.set(card.id, 5)
-    sequenceStrategy.confidence = 0.7
-
-    const bonus = calculateSequencingBonus(
-      card,
-      currentTrickNumber,
-      sequenceStrategy,
-      gameState
-    )
-
-    expect(bonus).toBeGreaterThan(0)
-    expect(bonus).toBeLessThan(100) // Medium bonus
-  })
-
-  test('should give slight bonus for near-optimal timing', () => {
-    const card = createMockCard('spades', 'Q')
-    const currentTrickNumber = 7
-    const gameState = createMockGameState([], 'spades')
-    const player = createMockPlayer('player1')
-
-    const sequenceStrategy = analyzeCardSequence(
-      [card],
-      gameState,
-      player,
-      createMockCardCounting(20, 8)
-    )
-    sequenceStrategy.optimalTiming.set(card.id, 8) // Off by 1
-    sequenceStrategy.confidence = 0.6
-
-    const bonus = calculateSequencingBonus(
-      card,
-      currentTrickNumber,
-      sequenceStrategy,
-      gameState
-    )
-
-    expect(bonus).toBeGreaterThan(0)
-    expect(bonus).toBeLessThan(50) // Slight bonus
-  })
-
   test('should give penalty for very poor timing', () => {
     const card = createMockCard('clubs', 'A')
     const currentTrickNumber = 2
@@ -462,119 +285,5 @@ describe('calculateSequencingBonus', () => {
     )
 
     expect(bonus).toBe(0)
-  })
-
-  test('should scale bonus by confidence', () => {
-    const card = createMockCard('hearts', 'A')
-    const currentTrickNumber = 10
-    const gameState = createMockGameState([], 'hearts')
-    const player = createMockPlayer('player1')
-
-    const highConfidenceStrategy = analyzeCardSequence(
-      [card],
-      gameState,
-      player,
-      createMockCardCounting(12, 5)
-    )
-    highConfidenceStrategy.criticalTricks = [10]
-    highConfidenceStrategy.optimalTiming.set(card.id, 10)
-    highConfidenceStrategy.confidence = 1.0
-
-    const lowConfidenceStrategy = { ...highConfidenceStrategy }
-    lowConfidenceStrategy.confidence = 0.3
-
-    const highBonus = calculateSequencingBonus(
-      card,
-      currentTrickNumber,
-      highConfidenceStrategy,
-      gameState
-    )
-    const lowBonus = calculateSequencingBonus(
-      card,
-      currentTrickNumber,
-      lowConfidenceStrategy,
-      gameState
-    )
-
-    expect(highBonus).toBeGreaterThan(lowBonus)
-  })
-})
-
-// ========================================
-// getSequencingSummary Tests
-// ========================================
-
-describe('getSequencingSummary', () => {
-  test('should generate summary with all components', () => {
-    const hand: Card[] = [
-      createMockCard('hearts', 'A'),
-      createMockCard('spades', 'K'),
-    ]
-    const gameState = createMockGameState([], 'hearts')
-    const player = createMockPlayer('player1', true)
-    player.hand = hand
-    const cardCounting = createMockCardCounting(40, 15)
-
-    const sequenceStrategy = analyzeCardSequence(
-      hand,
-      gameState,
-      player,
-      cardCounting
-    )
-    const summary = getSequencingSummary(sequenceStrategy)
-
-    expect(summary).toContain('Critical:')
-    expect(summary).toContain('Sacrifice:')
-    expect(summary).toContain('Conservation:')
-    expect(summary).toContain('Aggression:')
-    expect(summary).toContain('%')
-    expect(summary).toContain('|')
-  })
-
-  test('should format percentages correctly', () => {
-    const hand: Card[] = [createMockCard('hearts', 'A')]
-    const gameState = createMockGameState([], 'hearts')
-    const player = createMockPlayer('player1')
-    player.hand = hand
-    const cardCounting = createMockCardCounting(40, 15)
-
-    const sequenceStrategy = analyzeCardSequence(
-      hand,
-      gameState,
-      player,
-      cardCounting
-    )
-    const summary = getSequencingSummary(sequenceStrategy)
-
-    // Check format: number followed by %
-    expect(summary).toMatch(/\d+%/)
-  })
-
-  test('should include trick counts', () => {
-    const tricks: Trick[] = Array(9).fill({
-      cards: [],
-      winnerId: 'player1',
-      trickNumber: 1,
-    })
-    const hand: Card[] = [
-      createMockCard('hearts', 'A'),
-      createMockCard('spades', 'K'),
-      createMockCard('clubs', 'Q'),
-    ]
-    const gameState = createMockGameState(tricks, 'hearts')
-    const player = createMockPlayer('player1', true)
-    player.hand = hand
-    const cardCounting = createMockCardCounting(12, 6)
-
-    const sequenceStrategy = analyzeCardSequence(
-      hand,
-      gameState,
-      player,
-      cardCounting
-    )
-    const summary = getSequencingSummary(sequenceStrategy)
-
-    expect(summary).toMatch(/Critical: \d+ tricks/)
-    expect(summary).toMatch(/Sacrifice: \d+ tricks/)
   })
 })

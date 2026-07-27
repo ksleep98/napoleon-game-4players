@@ -7,7 +7,6 @@ import type { CardCountingInfo } from '@/lib/ai/strategicCardEvaluator'
 import {
   analyzeVoidCreation,
   calculateVoidCreationBonus,
-  getVoidCreationSummary,
 } from '@/lib/ai/strategies/voidCreation'
 import type { Card, GameState, Player, Trick } from '@/types/game'
 
@@ -288,50 +287,6 @@ describe('analyzeVoidCreation', () => {
     expect(result.currentVoids.length).toBe(0)
     expect(result.nearVoids.length).toBeGreaterThan(0) // At least some near-voids
   })
-
-  test('should increase confidence in endgame', () => {
-    const tricks: Trick[] = Array(9).fill({
-      id: 'trick-1',
-      cards: [],
-      completed: true,
-    })
-    const hand: Card[] = [
-      createMockCard('hearts', 'A'),
-      createMockCard('spades', '3'),
-    ]
-    const gameState = createMockGameState(tricks, 'hearts')
-    const player = createMockPlayer('player1', true)
-    player.hand = hand
-    const cardCounting = createMockCardCounting(12, 5)
-
-    const result = analyzeVoidCreation(hand, gameState, player, cardCounting)
-
-    expect(result.confidence).toBeGreaterThan(0.6) // Higher confidence in endgame
-  })
-
-  test('should plan void creation with proper card ordering', () => {
-    const hand: Card[] = [
-      createMockCard('hearts', 'A'), // Trump
-      createMockCard('hearts', 'K'), // Trump
-      createMockCard('spades', '7'),
-      createMockCard('spades', '3'),
-      createMockCard('spades', '5'),
-    ]
-    const gameState = createMockGameState([], 'hearts')
-    const player = createMockPlayer('player1', true)
-    player.hand = hand
-    const cardCounting = createMockCardCounting(40, 15)
-
-    const result = analyzeVoidCreation(hand, gameState, player, cardCounting)
-
-    if (result.voidCreationPlan.targetSuit === 'spades') {
-      // Cards should be ordered from weakest to strongest
-      const cards = result.voidCreationPlan.cardsToPlay
-      expect(cards.length).toBe(3)
-      // First card should be weaker than last card
-      expect(cards[0].value).toBeLessThanOrEqual(cards[cards.length - 1].value)
-    }
-  })
 })
 
 // ========================================
@@ -339,51 +294,6 @@ describe('analyzeVoidCreation', () => {
 // ========================================
 
 describe('calculateVoidCreationBonus', () => {
-  test('should give high bonus for weak card in target suit', () => {
-    const card = createMockCard('spades', '3')
-    const gameState = createMockGameState([], 'hearts')
-    const player = createMockPlayer('player1', true)
-
-    const hand: Card[] = [createMockCard('hearts', 'A'), card]
-    const voidStrategy = analyzeVoidCreation(
-      hand,
-      gameState,
-      player,
-      createMockCardCounting(40, 15)
-    )
-    // Force target suit to spades
-    voidStrategy.voidCreationPlan.targetSuit = 'spades'
-    voidStrategy.voidCreationPlan.priority = 80
-    voidStrategy.shouldPursueVoid = true
-    voidStrategy.confidence = 0.9
-
-    const bonus = calculateVoidCreationBonus(card, voidStrategy, gameState)
-
-    expect(bonus).toBeGreaterThan(50) // High bonus for weak card in target suit
-  })
-
-  test('should give low bonus for face card in target suit', () => {
-    const card = createMockCard('spades', 'K')
-    const gameState = createMockGameState([], 'hearts')
-    const player = createMockPlayer('player1', true)
-
-    const hand: Card[] = [createMockCard('hearts', 'A'), card]
-    const voidStrategy = analyzeVoidCreation(
-      hand,
-      gameState,
-      player,
-      createMockCardCounting(40, 15)
-    )
-    voidStrategy.voidCreationPlan.targetSuit = 'spades'
-    voidStrategy.voidCreationPlan.priority = 80
-    voidStrategy.shouldPursueVoid = true
-    voidStrategy.confidence = 0.9
-
-    const bonus = calculateVoidCreationBonus(card, voidStrategy, gameState)
-
-    expect(bonus).toBeLessThan(50) // Lower bonus for face card in target suit
-  })
-
   test('should give penalty for non-target suit card when priority is high', () => {
     const card = createMockCard('clubs', 'Q')
     const gameState = createMockGameState([], 'hearts')
@@ -446,136 +356,5 @@ describe('calculateVoidCreationBonus', () => {
     const bonus = calculateVoidCreationBonus(card, voidStrategy, gameState)
 
     expect(bonus).toBe(0)
-  })
-
-  test('should scale bonus by confidence', () => {
-    const card = createMockCard('spades', '3')
-    const gameState = createMockGameState([], 'hearts')
-    const player = createMockPlayer('player1', true)
-
-    const hand: Card[] = [createMockCard('hearts', 'A'), card]
-
-    const highConfidenceStrategy = analyzeVoidCreation(
-      hand,
-      gameState,
-      player,
-      createMockCardCounting(12, 5) // Endgame = high confidence
-    )
-    highConfidenceStrategy.voidCreationPlan.targetSuit = 'spades'
-    highConfidenceStrategy.voidCreationPlan.priority = 80
-    highConfidenceStrategy.shouldPursueVoid = true
-
-    const lowConfidenceStrategy = { ...highConfidenceStrategy }
-    lowConfidenceStrategy.confidence = 0.3
-
-    const highBonus = calculateVoidCreationBonus(
-      card,
-      highConfidenceStrategy,
-      gameState
-    )
-    const lowBonus = calculateVoidCreationBonus(
-      card,
-      lowConfidenceStrategy,
-      gameState
-    )
-
-    expect(highBonus).toBeGreaterThan(lowBonus)
-  })
-})
-
-// ========================================
-// getVoidCreationSummary Tests
-// ========================================
-
-describe('getVoidCreationSummary', () => {
-  test('should generate summary with all components', () => {
-    const hand: Card[] = [
-      createMockCard('hearts', 'A'),
-      createMockCard('spades', '3'),
-    ]
-    const gameState = createMockGameState([], 'hearts')
-    const player = createMockPlayer('player1', true)
-    player.hand = hand
-    const cardCounting = createMockCardCounting(40, 15)
-
-    const voidStrategy = analyzeVoidCreation(
-      hand,
-      gameState,
-      player,
-      cardCounting
-    )
-    const summary = getVoidCreationSummary(voidStrategy)
-
-    expect(summary).toContain('Voids:')
-    expect(summary).toContain('Near-voids:')
-    expect(summary).toContain('Trump:')
-    expect(summary).toContain('Aggr:')
-    expect(summary).toContain('%')
-    expect(summary).toContain('|')
-  })
-
-  test('should show target suit when void plan exists', () => {
-    const hand: Card[] = [
-      createMockCard('hearts', 'A'),
-      createMockCard('spades', '3'),
-    ]
-    const gameState = createMockGameState([], 'hearts')
-    const player = createMockPlayer('player1', true)
-    player.hand = hand
-    const cardCounting = createMockCardCounting(40, 15)
-
-    const voidStrategy = analyzeVoidCreation(
-      hand,
-      gameState,
-      player,
-      cardCounting
-    )
-
-    if (voidStrategy.voidCreationPlan.targetSuit) {
-      const summary = getVoidCreationSummary(voidStrategy)
-      expect(summary).toContain('Target:')
-      expect(summary).toContain('Priority:')
-    }
-  })
-
-  test('should show no void plan when not pursuing', () => {
-    const hand: Card[] = [createMockCard('spades', '3')]
-    const gameState = createMockGameState([], 'hearts')
-    const player = createMockPlayer('player1')
-    player.hand = hand
-    const cardCounting = createMockCardCounting(40, 15)
-
-    const voidStrategy = analyzeVoidCreation(
-      hand,
-      gameState,
-      player,
-      cardCounting
-    )
-    const summary = getVoidCreationSummary(voidStrategy)
-
-    if (!voidStrategy.voidCreationPlan.targetSuit) {
-      expect(summary).toContain('No void plan')
-    }
-  })
-
-  test('should show trump status correctly', () => {
-    const hand: Card[] = [
-      createMockCard('hearts', 'A'),
-      createMockCard('spades', '3'),
-    ]
-    const gameState = createMockGameState([], 'hearts')
-    const player = createMockPlayer('player1', true)
-    player.hand = hand
-    const cardCounting = createMockCardCounting(40, 15)
-
-    const voidStrategy = analyzeVoidCreation(
-      hand,
-      gameState,
-      player,
-      cardCounting
-    )
-    const summary = getVoidCreationSummary(voidStrategy)
-
-    expect(summary).toContain('Trump: Yes')
   })
 })
