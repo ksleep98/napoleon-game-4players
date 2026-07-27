@@ -98,7 +98,7 @@
     "prettier": "^3.8.1",
     "tailwindcss": "^4.2.2",
     "tsx": "^4.22.3",
-    "typescript": "^6.0.2"
+    "typescript": "^7.0.2"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,json}": [
