@@ -161,7 +161,12 @@ export const PLAYER_ROLES = {
   NAPOLEON: 'Napoleon',
   ADJUTANT: 'Adjutant',
   CITIZEN: 'Citizen',
+  ALLIED_FORCES: 'Allied Forces',
 } as const
+
+// 役職を兼任するプレイヤー（一人ナポレオン）のラベル区切り。
+// 単純に連結すると "NapoleonAdjutant" になってしまうため必ずこれで繋ぐ
+export const ROLE_LABEL_SEPARATOR = ' / '
 
 // 一人ナポレオン（副官指定カードが埋め札にあり、副官が成立しなかった状態）の表示ラベル
 export const SOLO_NAPOLEON_LABELS = {

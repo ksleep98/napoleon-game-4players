@@ -1,6 +1,7 @@
 'use client'
 
 import type { Player } from '@/types/game'
+import { showsAdjutantBadge } from '@/utils/gameUtils'
 import { Card } from './Card'
 
 interface OpponentHandProps {
@@ -8,6 +9,8 @@ interface OpponentHandProps {
   isCurrentTurn?: boolean
   isAdjutantRevealed?: boolean
   isCurrentUser?: boolean
+  /** 一人ナポレオン（公開済みならナポレオンを副官としても表示する） */
+  soloNapoleon?: boolean
 }
 
 export function OpponentHand({
@@ -15,7 +18,16 @@ export function OpponentHand({
   isCurrentTurn = false,
   isAdjutantRevealed = false,
   isCurrentUser = false,
+  soloNapoleon = false,
 }: OpponentHandProps) {
+  // 一人ナポレオンの公開後は Napoleon / Adjutant 両方のピルが並ぶ
+  const showAdjutant = showsAdjutantBadge({
+    player,
+    soloNapoleon,
+    isAdjutantRevealed,
+    isCurrentUser,
+  })
+
   // カードの裏面を表示するためのダミーカード
   const backCards = Array.from({ length: player.hand.length }, (_, i) => ({
     id: `back-${player.id}-${i}`,
@@ -33,7 +45,7 @@ export function OpponentHand({
             Napoleon
           </span>
         )}
-        {player.isAdjutant && (isCurrentUser || isAdjutantRevealed) && (
+        {showAdjutant && (
           <span className="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs font-bold">
             Adjutant
           </span>

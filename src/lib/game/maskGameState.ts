@@ -48,8 +48,15 @@ export function maskGameStateForPlayer(
   // 一人ナポレオン（副官指定カードが埋め札にあった）かどうかも秘匿情報。
   // ナポレオン本人は指定カードが自分の手札に来るので必ず知っているが、
   // 連合軍には副官の正体が公開されるのと同じタイミングまで伏せる。
-  // 未公開時は true/false ではなく undefined へ落とす。false を返すと
-  // 「副官は実在する」という情報を与えてしまい、通常局面と区別できてしまうため。
+  //
+  // 未公開時は undefined へ落とす。漏洩の観点では定数 false でも等価に安全で、
+  // （通常ゲームでもソロゲームでも同じ値になるため区別はできない）
+  // 漏れるのは生値をそのまま通した場合だけである。
+  // undefined を選ぶのは型上の意味づけのため:
+  // 「未公開（不明）」と「ソロではないと確定」を区別できるようにしておく。
+  // ⚠️ したがって `soloNapoleon === false` を「ソロではないことが確定」の意味で
+  // 使ってはいけない。未公開の閲覧者では false ではなく undefined になる。
+  // 判定は必ず isSoloNapoleon()（=== true）を使うこと。
   const viewerIsNapoleon = gameState.players.some(
     (player) => player.id === viewerPlayerId && player.isNapoleon
   )

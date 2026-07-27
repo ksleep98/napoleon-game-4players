@@ -13,7 +13,7 @@ import {
   getPlayerStats,
 } from '@/lib/scoring'
 import type { GameState } from '@/types/game'
-import { isSoloNapoleon } from '@/utils/gameUtils'
+import { isSoloNapoleon, showsAdjutantBadge } from '@/utils/gameUtils'
 import {
   ADJUTANT_BADGE_SUIT_LABELS,
   ADJUTANT_BADGE_TONES,
@@ -40,7 +40,7 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
     const roleMap = {
       napoleon: PLAYER_ROLES.NAPOLEON,
       adjutant: PLAYER_ROLES.ADJUTANT,
-      citizen: 'Allied Forces',
+      citizen: PLAYER_ROLES.ALLIED_FORCES,
     }
     return roleMap[role as keyof typeof roleMap] || role
   }
@@ -67,6 +67,16 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
       gameState.currentTrick.cards.some(
         (playedCard) => playedCard.revealsAdjutant
       ))
+
+  // 一人ナポレオンで公開済みなら、ナポレオン本人を副官としても表示する。
+  // 判定は共通ヘルパーに委ねる（player.isAdjutant は立てていない）
+  const showNapoleonAsAdjutant = napoleonPlayer
+    ? showsAdjutantBadge({
+        player: napoleonPlayer,
+        soloNapoleon,
+        isAdjutantRevealed: Boolean(isAdjutantRevealed),
+      })
+    : false
 
   return (
     <div className="bg-white rounded-lg shadow-md p-2 md:p-4 space-y-2 md:space-y-4">
@@ -126,10 +136,18 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
         <div className="border-b pb-3">
           <h4 className="font-semibold text-gray-800 mb-2">Teams</h4>
           <div className="space-y-2 text-sm">
+            {/* 一人ナポレオンの公開後は、同じ 1 行に Napoleon と Adjutant の
+                両方のピルを並べる。副官用の行を別に作るとナポレオンが 2 行に
+                重複表示されてしまうため、必ずこの行だけで表現する */}
             <div className="flex items-center gap-2">
               <span className="px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs font-bold">
                 {PLAYER_ROLES.NAPOLEON}
               </span>
+              {showNapoleonAsAdjutant && (
+                <span className="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs font-bold">
+                  {PLAYER_ROLES.ADJUTANT}
+                </span>
+              )}
               <span>{napoleonPlayer.name}</span>
             </div>
             {/* 一人ナポレオン: 副官指定カードが埋め札にあり副官が不在。
@@ -251,9 +269,15 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
           <div className="space-y-1 text-sm">
             {gameState.players.map((player) => {
               const faceCardsWon = getPlayerFaceCardCount(gameState, player.id)
+              // 一人ナポレオンの公開後は、ナポレオンに N と A の両方が付く
+              const showAdjutantMark = showsAdjutantBadge({
+                player,
+                soloNapoleon,
+                isAdjutantRevealed: Boolean(isAdjutantRevealed),
+              })
               const roleColor = player.isNapoleon
                 ? 'text-yellow-600'
-                : player.isAdjutant && isAdjutantRevealed
+                : showAdjutantMark
                   ? 'text-green-600'
                   : 'text-blue-600'
 
@@ -269,7 +293,7 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
                         N
                       </span>
                     )}
-                    {player.isAdjutant && isAdjutantRevealed && (
+                    {showAdjutantMark && (
                       <span className="px-1 py-0 bg-green-200 text-green-800 rounded text-xs">
                         A
                       </span>

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { isFaceCard, SUIT_DISPLAY_COLORS, SUIT_SYMBOLS } from '@/lib/constants'
 import type { PlayedCard, Suit, Trick } from '@/types/game'
+import { showsAdjutantBadge } from '@/utils/gameUtils'
 
 interface TrickResultProps {
   trick: Trick
@@ -17,6 +18,8 @@ interface TrickResultProps {
   isAdjutantRevealed?: boolean
   /** 閲覧者のプレイヤーID（自分の正体は常に見える） */
   currentPlayerId?: string | null
+  /** 一人ナポレオン（公開済みならナポレオンを副官としても表示する） */
+  soloNapoleon?: boolean
 }
 
 export function TrickResult({
@@ -25,6 +28,7 @@ export function TrickResult({
   onContinue,
   isAdjutantRevealed = false,
   currentPlayerId,
+  soloNapoleon = false,
 }: TrickResultProps) {
   const [isClosing, setIsClosing] = useState(false)
 
@@ -35,10 +39,19 @@ export function TrickResult({
   const winner = players.find((p) => p.id === trick.winnerPlayerId)
   const faceCardsInPhase = trick.cards.filter((pc) => isFaceCard(pc.card))
 
-  // 副官の正体は公開されるまで隠す（自分自身の正体は常に表示）
-  const showWinnerAdjutantBadge =
-    Boolean(winner?.isAdjutant) &&
-    (isAdjutantRevealed || winner?.id === currentPlayerId)
+  // 副官の正体は公開されるまで隠す（自分自身の正体は常に表示）。
+  // 一人ナポレオンでは公開後、勝者がナポレオンなら 👑 と ⚔️ の両方が付く
+  const showWinnerAdjutantBadge = winner
+    ? showsAdjutantBadge({
+        player: {
+          isNapoleon: Boolean(winner.isNapoleon),
+          isAdjutant: Boolean(winner.isAdjutant),
+        },
+        soloNapoleon,
+        isAdjutantRevealed,
+        isCurrentUser: winner.id === currentPlayerId,
+      })
+    : false
 
   const getCardDisplay = (playedCard: PlayedCard) => {
     const card = playedCard.card
