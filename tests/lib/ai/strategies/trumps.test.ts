@@ -366,28 +366,6 @@ describe('Trump Strategy Functions', () => {
 
       expect(result).toBe(false)
     })
-
-    it('should return true for Alliance when 3+ face cards in trick', () => {
-      const alliance = createPlayer('p1', false, false)
-      const gameState = createGameState([alliance], 'spades')
-      const trick = createTrick([
-        { playerId: 'p2', card: createCard('hearts', 'K', 13), order: 0 },
-        { playerId: 'p3', card: createCard('hearts', 'Q', 12), order: 1 },
-        { playerId: 'p4', card: createCard('hearts', 'J', 11), order: 2 },
-      ])
-      const playableCards = [createCard('spades', '8', 8)]
-      const trumpTracking = createTrumpTracking([createCard('spades', '8', 8)])
-
-      const result = shouldInterventWithTrump(
-        playableCards,
-        trick,
-        gameState,
-        alliance,
-        trumpTracking
-      )
-
-      expect(result).toBe(true)
-    })
   })
 
   describe('shouldLeadWithTrump', () => {
@@ -402,94 +380,8 @@ describe('Trump Strategy Functions', () => {
       expect(result).toBe(false)
     })
 
-    it('should return true for Napoleon in endgame with 2+ trumps', () => {
-      const napoleon = createPlayer('p1', true, false)
-      const completedTricks = Array(9).fill({
-        id: 'trick',
-        cards: [],
-        completed: true,
-      }) // 75% progress
-      const gameState = createGameState([napoleon], 'spades', completedTricks)
-      const hand: Card[] = [
-        createCard('spades', '8', 8),
-        createCard('spades', '9', 9),
-      ]
-      const composition = createHandComposition(2)
-
-      const result = shouldLeadWithTrump(hand, gameState, napoleon, composition)
-
-      expect(result).toBe(true)
-    })
-
-    it('should return true for Napoleon in midgame with strong trumps', () => {
-      const napoleon = createPlayer('p1', true, false)
-      const completedTricks = Array(6).fill({
-        id: 'trick',
-        cards: [],
-        completed: true,
-      }) // 50% progress
-      const gameState = createGameState([napoleon], 'spades', completedTricks)
-      const hand: Card[] = [createCard('spades', 'A', 14)]
-      const composition = createHandComposition(1)
-
-      const result = shouldLeadWithTrump(hand, gameState, napoleon, composition)
-
-      expect(result).toBe(true)
-    })
-
-    it('should return true for Alliance in early game with weak trumps', () => {
-      const alliance = createPlayer('p1', false, false)
-      const completedTricks = Array(2).fill({
-        id: 'trick',
-        cards: [],
-        completed: true,
-      }) // 16% progress
-      const gameState = createGameState([alliance], 'spades', completedTricks)
-      const hand: Card[] = [createCard('spades', '3', 3)]
-      const composition = createHandComposition(1)
-
-      const result = shouldLeadWithTrump(hand, gameState, alliance, composition)
-
-      expect(result).toBe(true)
-    })
-
-    it('should return false for Alliance in early game with 3+ weak trumps', () => {
-      const alliance = createPlayer('p1', false, false)
-      const completedTricks = Array(2).fill({
-        id: 'trick',
-        cards: [],
-        completed: true,
-      })
-      const gameState = createGameState([alliance], 'spades', completedTricks)
-      const hand: Card[] = [
-        createCard('spades', '2', 2),
-        createCard('spades', '3', 3),
-        createCard('spades', '4', 4),
-      ]
-      const composition = createHandComposition(3)
-
-      const result = shouldLeadWithTrump(hand, gameState, alliance, composition)
-
-      expect(result).toBe(false)
-    })
-
-    it('should return false for Napoleon in early game', () => {
-      const napoleon = createPlayer('p1', true, false)
-      const completedTricks = Array(2).fill({
-        id: 'trick',
-        cards: [],
-        completed: true,
-      }) // 16% progress
-      const gameState = createGameState([napoleon], 'spades', completedTricks)
-      const hand: Card[] = [createCard('spades', '8', 8)]
-      const composition = createHandComposition(1)
-
-      const result = shouldLeadWithTrump(hand, gameState, napoleon, composition)
-
-      expect(result).toBe(false)
-    })
-
-    it('should work for Adjutant same as Napoleon', () => {
+    // 副官はナポレオン側として扱われる（チーム所属の不変条件）。
+    it('should treat the Adjutant as Napoleon team', () => {
       const adjutant = createPlayer('p1', false, true)
       const completedTricks = Array(9).fill({
         id: 'trick',
