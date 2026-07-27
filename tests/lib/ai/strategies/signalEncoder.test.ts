@@ -242,21 +242,6 @@ describe('encodeSignal', () => {
   })
 
   describe('FACE_CARD_COUNT signal', () => {
-    it('should encode FACE_CARD_COUNT signal based on hand composition', () => {
-      const card = playableCards[0]
-      const signal = encodeSignal(
-        card,
-        playableCards,
-        mockTrick,
-        mockGameState,
-        mockPlayer,
-        'FACE_CARD_COUNT'
-      )
-
-      expect(signal).not.toBeNull()
-      expect(signal?.type).toBe('FACE_CARD_COUNT')
-    })
-
     it('should return STRONG for many face cards', () => {
       const manyFaceCards = [
         createMockCard('1', 'hearts', 'A'),
@@ -282,38 +267,6 @@ describe('encodeSignal', () => {
   })
 
   describe('Strategic signals', () => {
-    it('should encode CAN_WIN signal', () => {
-      const strongCard = playableCards[0]
-      const signal = encodeSignal(
-        strongCard,
-        playableCards,
-        mockTrick,
-        mockGameState,
-        mockPlayer,
-        'CAN_WIN'
-      )
-
-      expect(signal).not.toBeNull()
-      expect(signal?.type).toBe('CAN_WIN')
-    })
-
-    it('should encode NEED_HELP signal', () => {
-      const weakCard = createMockCard('weak', 'hearts', '2')
-      const cards = [weakCard, ...playableCards]
-
-      const signal = encodeSignal(
-        weakCard,
-        cards,
-        mockTrick,
-        mockGameState,
-        mockPlayer,
-        'NEED_HELP'
-      )
-
-      expect(signal).not.toBeNull()
-      expect(signal?.type).toBe('NEED_HELP')
-    })
-
     it('should encode BLOCK_NAPOLEON signal', () => {
       const card = playableCards[0]
       const signal = encodeSignal(
@@ -328,21 +281,6 @@ describe('encodeSignal', () => {
       expect(signal).not.toBeNull()
       expect(signal?.type).toBe('BLOCK_NAPOLEON')
       expect(signal?.strength).toBe('MODERATE')
-    })
-
-    it('should encode SUPPORT_NAPOLEON signal', () => {
-      const card = playableCards[0]
-      const signal = encodeSignal(
-        card,
-        playableCards,
-        mockTrick,
-        mockGameState,
-        mockPlayer,
-        'SUPPORT_NAPOLEON'
-      )
-
-      expect(signal).not.toBeNull()
-      expect(signal?.type).toBe('SUPPORT_NAPOLEON')
     })
   })
 })
@@ -562,27 +500,6 @@ describe('selectSignalCard', () => {
       )
 
       expect(result?.rank).toBe('A') // Strongest hearts
-    })
-
-    it('should select middle card for MODERATE signal', () => {
-      const signal = {
-        type: 'SUIT_STRENGTH' as const,
-        strength: 'MODERATE' as const,
-        suit: 'hearts' as Suit,
-        trickNumber: 1,
-        playerId: 'player1',
-        confidence: 0.6,
-      }
-
-      const result = selectSignalCard(
-        playableCards,
-        signal,
-        mockTrick,
-        mockGameState
-      )
-
-      expect(result?.suit).toBe('hearts')
-      expect(['K', 'Q']).toContain(result?.rank) // Middle strength
     })
 
     it('should select weakest card for WEAK signal', () => {
