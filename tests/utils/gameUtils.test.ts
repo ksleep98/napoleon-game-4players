@@ -3,6 +3,7 @@ import type { Card, GameState, PlayedCard } from '@/types/game'
 import {
   checkAdjutantRevealed,
   isAdjutantIdentityPublic,
+  showsAdjutantBadge,
 } from '@/utils/gameUtils'
 
 const adjutantCard: Card = {
@@ -73,5 +74,102 @@ describe('isAdjutantIdentityPublic', () => {
 
     expect(checkAdjutantRevealed(state)).toBe(false)
     expect(isAdjutantIdentityPublic(state)).toBe(true)
+  })
+})
+
+describe('showsAdjutantBadge', () => {
+  const napoleon = { isNapoleon: true, isAdjutant: false }
+  const realAdjutant = { isNapoleon: false, isAdjutant: true }
+  const citizen = { isNapoleon: false, isAdjutant: false }
+
+  describe('normal game (an adjutant really exists)', () => {
+    it('hides the adjutant from other players until revealed', () => {
+      expect(
+        showsAdjutantBadge({
+          player: realAdjutant,
+          soloNapoleon: false,
+          isAdjutantRevealed: false,
+        })
+      ).toBe(false)
+    })
+
+    it('always shows the adjutant their own badge', () => {
+      expect(
+        showsAdjutantBadge({
+          player: realAdjutant,
+          soloNapoleon: false,
+          isAdjutantRevealed: false,
+          isCurrentUser: true,
+        })
+      ).toBe(true)
+    })
+
+    it('shows the adjutant to everyone once revealed', () => {
+      expect(
+        showsAdjutantBadge({
+          player: realAdjutant,
+          soloNapoleon: false,
+          isAdjutantRevealed: true,
+        })
+      ).toBe(true)
+    })
+
+    it('never marks Napoleon or a citizen as adjutant', () => {
+      for (const player of [napoleon, citizen]) {
+        expect(
+          showsAdjutantBadge({
+            player,
+            soloNapoleon: false,
+            isAdjutantRevealed: true,
+            isCurrentUser: true,
+          })
+        ).toBe(false)
+      }
+    })
+  })
+
+  describe('solo napoleon (adjutant card was buried)', () => {
+    it('shows no adjutant badge before the card is revealed', () => {
+      expect(
+        showsAdjutantBadge({
+          player: napoleon,
+          soloNapoleon: true,
+          isAdjutantRevealed: false,
+        })
+      ).toBe(false)
+    })
+
+    it('does not let Napoleon see it early just by being the viewer', () => {
+      // 公開前にソロだと分かること自体が情報になるため、
+      // isCurrentUser では早出ししない
+      expect(
+        showsAdjutantBadge({
+          player: napoleon,
+          soloNapoleon: true,
+          isAdjutantRevealed: false,
+          isCurrentUser: true,
+        })
+      ).toBe(false)
+    })
+
+    it('marks Napoleon as the adjutant once revealed', () => {
+      expect(
+        showsAdjutantBadge({
+          player: napoleon,
+          soloNapoleon: true,
+          isAdjutantRevealed: true,
+        })
+      ).toBe(true)
+    })
+
+    it('never marks a citizen as adjutant in a solo game', () => {
+      expect(
+        showsAdjutantBadge({
+          player: citizen,
+          soloNapoleon: true,
+          isAdjutantRevealed: true,
+        })
+      ).toBe(false)
+    })
   })
 })

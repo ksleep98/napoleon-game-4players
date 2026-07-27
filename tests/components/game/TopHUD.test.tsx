@@ -1,6 +1,11 @@
 import { render, screen } from '@testing-library/react'
 import { TopHUD } from '@/components/game/TopHUD'
-import { ADJUTANT_CARD_LABEL, GAME_PHASES, SUIT_SYMBOLS } from '@/lib/constants'
+import {
+  ADJUTANT_CARD_LABEL,
+  GAME_PHASES,
+  SOLO_NAPOLEON_LABELS,
+  SUIT_SYMBOLS,
+} from '@/lib/constants'
 import type { Card, GameState, Player } from '@/types/game'
 import { isAdjutantIdentityPublic } from '@/utils/gameUtils'
 
@@ -124,5 +129,45 @@ describe('TopHUD adjutant designation card', () => {
     )
 
     expect(screen.getByText(ADJUTANT_CARD_LABEL)).toBeInTheDocument()
+  })
+})
+
+describe('TopHUD solo napoleon badge', () => {
+  it('shows the solo badge when soloNapoleon is visible to the viewer', () => {
+    render(
+      <TopHUD
+        gameState={createGameState({ soloNapoleon: true })}
+        currentPlayerId="p1"
+      />
+    )
+
+    expect(screen.getByText(SOLO_NAPOLEON_LABELS.BADGE)).toBeInTheDocument()
+  })
+
+  it('hides the solo badge when the state is masked for Allied Forces', () => {
+    // maskGameStateForPlayer は未公開の閲覧者へ undefined を渡す
+    render(
+      <TopHUD
+        gameState={createGameState({ soloNapoleon: undefined })}
+        currentPlayerId="p2"
+      />
+    )
+
+    expect(
+      screen.queryByText(SOLO_NAPOLEON_LABELS.BADGE)
+    ).not.toBeInTheDocument()
+  })
+
+  it('hides the solo badge in a normal game with an adjutant', () => {
+    render(
+      <TopHUD
+        gameState={createGameState({ soloNapoleon: false })}
+        currentPlayerId="p1"
+      />
+    )
+
+    expect(
+      screen.queryByText(SOLO_NAPOLEON_LABELS.BADGE)
+    ).not.toBeInTheDocument()
   })
 })

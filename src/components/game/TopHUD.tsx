@@ -1,9 +1,10 @@
 'use client'
 
 import { memo, useMemo } from 'react'
-import { SUIT_SYMBOLS } from '@/lib/constants'
+import { SOLO_NAPOLEON_LABELS, SUIT_SYMBOLS } from '@/lib/constants'
 import { getGameProgress } from '@/lib/scoring'
 import type { GameState } from '@/types/game'
+import { isSoloNapoleon } from '@/utils/gameUtils'
 import { ADJUTANT_BADGE_TONES, AdjutantCardBadge } from './AdjutantCardBadge'
 
 interface TopHUDProps {
@@ -94,6 +95,15 @@ export const TopHUD = memo(function TopHUD({
               card={gameState.napoleonCard}
               tone={ADJUTANT_BADGE_TONES.DARK}
             />
+          )}
+          {/* 一人ナポレオン: 指定カードが埋め札にあり副官が不在であることを明示。
+              マスク済みなので、閲覧者に公開してよい場合のみ true になる */}
+          {isSoloNapoleon(gameState) && (
+            <div className="flex items-center bg-orange-500/20 border border-orange-400/40 rounded-[10px] px-3 py-1.5">
+              <span className="text-[11px] tracking-wide uppercase text-orange-200 font-bold">
+                {SOLO_NAPOLEON_LABELS.BADGE}
+              </span>
+            </div>
           )}
         </div>
       )}
