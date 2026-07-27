@@ -4,6 +4,7 @@ import {
   GAME_PHASES,
   NAPOLEON_RULES,
   PLAYER_ROLES,
+  SOLO_NAPOLEON_LABELS,
   SUIT_SYMBOLS,
 } from '@/lib/constants'
 import {
@@ -12,6 +13,7 @@ import {
   getPlayerStats,
 } from '@/lib/scoring'
 import type { GameState } from '@/types/game'
+import { isSoloNapoleon } from '@/utils/gameUtils'
 import {
   ADJUTANT_BADGE_SUIT_LABELS,
   ADJUTANT_BADGE_TONES,
@@ -27,6 +29,8 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
   const progress = getGameProgress(gameState)
   const napoleonPlayer = gameState.players.find((p) => p.isNapoleon)
   const adjutantPlayer = gameState.players.find((p) => p.isAdjutant)
+  // マスク済みなので、閲覧者に公開してよい場合のみ true になる
+  const soloNapoleon = isSoloNapoleon(gameState)
 
   const currentPlayerStats = currentPlayerId
     ? getPlayerStats(gameState, currentPlayerId)
@@ -128,7 +132,19 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
               </span>
               <span>{napoleonPlayer.name}</span>
             </div>
-            {isAdjutantRevealed && adjutantPlayer && (
+            {/* 一人ナポレオン: 副官指定カードが埋め札にあり副官が不在。
+                「??? (Hidden)」を出し続けると存在しない副官を待たせてしまう */}
+            {soloNapoleon && (
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-1 bg-orange-200 text-orange-800 rounded-full text-xs font-bold">
+                  {SOLO_NAPOLEON_LABELS.BADGE}
+                </span>
+                <span className="text-gray-600">
+                  {SOLO_NAPOLEON_LABELS.TEAM_NOTE}
+                </span>
+              </div>
+            )}
+            {!soloNapoleon && isAdjutantRevealed && adjutantPlayer && (
               <div className="flex items-center gap-2">
                 <span className="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs font-bold">
                   {PLAYER_ROLES.ADJUTANT}
@@ -136,7 +152,7 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
                 <span>{adjutantPlayer.name}</span>
               </div>
             )}
-            {!isAdjutantRevealed && (
+            {!soloNapoleon && !isAdjutantRevealed && (
               <div className="flex items-center gap-2">
                 <span className="px-2 py-1 bg-gray-200 text-gray-600 rounded-full text-xs font-bold">
                   {PLAYER_ROLES.ADJUTANT}
@@ -152,7 +168,9 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
                 )
                 .map((p) => p.name)
                 .join(', ')}
-              {!isAdjutantRevealed && ' (includes hidden adjutant)'}
+              {!soloNapoleon &&
+                !isAdjutantRevealed &&
+                ' (includes hidden adjutant)'}
             </div>
           </div>
         </div>

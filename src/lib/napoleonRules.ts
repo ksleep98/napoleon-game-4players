@@ -239,7 +239,26 @@ export function isValidAdjutantCard(
 }
 
 /**
+ * 副官指定カードが埋め札（hiddenCards）にあるか判定する
+ *
+ * 埋め札の 4 枚はカード交換でナポレオンの手札に入るため、この場合は副官が成立せず
+ * 「一人ナポレオン」（ナポレオン 1 人 vs 連合軍 3 人）として進行する。
+ * setAdjutant を呼ぶ前（= 埋め札がまだナポレオンの手札に移っていない時点）に
+ * 判定する必要がある。
+ */
+export function isAdjutantCardBuried(
+  gameState: GameState,
+  adjutantCard: Card
+): boolean {
+  return gameState.hiddenCards.some((card) => card.id === adjutantCard.id)
+}
+
+/**
  * 副官を特定（指定されたカードを持つプレイヤー）
+ *
+ * 副官指定カードが埋め札にある場合は誰の手札にも無いので null を返す。
+ * 呼び出し側は null を「副官なし」ではなく「一人ナポレオン」として扱うこと
+ * （isAdjutantCardBuried / GameState.soloNapoleon を参照）。
  */
 export function findAdjutant(
   gameState: GameState,
@@ -251,10 +270,6 @@ export function findAdjutant(
     }
   }
 
-  // 隠しカードにある場合は副官なし
-  if (gameState.hiddenCards.some((card) => card.id === adjutantCard.id)) {
-    return null
-  }
-
+  // 手札のどこにも無い = 埋め札にある（52枚は必ず手札か埋め札のいずれかにある）
   return null
 }

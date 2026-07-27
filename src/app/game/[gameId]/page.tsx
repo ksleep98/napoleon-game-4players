@@ -12,13 +12,18 @@ import { TopHUD } from '@/components/game/TopHUD'
 import { TurnCue } from '@/components/game/TurnCue'
 import { GameProvider, useGame } from '@/contexts/GameContext'
 import { usePlayerSession } from '@/hooks/useSupabase'
-import { GAME_PHASES } from '@/lib/constants'
+import {
+  GAME_PHASES,
+  PLAYER_ROLES,
+  SOLO_NAPOLEON_LABELS,
+} from '@/lib/constants'
 import { getNextDeclarationPlayer } from '@/lib/napoleonRules'
 import { calculateGameResult, getPlayerFaceCardCount } from '@/lib/scoring'
 import type { Card as CardType, NapoleonDeclaration } from '@/types/game'
 import {
   checkAdjutantRevealed,
   isAdjutantIdentityPublic,
+  isSoloNapoleon,
 } from '@/utils/gameUtils'
 
 // 動的インポート - 初期バンドルサイズを削減
@@ -363,8 +368,15 @@ function GamePageContent() {
                   >
                     <div className="font-semibold">{player.name}</div>
                     <div className="text-sm text-gray-600">
-                      {player.isNapoleon && 'Napoleon'}
-                      {player.isAdjutant && 'Adjutant'}
+                      {/* 一人ナポレオンでは副官が不在なので、ナポレオンに
+                          Solo を明記し、他3名は全員 Allied Forces になる */}
+                      {player.isNapoleon && PLAYER_ROLES.NAPOLEON}
+                      {player.isNapoleon &&
+                        isSoloNapoleon(gameState) &&
+                        SOLO_NAPOLEON_LABELS.ROLE_SUFFIX}
+                      {!player.isNapoleon &&
+                        player.isAdjutant &&
+                        PLAYER_ROLES.ADJUTANT}
                       {!player.isNapoleon &&
                         !player.isAdjutant &&
                         'Allied Forces'}

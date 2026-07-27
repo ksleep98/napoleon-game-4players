@@ -163,6 +163,13 @@ export const PLAYER_ROLES = {
   CITIZEN: 'Citizen',
 } as const
 
+// 一人ナポレオン（副官指定カードが埋め札にあり、副官が成立しなかった状態）の表示ラベル
+export const SOLO_NAPOLEON_LABELS = {
+  BADGE: 'Solo Napoleon',
+  TEAM_NOTE: 'Adjutant card was buried - Napoleon plays alone (1 vs 3)',
+  ROLE_SUFFIX: ' (Solo)',
+} as const
+
 // 副官「指定カード」のラベル
 // 公開情報である「どのカードが指定されたか」を指す。
 // 秘匿情報である「誰が副官か」と取り違えられないよう、必ず Card を明記する

@@ -36,3 +36,14 @@ export function isAdjutantIdentityPublic(gameState: GameState): boolean {
     gameState.phase === GAME_PHASES.FINISHED || checkAdjutantRevealed(gameState)
   )
 }
+
+/**
+ * 一人ナポレオン（副官指定カードが埋め札にあり副官が成立しなかった）かどうか
+ *
+ * 閲覧者に対して公開してよいかは maskGameStateForPlayer が判断済みで、
+ * 未公開の閲覧者には `soloNapoleon` が undefined で届く。
+ * よって UI はこの関数の結果をそのまま表示判定に使ってよい。
+ */
+export function isSoloNapoleon(gameState: GameState): boolean {
+  return gameState.soloNapoleon === true
+}

@@ -21,6 +21,7 @@ import {
   advanceNapoleonPhase,
   canDeclareNapoleon,
   findAdjutant,
+  isAdjutantCardBuried,
   isValidNapoleonDeclaration,
   shouldRedeal,
 } from './napoleonRules'
@@ -201,6 +202,18 @@ export function redealCards(gameState: GameState): GameState {
 
 /**
  * 副官を設定（副官カードを持つプレイヤーを特定）
+ *
+ * 副官指定カードが埋め札にあった場合は誰も副官にならない。
+ * このとき指定カードは直後の処理でナポレオンの手札へ入るため、実質的に
+ * 「ナポレオン＝副官」= 一人ナポレオン（1 vs 3）としてゲームを進行する。
+ * それを soloNapoleon フラグで明示する。
+ *
+ * 注意: ナポレオン本人に isAdjutant: true は立てない。
+ * AI 戦略（strategicCardEvaluator / napoleonCooperation など）には
+ * isNapoleon より先に isAdjutant を判定して「副官はナポレオンに絵札を渡す」
+ * といった対人前提の分岐へ入る箇所があり、同一人物だと自分自身へ
+ * パスしようとして挙動が壊れるため。チーム判定は既存の
+ * 「ナポレオン + isAdjutant なプレイヤー」で正しく 1 人になる。
  */
 export function setAdjutant(
   gameState: GameState,
@@ -210,6 +223,8 @@ export function setAdjutant(
     throw new Error('Adjutant can only be set during adjutant phase')
   }
 
+  // 埋め札はまだナポレオンの手札に移していないので、この時点で判定する
+  const soloNapoleon = isAdjutantCardBuried(gameState, adjutantCard)
   const adjutantPlayer = findAdjutant(gameState, adjutantCard)
 
   const updatedPlayers = gameState.players.map((player) => {
@@ -239,6 +254,7 @@ export function setAdjutant(
     players: finalPlayers,
     phase: GAME_PHASES.EXCHANGE,
     napoleonCard: adjutantCard,
+    soloNapoleon,
     updatedAt: new Date(),
   }
 }
@@ -547,12 +563,16 @@ export function checkNapoleonVictory(gameState: GameState): boolean {
   }
 
   // ナポレオンチームが取ったトリック数を計算
+  // 一人ナポレオン等でナポレオンと副官が同一人物になっても二重計上しないよう、
+  // チームメンバーの ID を集合として持ってから 1 トリック 1 回だけ数える
+  const napoleonTeamIds = new Set<string>([napoleonPlayer.id])
+  if (adjutantPlayer) {
+    napoleonTeamIds.add(adjutantPlayer.id)
+  }
+
   let napoleonTricks = 0
   for (const trick of gameState.tricks) {
-    if (trick.winnerPlayerId === napoleonPlayer.id) {
-      napoleonTricks++
-    }
-    if (adjutantPlayer && trick.winnerPlayerId === adjutantPlayer.id) {
+    if (trick.winnerPlayerId && napoleonTeamIds.has(trick.winnerPlayerId)) {
       napoleonTricks++
     }
   }
