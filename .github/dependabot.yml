@@ -30,6 +30,32 @@ updates:
       include: "scope"
     # バージョニング戦略
     versioning-strategy: increase-if-necessary
+    # 更新を無視する設定
+    #
+    # typescript のメジャー更新（6.x → 7.x）は保留中。
+    # 調査結果（TypeScript 7.0.2 / next 16.2.11・16.2.12 で確認済み）:
+    #   - このリポジトリのコード自体は TS 7 と完全互換。
+    #     `pnpm type-check` は 0 エラー、`pnpm test:ci` も全件合格した。
+    #   - ブロッカーは Next.js 側。TypeScript 7 は Go 実装への書き換えに伴い
+    #     JS の Compiler API を提供しなくなり、その API を直接呼んで型チェックを
+    #     行っている `next build` が失敗する。
+    #     next 16.2.12 のエラーメッセージ:
+    #       "TypeScript 7.0.2 does not provide the compiler API required by
+    #        Next.js. Enable experimental.useTypeScriptCli in your Next.js
+    #        config to use the TypeScript CLI, or install TypeScript 6 instead."
+    #   - next 16.2.12 + `experimental.useTypeScriptCli: true` ではビルド成功を
+    #     実証済み。ただし experimental フラグ依存になるため採用は見送った。
+    #   - 上記フラグが experimental でなくなったら（または Next.js が TS 7 を
+    #     標準サポートしたら）この ignore を外して TS 7 に上げられる。
+    #
+    # 注意: 下の dev-dependencies グループは update-types を minor/patch に
+    # 絞っているが、これは「グループにまとめる対象」を絞るだけで、対象外の
+    # メジャー更新は単独 PR として別に作成される（実際に TS 7.0.2 の PR が
+    # 作られた）。メジャー更新を止めるにはこの ignore が必要。
+    ignore:
+      - dependency-name: "typescript"
+        update-types:
+          - "version-update:semver-major"
     # グループ化（関連するパッケージをまとめる）
     groups:
       next-dependencies:
