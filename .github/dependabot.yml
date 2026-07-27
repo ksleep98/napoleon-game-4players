@@ -106,6 +106,27 @@ updates:
       prefix-development: "chore"
       include: "scope"
     versioning-strategy: increase-if-necessary
+    # グループ化
+    #
+    # 下の 3 グループは pyproject.toml に直接書かれたパッケージ名しか列挙して
+    # いないため、uv.lock 経由で入る推移的依存（hf-xet / tqdm / filelock /
+    # websockets / idna / hpack / click / typer / scipy など）がどのグループにも
+    # 一致せず、1 パッケージ 1 PR で大量に開く状態だった（実測: 2026-07 に
+    # PR #486〜#494 の 9 件が個別 PR、グループ PR は #485 の ml-serving 1 件のみ）。
+    # pip の更新は全て python/uv.lock を書き換えるので、PR が並ぶと 1 件マージ
+    # するたびに残り全部が競合し、rebase と CI 再実行を繰り返すことになる。
+    #
+    # そこで受け皿として python-dependencies（patterns: "*"）を最後に追加する。
+    # Dependabot は「あるパッケージが複数のグループに一致する場合、最初に一致した
+    # グループに入れる」仕様のため、この catch-all を末尾に置く限り上の 3 グループ
+    # の割り当ては変わらない（ml-serving 等は従来どおり独立した PR になる）。
+    #
+    # update-types は敢えて絞っていない。絞るとグループ対象外になった major が
+    # 個別 PR として復活し、この設定の目的（PR 件数の削減）を損なうため
+    # （npm 側の typescript と同じ構造）。実例として websockets 15.0.1 → 16.1
+    # は major であり、minor/patch に絞ると単独 PR のままになる。
+    # major を個別にレビューしたい場合は cooldown の semver-major-days: 14 が
+    # 時間差を作るので、そこで気付ける。
     groups:
       ml-dependencies:
         patterns:
@@ -121,6 +142,11 @@ updates:
       supabase-python:
         patterns:
           - "supabase"
+      # 上のどれにも一致しなかった残り全部（推移的依存・dev ツール含む）。
+      # 必ず最後に置くこと。先頭に置くと全パッケージを飲み込んでしまう。
+      python-dependencies:
+        patterns:
+          - "*"
 
   # GitHub Actions の監視
   - package-ecosystem: "github-actions"
