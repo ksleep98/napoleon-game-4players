@@ -89,7 +89,7 @@ huggingface-hub==1.17.0
     #   gradio-client
 hyperframe==6.1.0
     # via h2
-idna==3.17
+idna==3.18
     # via
     #   anyio
     #   httpx
