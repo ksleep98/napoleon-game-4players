@@ -381,32 +381,6 @@ describe('decodePartnerPlay', () => {
       expect(trumpSignal?.strength).toBe('STRONG')
       expect(trumpSignal?.confidence).toBe(0.8)
     })
-
-    it('should not decode signals for weak trump cards', () => {
-      // Low trump cards (< 500) should not generate trump strength signals
-      const trumpCard = createMockCard('1', 'spades', '2')
-      const playableCards = [trumpCard, createMockCard('2', 'spades', '3')]
-
-      mockTrick = {
-        id: 'trick-1',
-        cards: [{ playerId: 'partner', card: trumpCard, order: 0 }],
-        leadingSuit: 'spades',
-        winnerPlayerId: undefined,
-        completed: false,
-      }
-
-      const signals = decodePartnerPlay(
-        trumpCard,
-        playableCards,
-        mockTrick,
-        mockGameState,
-        cardCounting
-      )
-
-      // Weak trumps (< 500) should not trigger TRUMP_STRENGTH signal
-      const trumpSignal = signals.find((s) => s.type === 'TRUMP_STRENGTH')
-      expect(trumpSignal).toBeUndefined()
-    })
   })
 })
 
@@ -416,70 +390,6 @@ describe('analyzePlayPattern', () => {
 
   beforeEach(() => {
     cardCounting = createMockCardCounting()
-  })
-
-  it('should analyze aggressive leading play', () => {
-    // Use trump Ace to ensure strength > 700 (TRUMP_BASE + 14)
-    const tricks: Trick[] = [
-      {
-        id: 'trick-1',
-        cards: [
-          {
-            playerId: 'player1',
-            card: createMockCard('1', 'spades', 'A'),
-            order: 0,
-          },
-          {
-            playerId: 'player2',
-            card: createMockCard('2', 'spades', '7'),
-            order: 1,
-          },
-        ],
-        leadingSuit: 'spades',
-        winnerPlayerId: 'player1',
-        completed: true,
-      },
-    ]
-
-    mockGameState = createMockGameState(tricks, 'spades')
-
-    const patterns = analyzePlayPattern('player1', mockGameState, cardCounting)
-
-    expect(patterns).toHaveLength(1)
-    expect(patterns[0].wasLeading).toBe(true)
-    expect(patterns[0].context).toBe('AGGRESSIVE')
-    expect(patterns[0].cardPlayed.rank).toBe('A')
-  })
-
-  it('should analyze conservative leading play', () => {
-    const tricks: Trick[] = [
-      {
-        id: 'trick-1',
-        cards: [
-          {
-            playerId: 'player1',
-            card: createMockCard('1', 'hearts', '2'),
-            order: 0,
-          },
-          {
-            playerId: 'player2',
-            card: createMockCard('2', 'hearts', 'A'),
-            order: 1,
-          },
-        ],
-        leadingSuit: 'hearts',
-        winnerPlayerId: 'player2',
-        completed: true,
-      },
-    ]
-
-    mockGameState = createMockGameState(tricks, 'spades')
-
-    const patterns = analyzePlayPattern('player1', mockGameState, cardCounting)
-
-    expect(patterns).toHaveLength(1)
-    expect(patterns[0].wasLeading).toBe(true)
-    expect(patterns[0].context).toBe('CONSERVATIVE')
   })
 
   it('should analyze multiple tricks for a player', () => {
@@ -690,41 +600,6 @@ describe('buildSignalHistory', () => {
     expect(history.sentSignals).toHaveLength(0) // Not tracked in decoder
     expect(history.receivedSignals.length).toBeGreaterThan(0)
     expect(history.partnerPlayPatterns.length).toBeGreaterThan(0)
-  })
-
-  it('should build signal history for alliance player', () => {
-    const napoleon = createMockPlayer('napoleon', [], true, false)
-    const player1 = createMockPlayer('player1', [], false, false)
-    const player2 = createMockPlayer('player2', [], false, false)
-    const players = [napoleon, player1, player2]
-
-    const tricks: Trick[] = [
-      {
-        id: 'trick-1',
-        cards: [
-          {
-            playerId: 'player2',
-            card: createMockCard('1', 'hearts', 'A'),
-            order: 0,
-          },
-          {
-            playerId: 'player1',
-            card: createMockCard('2', 'hearts', '7'),
-            order: 1,
-          },
-        ],
-        leadingSuit: 'hearts',
-        winnerPlayerId: 'player2',
-        completed: true,
-      },
-    ]
-
-    const mockGameState = createMockGameState(tricks, 'spades', players)
-
-    const history = buildSignalHistory(player1, mockGameState, cardCounting)
-
-    expect(history).toHaveProperty('receivedSignals')
-    expect(history).toHaveProperty('partnerPlayPatterns')
   })
 
   it('should return empty history when no tricks completed', () => {

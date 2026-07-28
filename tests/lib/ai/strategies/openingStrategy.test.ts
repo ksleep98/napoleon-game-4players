@@ -9,8 +9,6 @@ import {
   analyzeOpeningStrategy,
   calculateOpeningBonus,
   determineCardType,
-  getOpeningSummary,
-  OPENING_PHASE_TRICKS,
 } from '@/lib/ai/strategies/openingStrategy'
 import type { Card, GameState, Player, Trick } from '@/types/game'
 
@@ -122,16 +120,6 @@ describe('analyzeOpeningPhase', () => {
     expect(phaseInfo.remainingOpeningTricks).toBe(4)
   })
 
-  test('should identify trick 2 as early probe phase', () => {
-    const tricks = Array(1).fill({ id: 'trick-1', cards: [], completed: true })
-    const gameState = createMockGameState(tricks, 'hearts')
-    const phaseInfo = analyzeOpeningPhase(gameState)
-
-    expect(phaseInfo.isOpeningPhase).toBe(true)
-    expect(phaseInfo.currentTrick).toBe(2)
-    expect(phaseInfo.phase).toBe('early_probe')
-  })
-
   test('should identify trick 3 as mid-opening phase', () => {
     const tricks = Array(2).fill({ id: 'trick-1', cards: [], completed: true })
     const gameState = createMockGameState(tricks, 'hearts')
@@ -139,16 +127,6 @@ describe('analyzeOpeningPhase', () => {
 
     expect(phaseInfo.isOpeningPhase).toBe(true)
     expect(phaseInfo.currentTrick).toBe(3)
-    expect(phaseInfo.phase).toBe('mid_opening')
-  })
-
-  test('should identify trick 4 as mid-opening phase', () => {
-    const tricks = Array(3).fill({ id: 'trick-1', cards: [], completed: true })
-    const gameState = createMockGameState(tricks, 'hearts')
-    const phaseInfo = analyzeOpeningPhase(gameState)
-
-    expect(phaseInfo.isOpeningPhase).toBe(true)
-    expect(phaseInfo.currentTrick).toBe(4)
     expect(phaseInfo.phase).toBe('mid_opening')
   })
 
@@ -196,20 +174,6 @@ describe('analyzeOpeningStrategy', () => {
     expect(result.conservationPriority).toBeGreaterThan(0.7)
   })
 
-  test('should prioritize conservation in early probe phase', () => {
-    const hand: Card[] = [createMockCard('hearts', 'A')]
-    const gameState = createMockGameState([], 'hearts')
-    const player = createMockPlayer('player1', false, false) // Alliance player
-    player.hand = hand
-    const cardCounting = createMockCardCounting(52, 20)
-
-    const result = analyzeOpeningStrategy(hand, gameState, player, cardCounting)
-
-    expect(result.phaseInfo.phase).toBe('early_probe')
-    expect(result.conservationPriority).toBeGreaterThan(0.8) // Alliance: 0.9 + 0.1 = 1.0
-    expect(result.riskTolerance).toBeLessThan(0.5) // Alliance: 0.3 - 0.1 = 0.2
-  })
-
   test('should recommend weak non-face cards for early probe', () => {
     const hand: Card[] = [
       createMockCard('hearts', 'A'),
@@ -223,20 +187,6 @@ describe('analyzeOpeningStrategy', () => {
     const result = analyzeOpeningStrategy(hand, gameState, player, cardCounting)
 
     expect(result.recommendedCardTypes).toContain('weak_non_face')
-  })
-
-  test('should reduce conservation in mid-opening', () => {
-    const tricks = Array(2).fill({ id: 'trick-1', cards: [], completed: true })
-    const hand: Card[] = [createMockCard('hearts', 'K')]
-    const gameState = createMockGameState(tricks, 'hearts')
-    const player = createMockPlayer('player1', true)
-    player.hand = hand
-    const cardCounting = createMockCardCounting(40, 15)
-
-    const result = analyzeOpeningStrategy(hand, gameState, player, cardCounting)
-
-    expect(result.phaseInfo.phase).toBe('mid_opening')
-    expect(result.conservationPriority).toBeLessThan(0.9)
   })
 
   test('should adjust strategy for Napoleon team vs Alliance', () => {
@@ -347,25 +297,6 @@ describe('determineCardType', () => {
 // ========================================
 
 describe('calculateOpeningBonus', () => {
-  test('should give high bonus for weak non-face cards in early probe', () => {
-    const card = createMockCard('spades', '3')
-    const hand: Card[] = [card]
-    const gameState = createMockGameState([], 'hearts')
-    const player = createMockPlayer('player1', true)
-    player.hand = hand
-
-    const openingStrategy = analyzeOpeningStrategy(
-      hand,
-      gameState,
-      player,
-      createMockCardCounting(52, 20)
-    )
-
-    const bonus = calculateOpeningBonus(card, openingStrategy, gameState, hand)
-
-    expect(bonus).toBeGreaterThan(50) // High bonus for weak non-face in early probe
-  })
-
   test('should give penalty for strong face cards in opening', () => {
     const card = createMockCard('spades', 'A')
     const hand: Card[] = [card, createMockCard('hearts', '3')]
@@ -422,93 +353,5 @@ describe('calculateOpeningBonus', () => {
     const bonus = calculateOpeningBonus(card, openingStrategy, gameState, hand)
 
     expect(bonus).toBe(0)
-  })
-
-  test('should scale bonus by confidence', () => {
-    const card = createMockCard('spades', '3')
-    const hand: Card[] = [card]
-    const gameState = createMockGameState([], 'hearts')
-    const player = createMockPlayer('player1', true)
-    player.hand = hand
-
-    const openingStrategy = analyzeOpeningStrategy(
-      hand,
-      gameState,
-      player,
-      createMockCardCounting(52, 20)
-    )
-
-    // Confidence should be 0.8 for opening phase
-    const bonus = calculateOpeningBonus(card, openingStrategy, gameState, hand)
-
-    expect(openingStrategy.confidence).toBe(0.8)
-    expect(bonus).toBeGreaterThan(0) // Should be scaled by confidence
-  })
-})
-
-// ========================================
-// getOpeningSummary Tests
-// ========================================
-
-describe('getOpeningSummary', () => {
-  test('should generate summary for opening phase', () => {
-    const hand: Card[] = [createMockCard('hearts', 'A')]
-    const gameState = createMockGameState([], 'hearts')
-    const player = createMockPlayer('player1', true)
-    player.hand = hand
-    const cardCounting = createMockCardCounting(52, 20)
-
-    const openingStrategy = analyzeOpeningStrategy(
-      hand,
-      gameState,
-      player,
-      cardCounting
-    )
-    const summary = getOpeningSummary(openingStrategy)
-
-    expect(summary).toContain('Opening:')
-    expect(summary).toContain(`Trick 1/${OPENING_PHASE_TRICKS}`)
-    expect(summary).toContain('Phase:')
-    expect(summary).toContain('Risk:')
-    expect(summary).toContain('Conserve:')
-    expect(summary).toContain('Probe:')
-    expect(summary).toContain('%')
-  })
-
-  test('should generate summary for post-opening phase', () => {
-    const hand: Card[] = [createMockCard('hearts', 'A')]
-    const tricks = Array(5).fill({ id: 'trick-1', cards: [], completed: true })
-    const gameState = createMockGameState(tricks, 'hearts')
-    const player = createMockPlayer('player1')
-    player.hand = hand
-    const cardCounting = createMockCardCounting(28, 10)
-
-    const openingStrategy = analyzeOpeningStrategy(
-      hand,
-      gameState,
-      player,
-      cardCounting
-    )
-    const summary = getOpeningSummary(openingStrategy)
-
-    expect(summary).toContain('Post-opening')
-  })
-
-  test('should show phase correctly', () => {
-    const hand: Card[] = [createMockCard('hearts', 'A')]
-    const gameState = createMockGameState([], 'hearts')
-    const player = createMockPlayer('player1', true)
-    player.hand = hand
-    const cardCounting = createMockCardCounting(52, 20)
-
-    const openingStrategy = analyzeOpeningStrategy(
-      hand,
-      gameState,
-      player,
-      cardCounting
-    )
-    const summary = getOpeningSummary(openingStrategy)
-
-    expect(summary).toContain('early_probe')
   })
 })

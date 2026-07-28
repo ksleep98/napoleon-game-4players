@@ -12,14 +12,60 @@ import { TopHUD } from '@/components/game/TopHUD'
 import { TurnCue } from '@/components/game/TurnCue'
 import { GameProvider, useGame } from '@/contexts/GameContext'
 import { usePlayerSession } from '@/hooks/useSupabase'
-import { GAME_PHASES } from '@/lib/constants'
+import {
+  GAME_PHASES,
+  PLAYER_ROLES,
+  ROLE_LABEL_SEPARATOR,
+  SOLO_NAPOLEON_LABELS,
+} from '@/lib/constants'
 import { getNextDeclarationPlayer } from '@/lib/napoleonRules'
 import { calculateGameResult, getPlayerFaceCardCount } from '@/lib/scoring'
-import type { Card as CardType, NapoleonDeclaration } from '@/types/game'
+import type {
+  Card as CardType,
+  GameState,
+  NapoleonDeclaration,
+  Player,
+} from '@/types/game'
 import {
   checkAdjutantRevealed,
   isAdjutantIdentityPublic,
+  isSoloNapoleon,
+  showsAdjutantBadge,
 } from '@/utils/gameUtils'
+
+/**
+ * 結果画面の役職ラベルを組み立てる
+ *
+ * 一人ナポレオンでは 1 人が Napoleon と Adjutant を兼ねるため、複数の役職を
+ * 区切り文字で連結する。通常ゲームでは必ず 1 要素になるので表示は変わらない。
+ */
+function buildRoleLabel(gameState: GameState, player: Player): string {
+  const soloNapoleon = isSoloNapoleon(gameState)
+  const roles: string[] = []
+
+  if (player.isNapoleon) {
+    roles.push(PLAYER_ROLES.NAPOLEON)
+  }
+  if (
+    showsAdjutantBadge({
+      player,
+      soloNapoleon,
+      // 結果画面は FINISHED なので isAdjutantIdentityPublic は必ず true
+      isAdjutantRevealed: isAdjutantIdentityPublic(gameState),
+    })
+  ) {
+    roles.push(PLAYER_ROLES.ADJUTANT)
+  }
+
+  if (roles.length === 0) {
+    return PLAYER_ROLES.ALLIED_FORCES
+  }
+
+  const label = roles.join(ROLE_LABEL_SEPARATOR)
+  return soloNapoleon && player.isNapoleon
+    ? `${label}${SOLO_NAPOLEON_LABELS.ROLE_SUFFIX}`
+    : label
+}
 
 // 動的インポート - 初期バンドルサイズを削減
 const GameBoard = dynamic(
@@ -316,6 +362,7 @@ function GamePageContent() {
             onContinue={() => actions.closeTrickResult()}
             isAdjutantRevealed={isAdjutantIdentityPublic(gameState)}
             currentPlayerId={currentPlayerId}
+            soloNapoleon={isSoloNapoleon(gameState)}
           />
         </div>
       )
@@ -363,11 +410,11 @@ function GamePageContent() {
                   >
                     <div className="font-semibold">{player.name}</div>
                     <div className="text-sm text-gray-600">
-                      {player.isNapoleon && 'Napoleon'}
-                      {player.isAdjutant && 'Adjutant'}
-                      {!player.isNapoleon &&
-                        !player.isAdjutant &&
-                        'Allied Forces'}
+                      {/* 役職ラベルは配列に積んでから join する。
+                          一人ナポレオンでは Napoleon と Adjutant を兼ねるため、
+                          単純に並べると "NapoleonAdjutant" と連結してしまう。
+                          通常ゲームでは要素が必ず 1 つなので表示は変わらない */}
+                      {buildRoleLabel(gameState, player)}
                     </div>
                     <div className="text-lg font-bold text-blue-600">
                       Face Cards Won: {faceCardsWon}
@@ -426,6 +473,8 @@ function GamePageContent() {
                 selectedCardId={selectedCardId || undefined}
                 playableCardIds={playableCards}
                 fanLayout
+                isAdjutantRevealed={isAdjutantIdentityPublic(gameState)}
+                soloNapoleon={isSoloNapoleon(gameState)}
               />
 
               {/* Play button */}
@@ -462,6 +511,13 @@ function GamePageContent() {
                 )
 
                 const isAdjutantRevealed = checkAdjutantRevealed(gameState)
+                // 一人ナポレオンの公開後は、ナポレオンに N と A の両方が付く
+                const showAdjutantMark = showsAdjutantBadge({
+                  player,
+                  soloNapoleon: isSoloNapoleon(gameState),
+                  isAdjutantRevealed,
+                  isCurrentUser: player.id === currentPlayerId,
+                })
 
                 return (
                   <div
@@ -477,13 +533,11 @@ function GamePageContent() {
                           N
                         </span>
                       )}
-                      {player.isAdjutant &&
-                        (player.id === currentPlayerId ||
-                          isAdjutantRevealed) && (
-                          <span className="px-1 py-0.5 bg-green-500/20 text-green-400 rounded-full text-[0.6rem] font-bold">
-                            A
-                          </span>
-                        )}
+                      {showAdjutantMark && (
+                        <span className="px-1 py-0.5 bg-green-500/20 text-green-400 rounded-full text-[0.6rem] font-bold">
+                          A
+                        </span>
+                      )}
                     </div>
                     <div className="text-[0.65rem] text-white/60 mb-1">
                       Cards: {faceCards.length}
@@ -518,6 +572,7 @@ function GamePageContent() {
             onContinue={() => actions.closeTrickResult()}
             isAdjutantRevealed={isAdjutantIdentityPublic(gameState)}
             currentPlayerId={currentPlayerId}
+            soloNapoleon={isSoloNapoleon(gameState)}
           />
         )}
       </div>
@@ -595,6 +650,8 @@ function GamePageContent() {
                   onCardClick={handleCardClick}
                   selectedCardId={selectedCardId || undefined}
                   playableCardIds={playableCards}
+                  isAdjutantRevealed={isAdjutantIdentityPublic(gameState)}
+                  soloNapoleon={isSoloNapoleon(gameState)}
                 />
 
                 {isCurrentTurn && selectedCardId && (

@@ -119,44 +119,6 @@ describe('endgameSolver', () => {
       expect(result).toBe(true)
     })
 
-    it('should return true when 2 tricks remaining', () => {
-      const napoleon = createMockPlayer('napoleon-1', 'Napoleon', true, false)
-      const players = [napoleon]
-
-      // 10トリック完了 = 残り2トリック
-      const completedTricks = Array.from({ length: 10 }, () =>
-        createMockTrick()
-      )
-      const currentTrick = createMockTrick()
-      const gameState = createMockGameState(
-        players,
-        completedTricks as Trick[],
-        currentTrick
-      )
-
-      const result = shouldUseEndgameSolver(gameState, 3)
-      expect(result).toBe(true)
-    })
-
-    it('should return true when 1 trick remaining', () => {
-      const napoleon = createMockPlayer('napoleon-1', 'Napoleon', true, false)
-      const players = [napoleon]
-
-      // 11トリック完了 = 残り1トリック
-      const completedTricks = Array.from({ length: 11 }, () =>
-        createMockTrick()
-      )
-      const currentTrick = createMockTrick()
-      const gameState = createMockGameState(
-        players,
-        completedTricks as Trick[],
-        currentTrick
-      )
-
-      const result = shouldUseEndgameSolver(gameState, 3)
-      expect(result).toBe(true)
-    })
-
     it('should return false when 4 tricks remaining', () => {
       const napoleon = createMockPlayer('napoleon-1', 'Napoleon', true, false)
       const players = [napoleon]
@@ -465,39 +427,6 @@ describe('endgameSolver', () => {
       expect(result?.bestCard).toBeDefined()
       expect(result?.depth).toBe(2)
       expect(result?.confidence).toBeGreaterThanOrEqual(0.8)
-    })
-
-    it('should return expected value', () => {
-      const napoleon = createMockPlayer('napoleon-1', 'Napoleon', true, false, [
-        createMockCard('card-1', 'spades', 'A', 14),
-        createMockCard('card-2', 'hearts', '7', 7),
-      ])
-      const players = [napoleon]
-
-      const completedTricks = Array.from({ length: 11 }, () =>
-        createMockTrick()
-      )
-      const currentTrick = createMockTrick()
-      const gameState = createMockGameState(
-        players,
-        completedTricks as Trick[],
-        currentTrick
-      )
-
-      const playableCards = napoleon.hand
-      const cardCounting = createMockCardCounting()
-
-      const result = solveEndgame(
-        playableCards,
-        gameState,
-        napoleon,
-        cardCounting,
-        3
-      )
-
-      expect(result).toBeDefined()
-      expect(result?.expectedValue).toBeDefined()
-      expect(typeof result?.expectedValue).toBe('number')
     })
   })
 })

@@ -1,7 +1,7 @@
 'use client'
 import { memo, useCallback, useMemo } from 'react'
 import type { GameState, PlayedCard } from '@/types/game'
-import { checkAdjutantRevealed } from '@/utils/gameUtils'
+import { checkAdjutantRevealed, isSoloNapoleon } from '@/utils/gameUtils'
 import { Card } from './Card'
 import { PlayerAvatar } from './PlayerAvatar'
 
@@ -30,6 +30,9 @@ export const GameBoard = memo(function GameBoard({
     () => checkAdjutantRevealed(gameState),
     [gameState]
   )
+
+  // マスク済みなので、閲覧者に公開してよい場合のみ true になる
+  const soloNapoleon = useMemo(() => isSoloNapoleon(gameState), [gameState])
 
   const getPlayerPosition = useCallback(
     (playerIndex: number) => {
@@ -113,6 +116,7 @@ export const GameBoard = memo(function GameBoard({
             isCurrentUser={player.id === currentPlayerId}
             isCurrentTurn={currentTurnPlayer?.id === player.id}
             isAdjutantRevealed={isAdjutantRevealed}
+            soloNapoleon={soloNapoleon}
             size="md"
           />
           <span

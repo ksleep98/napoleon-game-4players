@@ -16,13 +16,13 @@ audioop-lts==0.2.2
     # via gradio
 brotli==1.2.0
     # via gradio
-certifi==2026.5.20
+certifi==2026.6.17
     # via
     #   httpcore
     #   httpx
 cffi==2.1.0 ; platform_python_implementation != 'PyPy'
     # via cryptography
-click==8.4.1
+click==8.4.2
     # via
     #   huggingface-hub
     #   typer
@@ -38,11 +38,11 @@ deprecation==2.1.0
     # via
     #   postgrest
     #   storage3
-fastapi==0.139.0
+fastapi==0.139.2
     # via
     #   gradio
     #   napoleon-ml-trainer
-filelock==3.29.0
+filelock==3.31.0
     # via huggingface-hub
 fsspec==2026.6.0
     # via
@@ -64,9 +64,9 @@ h2==4.3.0
     # via httpx
 hf-gradio==0.4.1
     # via gradio
-hf-xet==1.5.1 ; platform_machine == 'AMD64' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
+hf-xet==1.5.2 ; platform_machine == 'AMD64' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
     # via huggingface-hub
-hpack==4.1.0
+hpack==4.2.0
     # via h2
 httpcore==1.0.9
     # via httpx
@@ -83,13 +83,13 @@ httpx==0.28.1
     #   supabase
     #   supabase-auth
     #   supabase-functions
-huggingface-hub==1.17.0
+huggingface-hub==1.24.0
     # via
     #   gradio
     #   gradio-client
 hyperframe==6.1.0
     # via h2
-idna==3.17
+idna==3.18
     # via
     #   anyio
     #   httpx
@@ -137,7 +137,7 @@ pillow==12.3.0
     #   napoleon-ml-trainer
 postgrest==2.31.0
     # via supabase
-prettytable==3.17.0
+prettytable==3.18.0
     # via skops
 propcache==0.5.2
     # via yarl
@@ -176,7 +176,7 @@ pyyaml==6.0.3
     #   uvicorn
 realtime==2.31.0
     # via supabase
-rich==14.3.4
+rich==15.0.0
     # via typer
 safehttpx==0.1.7
     # via gradio
@@ -184,7 +184,7 @@ scikit-learn==1.9.0
     # via
     #   napoleon-ml-trainer
     #   skops
-scipy==1.17.1
+scipy==1.18.0
     # via
     #   scikit-learn
     #   skops
@@ -213,11 +213,11 @@ supabase-functions==2.31.0
     # via supabase
 threadpoolctl==3.6.0
     # via scikit-learn
-tomlkit==0.14.0
+tomlkit==0.15.1
     # via gradio
-tqdm==4.67.3
+tqdm==4.69.0
     # via huggingface-hub
-typer==0.26.8
+typer==0.27.0
     # via
     #   gradio
     #   hf-gradio
@@ -248,11 +248,11 @@ watchfiles==1.2.0
     # via uvicorn
 wcwidth==0.8.2
     # via prettytable
-websockets==15.0.1
+websockets==16.1.1
     # via
     #   realtime
     #   uvicorn
-yarl==1.24.2
+yarl==1.24.5
     # via
     #   postgrest
     #   storage3

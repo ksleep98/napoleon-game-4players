@@ -30,6 +30,32 @@ updates:
       include: "scope"
     # バージョニング戦略
     versioning-strategy: increase-if-necessary
+    # 更新を無視する設定
+    #
+    # typescript のメジャー更新（6.x → 7.x）は保留中。
+    # 調査結果（TypeScript 7.0.2 / next 16.2.11・16.2.12 で確認済み）:
+    #   - このリポジトリのコード自体は TS 7 と完全互換。
+    #     `pnpm type-check` は 0 エラー、`pnpm test:ci` も全件合格した。
+    #   - ブロッカーは Next.js 側。TypeScript 7 は Go 実装への書き換えに伴い
+    #     JS の Compiler API を提供しなくなり、その API を直接呼んで型チェックを
+    #     行っている `next build` が失敗する。
+    #     next 16.2.12 のエラーメッセージ:
+    #       "TypeScript 7.0.2 does not provide the compiler API required by
+    #        Next.js. Enable experimental.useTypeScriptCli in your Next.js
+    #        config to use the TypeScript CLI, or install TypeScript 6 instead."
+    #   - next 16.2.12 + `experimental.useTypeScriptCli: true` ではビルド成功を
+    #     実証済み。ただし experimental フラグ依存になるため採用は見送った。
+    #   - 上記フラグが experimental でなくなったら（または Next.js が TS 7 を
+    #     標準サポートしたら）この ignore を外して TS 7 に上げられる。
+    #
+    # 注意: 下の dev-dependencies グループは update-types を minor/patch に
+    # 絞っているが、これは「グループにまとめる対象」を絞るだけで、対象外の
+    # メジャー更新は単独 PR として別に作成される（実際に TS 7.0.2 の PR が
+    # 作られた）。メジャー更新を止めるにはこの ignore が必要。
+    ignore:
+      - dependency-name: "typescript"
+        update-types:
+          - "version-update:semver-major"
     # グループ化（関連するパッケージをまとめる）
     groups:
       next-dependencies:
@@ -80,6 +106,27 @@ updates:
       prefix-development: "chore"
       include: "scope"
     versioning-strategy: increase-if-necessary
+    # グループ化
+    #
+    # 下の 3 グループは pyproject.toml に直接書かれたパッケージ名しか列挙して
+    # いないため、uv.lock 経由で入る推移的依存（hf-xet / tqdm / filelock /
+    # websockets / idna / hpack / click / typer / scipy など）がどのグループにも
+    # 一致せず、1 パッケージ 1 PR で大量に開く状態だった（実測: 2026-07 に
+    # PR #486〜#494 の 9 件が個別 PR、グループ PR は #485 の ml-serving 1 件のみ）。
+    # pip の更新は全て python/uv.lock を書き換えるので、PR が並ぶと 1 件マージ
+    # するたびに残り全部が競合し、rebase と CI 再実行を繰り返すことになる。
+    #
+    # そこで受け皿として python-dependencies（patterns: "*"）を最後に追加する。
+    # Dependabot は「あるパッケージが複数のグループに一致する場合、最初に一致した
+    # グループに入れる」仕様のため、この catch-all を末尾に置く限り上の 3 グループ
+    # の割り当ては変わらない（ml-serving 等は従来どおり独立した PR になる）。
+    #
+    # update-types は敢えて絞っていない。絞るとグループ対象外になった major が
+    # 個別 PR として復活し、この設定の目的（PR 件数の削減）を損なうため
+    # （npm 側の typescript と同じ構造）。実例として websockets 15.0.1 → 16.1
+    # は major であり、minor/patch に絞ると単独 PR のままになる。
+    # major を個別にレビューしたい場合は cooldown の semver-major-days: 14 が
+    # 時間差を作るので、そこで気付ける。
     groups:
       ml-dependencies:
         patterns:
@@ -95,6 +142,11 @@ updates:
       supabase-python:
         patterns:
           - "supabase"
+      # 上のどれにも一致しなかった残り全部（推移的依存・dev ツール含む）。
+      # 必ず最後に置くこと。先頭に置くと全パッケージを飲み込んでしまう。
+      python-dependencies:
+        patterns:
+          - "*"
 
   # GitHub Actions の監視
   - package-ecosystem: "github-actions"

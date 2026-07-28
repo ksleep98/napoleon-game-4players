@@ -1,13 +1,17 @@
 'use client'
 
 import { memo } from 'react'
+import { SOLO_NAPOLEON_LABELS } from '@/lib/constants'
 import type { Player } from '@/types/game'
+import { showsAdjutantBadge } from '@/utils/gameUtils'
 
 interface PlayerAvatarProps {
   player: Player
   isCurrentUser?: boolean
   isCurrentTurn?: boolean
   isAdjutantRevealed?: boolean
+  /** 一人ナポレオン（公開済みならナポレオンを副官としても表示する） */
+  soloNapoleon?: boolean
   size?: 'sm' | 'md'
 }
 
@@ -16,10 +20,21 @@ export const PlayerAvatar = memo(function PlayerAvatar({
   isCurrentUser = false,
   isCurrentTurn = false,
   isAdjutantRevealed = false,
+  soloNapoleon = false,
   size = 'md',
 }: PlayerAvatarProps) {
-  const showAdjutant =
-    player.isAdjutant && (isCurrentUser || isAdjutantRevealed)
+  const showAdjutant = showsAdjutantBadge({
+    player,
+    soloNapoleon,
+    isAdjutantRevealed,
+    isCurrentUser,
+  })
+
+  // ナポレオンと副官を兼ねる（一人ナポレオン）場合、枠線は片方の役職しか
+  // 表せない（下の borderColor はナポレオンを優先する）。そのため兼任時だけ
+  // 明示的な副官マークを足す。通常ゲームの副官は従来どおり緑枠のみで、
+  // 表示は一切変わらない。
+  const showDualRoleMark = player.isNapoleon && showAdjutant
 
   const borderColor = player.isNapoleon
     ? 'border-yellow-500 shadow-[0_0_0_2px_rgba(234,179,8,0.25)]'
@@ -51,6 +66,19 @@ export const PlayerAvatar = memo(function PlayerAvatar({
         {/* Turn pulse ring */}
         {isCurrentTurn && (
           <span className="absolute inset-[-6px] rounded-full border-2 border-white animate-rdPulse pointer-events-none" />
+        )}
+
+        {/* 一人ナポレオン: 王冠は上部中央のまま、副官マークを右下に添える。
+            王冠の位置を動かさないので通常ゲームの表示に影響しない */}
+        {showDualRoleMark && (
+          <span
+            className="absolute -bottom-1 -right-1 text-[11px] leading-none z-10"
+            role="img"
+            title={SOLO_NAPOLEON_LABELS.BADGE}
+            aria-label={SOLO_NAPOLEON_LABELS.BADGE}
+          >
+            ⚔️
+          </span>
         )}
       </div>
     </div>

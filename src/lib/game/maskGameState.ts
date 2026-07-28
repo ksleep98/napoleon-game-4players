@@ -10,6 +10,9 @@
  * 閲覧者本人以外について false へ落とす。UI 側でガードしても
  * レスポンスに残っていれば DevTools から丸見えになるため。
  *
+ * 一人ナポレオン（`soloNapoleon`）も同じ理由で伏せる。ナポレオン本人だけは
+ * 指定カードが自分の手札に入るため常に知っている。
+ *
  * AI の思考はすべてサーバーサイド（processAITurn / processAIPlayingPhase）で
  * 行われ、DB から読み直した未マスクの状態を使うため、マスキングの影響を受けない。
  */
@@ -42,8 +45,26 @@ export function maskGameStateForPlayer(
 ): GameState {
   const adjutantIsPublic = isAdjutantIdentityPublic(gameState)
 
+  // 一人ナポレオン（副官指定カードが埋め札にあった）かどうかも秘匿情報。
+  // ナポレオン本人は指定カードが自分の手札に来るので必ず知っているが、
+  // 連合軍には副官の正体が公開されるのと同じタイミングまで伏せる。
+  //
+  // 未公開時は undefined へ落とす。漏洩の観点では定数 false でも等価に安全で、
+  // （通常ゲームでもソロゲームでも同じ値になるため区別はできない）
+  // 漏れるのは生値をそのまま通した場合だけである。
+  // undefined を選ぶのは型上の意味づけのため:
+  // 「未公開（不明）」と「ソロではないと確定」を区別できるようにしておく。
+  // ⚠️ したがって `soloNapoleon === false` を「ソロではないことが確定」の意味で
+  // 使ってはいけない。未公開の閲覧者では false ではなく undefined になる。
+  // 判定は必ず isSoloNapoleon()（=== true）を使うこと。
+  const viewerIsNapoleon = gameState.players.some(
+    (player) => player.id === viewerPlayerId && player.isNapoleon
+  )
+  const soloNapoleonIsVisible = adjutantIsPublic || viewerIsNapoleon
+
   return {
     ...gameState,
+    soloNapoleon: soloNapoleonIsVisible ? gameState.soloNapoleon : undefined,
     players: gameState.players.map((player) =>
       player.id === viewerPlayerId
         ? player

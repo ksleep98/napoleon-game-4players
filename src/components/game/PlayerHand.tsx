@@ -12,6 +12,10 @@ interface PlayerHandProps {
   selectedCardId?: string
   playableCardIds?: string[]
   fanLayout?: boolean
+  /** 副官の正体が公開済みか（自分の役職表示に使う） */
+  isAdjutantRevealed?: boolean
+  /** 一人ナポレオン（公開済みならナポレオンを副官としても表示する） */
+  soloNapoleon?: boolean
 }
 
 export function PlayerHand({
@@ -21,6 +25,8 @@ export function PlayerHand({
   selectedCardId,
   playableCardIds = [],
   fanLayout = false,
+  isAdjutantRevealed = false,
+  soloNapoleon = false,
 }: PlayerHandProps) {
   const sortedHand = sortHand(player.hand)
   const N = sortedHand.length
@@ -32,6 +38,8 @@ export function PlayerHand({
           player={player}
           isCurrentUser
           isCurrentTurn={isCurrentPlayer}
+          isAdjutantRevealed={isAdjutantRevealed}
+          soloNapoleon={soloNapoleon}
           size="sm"
         />
         <h3

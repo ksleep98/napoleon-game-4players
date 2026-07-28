@@ -28,6 +28,7 @@ import {
   canDeclareNapoleon,
   findAdjutant,
   getNextDeclarationPlayer,
+  isAdjutantCardBuried,
   isValidNapoleonDeclaration,
   shouldRedeal,
 } from '@/lib/napoleonRules'
@@ -131,6 +132,8 @@ function applyPass(state: GameState, playerId: string): GameState {
 
 /** gameLogic.setAdjutant 相当（副官確定 + 隠しカードをナポレオンへ） */
 function applyAdjutant(state: GameState, adjutantCard: Card): GameState {
+  // gameLogic.setAdjutant と同じく、埋め札は手札へ移す前に判定する
+  const soloNapoleon = isAdjutantCardBuried(state, adjutantCard)
   const adjutantPlayer = findAdjutant(state, adjutantCard)
 
   const players = state.players.map((player) => {
@@ -153,6 +156,7 @@ function applyAdjutant(state: GameState, adjutantCard: Card): GameState {
     players,
     phase: GAME_PHASES.EXCHANGE,
     napoleonCard: adjutantCard,
+    soloNapoleon,
   }
 }
 

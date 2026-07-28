@@ -51,6 +51,11 @@ export interface GameState {
   declarationTurn: number // 現在の宣言ターン（0から開始）
   needsRedeal: boolean // 配り直しが必要かどうか
   exchangedCards?: Card[] // ナポレオンが交換で捨てたカード
+  // 一人ナポレオン: 副官指定カードが埋め札（hiddenCards）にあった場合 true。
+  // そのカードはカード交換でナポレオンの手札へ入るため副官は成立せず、
+  // ナポレオン 1 人 vs 連合軍 3 人として進行する（= ナポレオンと副官が同一人物）。
+  // 秘匿情報なので maskGameStateForPlayer で公開前は伏せる。
+  soloNapoleon?: boolean
   showingTrickResult?: boolean // トリック結果を表示中かどうか
   lastCompletedTrick?: Trick // 最後に完了したトリック
   reshuffleCount?: number // リシャッフル回数
