@@ -133,41 +133,39 @@ describe('getGameProgress remaining face cards', () => {
     expect(allianceOvershoot.allianceNeedsToWin).toBe(0)
   })
 
-  it.each([
-    13,
-    15,
-    18,
-    NAPOLEON_RULES.TOTAL_FACE_CARDS,
-  ])('reports an alliance remaining count consistent with isGameDecided (target %i)', (targetTricks) => {
-    const blockingTotal = NAPOLEON_RULES.TOTAL_FACE_CARDS - targetTricks + 1
-    const alreadyWon = Math.max(0, blockingTotal - 2)
+  it.each([13, 15, 18, NAPOLEON_RULES.TOTAL_FACE_CARDS])(
+    'reports an alliance remaining count consistent with isGameDecided (target %i)',
+    (targetTricks) => {
+      const blockingTotal = NAPOLEON_RULES.TOTAL_FACE_CARDS - targetTricks + 1
+      const alreadyWon = Math.max(0, blockingTotal - 2)
 
-    const state = createGameState({
-      targetTricks,
-      napoleonFaceCards: 0,
-      citizenFaceCards: alreadyWon,
-    })
-    const progress = getGameProgress(state)
+      const state = createGameState({
+        targetTricks,
+        napoleonFaceCards: 0,
+        citizenFaceCards: alreadyWon,
+      })
+      const progress = getGameProgress(state)
 
-    // 不変条件: 残り枚数ちょうどを取れば阻止が確定し、1 枚足りなければ未確定
-    expect(progress.allianceNeedsToWin).toBeGreaterThan(0)
+      // 不変条件: 残り枚数ちょうどを取れば阻止が確定し、1 枚足りなければ未確定
+      expect(progress.allianceNeedsToWin).toBeGreaterThan(0)
 
-    const oneShort = createGameState({
-      targetTricks,
-      napoleonFaceCards: 0,
-      citizenFaceCards: alreadyWon + progress.allianceNeedsToWin - 1,
-    })
-    expect(isGameDecided(oneShort).decided).toBe(false)
+      const oneShort = createGameState({
+        targetTricks,
+        napoleonFaceCards: 0,
+        citizenFaceCards: alreadyWon + progress.allianceNeedsToWin - 1,
+      })
+      expect(isGameDecided(oneShort).decided).toBe(false)
 
-    const exact = createGameState({
-      targetTricks,
-      napoleonFaceCards: 0,
-      citizenFaceCards: alreadyWon + progress.allianceNeedsToWin,
-    })
-    const decided = isGameDecided(exact)
-    expect(decided.decided).toBe(true)
-    expect(decided.napoleonWon).toBe(false)
-  })
+      const exact = createGameState({
+        targetTricks,
+        napoleonFaceCards: 0,
+        citizenFaceCards: alreadyWon + progress.allianceNeedsToWin,
+      })
+      const decided = isGameDecided(exact)
+      expect(decided.decided).toBe(true)
+      expect(decided.napoleonWon).toBe(false)
+    }
+  )
 
   it('shrinks the alliance remaining count as they take more face cards', () => {
     const before = getGameProgress(

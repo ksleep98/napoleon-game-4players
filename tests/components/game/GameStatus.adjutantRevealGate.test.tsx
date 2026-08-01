@@ -122,26 +122,27 @@ describe('GameStatus adjutant reveal gate', () => {
     expect(alliedText).not.toContain(ADJUTANT_NAME)
   })
 
-  it.each(
-    PRE_REVEAL_PHASES
-  )('keeps the adjutant hidden during the %s phase', (phase) => {
-    const gameState = createGameState(phase, true)
-    // 前提: このフェーズではまだ公開してはいけない
-    expect(isAdjutantIdentityPublic(gameState)).toBe(false)
+  it.each(PRE_REVEAL_PHASES)(
+    'keeps the adjutant hidden during the %s phase',
+    (phase) => {
+      const gameState = createGameState(phase, true)
+      // 前提: このフェーズではまだ公開してはいけない
+      expect(isAdjutantIdentityPublic(gameState)).toBe(false)
 
-    render(<GameStatus gameState={gameState} currentPlayerId="p3" />)
+      render(<GameStatus gameState={gameState} currentPlayerId="p3" />)
 
-    const teams = getTeams()
-    expect(within(teams).getByText(HIDDEN_ADJUTANT_TEXT)).toBeInTheDocument()
+      const teams = getTeams()
+      expect(within(teams).getByText(HIDDEN_ADJUTANT_TEXT)).toBeInTheDocument()
 
-    // 副官名が役職行に現れない
-    const adjutantPill = within(teams).getByText(PLAYER_ROLES.ADJUTANT)
-    const adjutantRow = adjutantPill.parentElement
-    if (!adjutantRow) throw new Error('Adjutant row not found')
-    expect(
-      within(adjutantRow).queryByText(ADJUTANT_NAME)
-    ).not.toBeInTheDocument()
-  })
+      // 副官名が役職行に現れない
+      const adjutantPill = within(teams).getByText(PLAYER_ROLES.ADJUTANT)
+      const adjutantRow = adjutantPill.parentElement
+      if (!adjutantRow) throw new Error('Adjutant row not found')
+      expect(
+        within(adjutantRow).queryByText(ADJUTANT_NAME)
+      ).not.toBeInTheDocument()
+    }
+  )
 
   it('does not show the Teams panel at all while bidding is still open', () => {
     // #511: 競り中は最高提示者が確定チームに見えてはいけない
