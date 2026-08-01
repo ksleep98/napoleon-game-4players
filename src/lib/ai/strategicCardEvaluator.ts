@@ -34,7 +34,6 @@ import {
 } from './strategies/endgameSolver'
 import {
   calculateGameProgress,
-  getBestTrickCard,
   getCardStrengthSafe,
   getLowestWinningCard,
   getWeakestCard,
@@ -62,6 +61,10 @@ import {
   evaluateSame2RiskForFaceCard,
   evaluateSpecialCardStrategy,
 } from './strategies/specialCards'
+import {
+  getWinningCards,
+  isTrickSafeAfterPlaying,
+} from './strategies/trickOutcome'
 import {
   isAllianceWinning,
   isNapoleonWinning,
@@ -732,8 +735,20 @@ function selectFollowingCard(
         playableCards,
         currentTrick,
         gameState,
-        requirements
+        requirements,
+        player.hand
       )
+
+      // 0. ナポレオンの副官呼びに応える（副官カードで実際に取れる場合）
+      // 開示タイミング評価より優先する。マイティなどの特殊カードは
+      // optimalRevealTiming が 0 に落とされるため、この判定が無いと
+      // 「呼ばれているのに出さず連合軍に取られる」ことになる。
+      if (
+        adjutantTactics.shouldAnswerAdjutantCall &&
+        adjutantTactics.adjutantCallCard
+      ) {
+        return adjutantTactics.adjutantCallCard
+      }
 
       // 1. 副官カード早期開示（最適なタイミングで）
       if (adjutantTactics.shouldRevealNow && adjutantTactics.adjutantCard) {
@@ -766,12 +781,14 @@ function selectFollowingCard(
     if (playConservatively) {
       // 保守的プレイ: 既に目標達成済みまたは余裕がある場合
       // → 弱いカードで勝てるなら勝つ、絵札は温存
-      const weakWinningCards = playableCards.filter(
-        (card) =>
-          !isFaceCard(card) &&
-          getCardStrengthSafe(card, gameState) >
-            getBestTrickCard(currentTrick, gameState).strength
-      )
+      // 勝敗は素の強度比較ではなく実際の勝者判定で求める。
+      // canWinTrick が rule-aware なのにここだけ素の比較だと、狩りJ で
+      // 勝てる局面なのに weakWinningCards が空になる不整合が起きる。
+      const weakWinningCards = getWinningCards(
+        playableCards,
+        currentTrick,
+        gameState
+      ).filter((card) => !isFaceCard(card))
 
       if (weakWinningCards.length > 0) {
         // 非絵札で勝てるなら、最も弱い勝てるカードを使う
@@ -833,35 +850,29 @@ function selectFollowingCard(
 
     // 2. 連合軍の味方が勝っている場合：絵札を渡す戦略
     if (isAllianceWinning(currentTrick, gameState)) {
-      const trickPosition = currentTrick.cards.length // 現在何枚出ているか（0-3）
+      // 絵札を渡してよいのは、その絵札を出してもトリックが味方のものとして
+      // 確定する場合だけ。副官側と同じ穴で、「今は味方が勝っている」だけを
+      // 見て 2 番手・3 番手から絵札を捨てると、後続のナポレオンチームに
+      // 抜かれて絵札ごと献上することになる。
+      const faceCardToPass = getFaceCardToPassToAlliance(
+        playableCards,
+        gameState
+      )
 
-      // 最後のプレイヤー（3枚目の後、4枚目）の場合
-      // 味方が確実に勝つので、絵札を渡すチャンス
-      if (trickPosition === 3) {
-        const faceCardToPass = getFaceCardToPassToAlliance(
-          playableCards,
-          gameState
-        )
-        if (faceCardToPass) {
-          return faceCardToPass
-        }
-      }
-
-      // 2-3枚目の場合も、絵札を渡すチャンスがあれば渡す
-      // ただし、ナポレオンチームが後から勝つリスクを考慮
-      if (trickPosition >= 1) {
-        const gameProgress = calculateGameProgress(gameState)
-
-        // 中盤以降（絵札が重要になる時期）で、絵札があれば渡す
-        if (gameProgress >= 0.4) {
-          const faceCardToPass = getFaceCardToPassToAlliance(
-            playableCards,
-            gameState
-          )
-          if (faceCardToPass) {
-            return faceCardToPass
+      if (
+        faceCardToPass &&
+        isTrickSafeAfterPlaying(
+          faceCardToPass,
+          currentTrick,
+          gameState,
+          player.hand,
+          (playerId) => {
+            const owner = gameState.players.find((p) => p.id === playerId)
+            return owner ? !owner.isNapoleon && !owner.isAdjutant : false
           }
-        }
+        )
+      ) {
+        return faceCardToPass
       }
 
       // 🔧 改善: 保守的プレイの場合、味方に任せて弱いカードを出す
@@ -1183,15 +1194,18 @@ function calculateLeadingStrategy(
   return strategy
 }
 
+/**
+ * 現在のトリックを取れる札を持っているか（特殊ルール込み）
+ *
+ * 素の強度比較では狩りJ・よろめきを取りこぼしていた（狩J は素の強度が
+ * そのスート内で最弱なので「勝てない」と判定されていた）。
+ */
 function canWinCurrentTrick(
   cards: Card[],
   currentTrick: Trick,
   gameState: GameState
 ): boolean {
-  const bestOpponentCard = getBestTrickCard(currentTrick, gameState)
-  return cards.some(
-    (card) => getCardStrengthSafe(card, gameState) > bestOpponentCard.strength
-  )
+  return getWinningCards(cards, currentTrick, gameState).length > 0
 }
 
 /**

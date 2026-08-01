@@ -3,7 +3,9 @@
  *
  * `getPlayableCards` → `selectAICard` → `simulateCardPlay` の自前ループ。
  * 本番の AI ターン処理 (`@/lib/ai/gameTricks`) は ML 推論と Supabase 書き込みを
- * 伴うため経由しない。
+ * 伴うため経由しない。そのぶん、本番が `processAITurn` の内側で掛けている
+ * 「AI 視点ビュー」（未公開の副官を伏せる）は `toAIView` で再現する。
+ * ここを外すとハーネスだけが本番と違う AI を測ることになる。
  *
  * ⚠️ 既知のルール差分（両バリアントに等しく効くため A/B 比較の妥当性は保たれる）:
  *   - `gameSimulator.simulateCardPlay` は勝者判定に常に `isFirstTrick = false`
@@ -21,6 +23,7 @@ import {
   selectRandomCard,
   simulateCardPlay,
 } from '@/lib/ai/gameSimulator'
+import { maskAdjutantIdentityForPlayer } from '@/lib/game/maskGameState'
 import { setSeed } from '@/lib/utils/rng'
 import type { Card, GameState } from '@/types/game'
 import { AB_DEFAULTS, VARIANT_ROLES, type VariantRole } from './constants'
@@ -165,14 +168,29 @@ function syncLeadingSuit(state: GameState): GameState {
 /**
  * AI に渡す局面を作る。
  *
+ * 未公開の副官の正体は常に伏せる。本番は `gameLogic.processAITurn` が
+ * `maskAdjutantIdentityForPlayer` でこのビューを作ってから AI 評価層へ渡すが、
+ * ハーネスは `selectAICard` を直接叩くためその境界を通らない。ここで同じ
+ * マスクを掛けないと、ハーネスだけが「副官を知ったままの AI」を測り続け、
+ * 強さ比較が本番とズレる。
+ *
  * `hideTrumpSuit` が true のときは `trumpSuit` を落とした「修正前の本番と同じ
- * 見え方」を AI にだけ与える。ハーネス内部の state（トリック解決に使う側）は
- * そのままなので、勝敗判定は本番の `gameLogic.determineWinner`
- * （`trumpSuit || napoleonDeclaration.suit`）と等価に保たれる。
+ * 見え方」を AI にだけ与える。
+ *
+ * ⚠️ 戻り値は AI の評価にだけ渡すこと。ハーネス内部の state（トリック解決に
+ * 使う側）は真値のままにする。マスク済み state をループの次周へ持ち越すと
+ * 副官フラグが消えたまま試合が進んでしまう。真値を保つことで、勝敗判定は
+ * 本番の `gameLogic.determineWinner`（`trumpSuit || napoleonDeclaration.suit`）
+ * と等価に保たれる。
  */
-function toAIView(state: GameState, hideTrumpSuit: boolean): GameState {
-  if (!hideTrumpSuit) return state
-  return { ...state, trumpSuit: undefined }
+function toAIView(
+  state: GameState,
+  viewerPlayerId: string,
+  hideTrumpSuit: boolean
+): GameState {
+  const view = maskAdjutantIdentityForPlayer(state, viewerPlayerId)
+  if (!hideTrumpSuit) return view
+  return { ...view, trumpSuit: undefined }
 }
 
 /**
@@ -235,7 +253,7 @@ export function playoutGame(
 
     const startedAt = now()
     const { card, fellBack } = selectCardWithProductionFallback(
-      toAIView(state, blindSeats.has(player.id)),
+      toAIView(state, player.id, blindSeats.has(player.id)),
       assignment,
       playable,
       recordError

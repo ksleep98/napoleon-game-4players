@@ -6,6 +6,12 @@ on:
   pull_request:
     paths:
       - "python/**"
+      # ルール移植のフィクスチャは TS 側の実装から生成される。TS を変えて
+      # `pnpm ml:fixtures` を忘れると test_rule_parity.py が落ちるべきなので、
+      # 移植元のファイルも起動条件に含める。
+      - "src/lib/napoleonCardRules.ts"
+      - "src/lib/ai/gameSimulator.ts"
+      - "scripts/dump-rule-fixtures.ts"
       - ".github/workflows/python-lint.yml"
   workflow_dispatch:
 
@@ -32,11 +38,38 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Sync dev dependencies (frozen)
-        run: uv sync --frozen --group dev
+      # --locked は「uv.lock が pyproject.toml と整合しているか」を検証して落ちる。
+      # --frozen はロックを検証せずそのまま使うため、Dependabot が pyproject.toml
+      # だけ更新して uv.lock を放置した不整合 (#448 / c078e7e) が CI をすり抜けた。
+      # Dependabot の Python PR が lock 未更新だとここで落ちるようになる。
+      - name: Sync dev dependencies (locked)
+        run: uv sync --locked --group dev
+
+      # requirements.txt は Hugging Face Space 側の唯一の依存定義で、Dockerfile が
+      # `pip install -r requirements.txt` で使う。CI は uv.lock しか見ていなかったため、
+      # Dependabot が requirements.txt だけを個別にバンプして解決不能になっても
+      # 誰も気付かなかった (#498 が tomlkit を gradio の制約 <0.15.0 を超えて上げ、
+      # 同時に pydantic-core が pydantic の要求と食い違っていた)。
+      # Space は別リポジトリで再デプロイ時にしかビルドされないので、実際に踏むのは
+      # 数か月後の push になる。ここで生成物との一致を検証して即座に落とす。
+      - name: Verify requirements.txt matches the lockfile
+        run: |
+          uv export --no-hashes --no-dev --no-header --format requirements-txt \
+            | diff -u - <(tail -n +3 requirements.txt) \
+            || {
+              echo "::error::requirements.txt が uv.lock と一致していません。"
+              echo "::error::次を実行して両方をコミットしてください:"
+              echo "::error::  cd python && uv lock && uv export --no-hashes --no-dev --format requirements-txt -o requirements.txt"
+              exit 1
+            }
 
       - name: Ruff lint
         run: uv run --group dev ruff check .
 
       - name: Black format check
         run: uv run --group dev black --check .
+
+      # これが無いと test_rule_parity.py (TS↔Python のルール移植ズレ検知) も
+      # 特徴量・学習・推論のテストも CI で一切走らない。
+      - name: Pytest
+        run: uv run --group dev pytest -q

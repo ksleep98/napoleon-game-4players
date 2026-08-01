@@ -117,6 +117,12 @@ wrangler.toml
 debug-*.log
 trace-*.json
 
+# Scratch space for local experiments / one-off verification scripts.
+# Kept inside the work tree (never /tmp) so nothing escapes the repo boundary,
+# and ignored here + in python/.gitignore + python/.dockerignore.
+.scratch/
+**/.scratch/
+
 # Python (ML training: /python)
 python/.venv/
 python/__pycache__/
