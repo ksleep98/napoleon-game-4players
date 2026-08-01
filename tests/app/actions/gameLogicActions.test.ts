@@ -40,17 +40,13 @@ jest.mock('@/lib/gameLogic', () => ({
   getCurrentPlayer: jest.fn(),
   passNapoleonDeclaration: jest.fn(),
   playCard: jest.fn(),
+  processAITurn: jest.fn(),
   redealCards: jest.fn(),
   setAdjutant: jest.fn(),
 }))
 
-jest.mock('@/lib/ai/gameTricks', () => ({
-  processAIPlayingPhase: jest.fn(),
-}))
-
 // Import mocked functions
 import { saveGameStateAction } from '@/app/actions/gameActions'
-import { processAIPlayingPhase } from '@/lib/ai/gameTricks'
 import { GameActionError } from '@/lib/errors/GameActionError'
 import { requireGameState } from '@/lib/game/gameStateRepository'
 import { maskGameStateForPlayer } from '@/lib/game/maskGameState'
@@ -61,6 +57,7 @@ import {
   getCurrentPlayer,
   passNapoleonDeclaration,
   playCard,
+  processAITurn,
   redealCards,
   setAdjutant,
 } from '@/lib/gameLogic'
@@ -306,7 +303,6 @@ describe('Game Logic Actions', () => {
       ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(exchangeCards as jest.Mock).mockReturnValue(updatedGameState)
       ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: true })
-      ;(processAIPlayingPhase as jest.Mock).mockResolvedValue(updatedGameState)
 
       const result = await exchangeCardsAction('game-1', 'p1', cards)
 
@@ -326,7 +322,6 @@ describe('Game Logic Actions', () => {
       ;(getCurrentPlayer as jest.Mock).mockReturnValue(currentPlayer)
       ;(playCard as jest.Mock).mockReturnValue(updatedGameState)
       ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: true })
-      ;(processAIPlayingPhase as jest.Mock).mockResolvedValue(updatedGameState)
 
       const result = await playCardAction('game-1', 'p1', cardId)
 
@@ -343,12 +338,49 @@ describe('Game Logic Actions', () => {
       ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
       ;(closeTrickResult as jest.Mock).mockReturnValue(updatedGameState)
       ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: true })
-      ;(processAIPlayingPhase as jest.Mock).mockResolvedValue(updatedGameState)
 
       const result = await closeTrickResultAction('game-1', 'p1')
 
       expect(result.success).toBe(true)
       expect(closeTrickResult).toHaveBeenCalledWith(gameState)
+    })
+
+    // AI のターンは必ず processAITurn を経由させる。
+    // processAIPlayingPhase を直接呼ぶと、未公開の副官の正体を AI から隠す
+    // マスク処理（processAITurn の内側にある）を素通りしてしまう。
+    it('advances an AI turn through processAITurn', async () => {
+      const gameState = createGameState(GAME_PHASES.PLAYING)
+      const closedState = { ...gameState }
+      const aiPlayedState = { ...gameState }
+      const aiPlayer = { ...gameState.players[1], isAI: true }
+
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
+      ;(closeTrickResult as jest.Mock).mockReturnValue(closedState)
+      ;(getCurrentPlayer as jest.Mock).mockReturnValue(aiPlayer)
+      ;(processAITurn as jest.Mock).mockResolvedValue(aiPlayedState)
+      ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: true })
+
+      const result = await closeTrickResultAction('game-1', 'p1')
+
+      expect(result.success).toBe(true)
+      expect(processAITurn).toHaveBeenCalledWith(closedState)
+      expect(saveGameStateAction).toHaveBeenCalledWith(aiPlayedState, 'p1')
+    })
+
+    it('does not run the AI when the next player is human', async () => {
+      const gameState = createGameState(GAME_PHASES.PLAYING)
+      const closedState = { ...gameState }
+      const humanPlayer = { ...gameState.players[0], isAI: false }
+
+      ;(requireGameState as jest.Mock).mockResolvedValue(gameState)
+      ;(closeTrickResult as jest.Mock).mockReturnValue(closedState)
+      ;(getCurrentPlayer as jest.Mock).mockReturnValue(humanPlayer)
+      ;(saveGameStateAction as jest.Mock).mockResolvedValue({ success: true })
+
+      const result = await closeTrickResultAction('game-1', 'p1')
+
+      expect(result.success).toBe(true)
+      expect(processAITurn).not.toHaveBeenCalled()
     })
 
     it('should return error when save fails', async () => {

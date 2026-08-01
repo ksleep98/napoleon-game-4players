@@ -5,17 +5,24 @@
  * 「AI だけが人間より多くを知って打つ」状態になる。
  * ルール上は副官指定カードが場に出るまで、ナポレオン本人ですら
  * 誰が副官かを知らない（docs/game-logic/NAPOLEON_RULES.md）。
+ *
+ * ⚠️ マスクしてよいのは「どのカードを選ぶか」の思考だけ。着手の記帳は
+ * 未マスクの真の状態で行う（gameLogic.processAITurn のコメント参照）。
+ * ここではその境界も併せて固定する。
  */
 
 import { GAME_PHASES } from '@/lib/constants'
 import type { Card, GameState, PlayedCard, Player, Trick } from '@/types/game'
 
 jest.mock('@/lib/ai/gameTricks', () => ({
-  processAIPlayingPhase: jest.fn(),
+  selectAICardForCurrentPlayer: jest.fn(),
   processAllAIPhases: jest.fn(),
 }))
 
-import { processAIPlayingPhase, processAllAIPhases } from '@/lib/ai/gameTricks'
+import {
+  processAllAIPhases,
+  selectAICardForCurrentPlayer,
+} from '@/lib/ai/gameTricks'
 import { processAITurn } from '@/lib/gameLogic'
 
 const createCard = (id: string, rank: Card['rank']): Card => ({
@@ -81,15 +88,15 @@ const createRevealedTrick = (): Trick => {
   }
 }
 
-/** processAIPlayingPhase が受け取った状態（AI 評価層に入る状態） */
+/** AI の思考（カード選択）へ渡された状態 */
 const stateGivenToAI = (): GameState =>
-  (processAIPlayingPhase as jest.Mock).mock.calls[0][0] as GameState
+  (selectAICardForCurrentPlayer as jest.Mock).mock.calls[0][0] as GameState
 
 beforeEach(() => {
   jest.clearAllMocks()
-  // AI は受け取った状態をそのまま返す（着手の中身はここでの関心事ではない）
-  ;(processAIPlayingPhase as jest.Mock).mockImplementation(
-    async (state: GameState) => state
+  // AI は手番プレイヤーの1枚目を選ぶ（どのカードかはここでの関心事ではない）
+  ;(selectAICardForCurrentPlayer as jest.Mock).mockImplementation(
+    async (state: GameState) => state.players[state.currentPlayerIndex].hand[0]
   )
   ;(processAllAIPhases as jest.Mock).mockImplementation(
     async (state: GameState) => state
@@ -201,12 +208,12 @@ describe('processAITurn - adjutant identity hidden from AI', () => {
       await processAITurn(state)
 
       expect(processAllAIPhases).toHaveBeenCalledWith(state)
-      expect(processAIPlayingPhase).not.toHaveBeenCalled()
+      expect(selectAICardForCurrentPlayer).not.toHaveBeenCalled()
     })
   })
 
-  describe('the returned state (persisted to the DB) keeps the truth', () => {
-    it('restores isAdjutant on the state processAITurn returns', async () => {
+  describe('the move itself is applied to the unmasked state', () => {
+    it('keeps isAdjutant true on the state processAITurn returns', async () => {
       const result = await processAITurn(createPlayingState())
 
       expect(
@@ -214,7 +221,7 @@ describe('processAITurn - adjutant identity hidden from AI', () => {
       ).toBe(true)
     })
 
-    it('restores soloNapoleon on the state processAITurn returns', async () => {
+    it('keeps soloNapoleon on the state processAITurn returns', async () => {
       const result = await processAITurn(
         createPlayingState({ soloNapoleon: true })
       )
@@ -222,35 +229,12 @@ describe('processAITurn - adjutant identity hidden from AI', () => {
       expect(result.soloNapoleon).toBe(true)
     })
 
-    it('keeps the AI move made on the masked view', async () => {
-      // AI が masked view から次の状態を作るのを模す（カードを1枚出す）
-      ;(processAIPlayingPhase as jest.Mock).mockImplementation(
-        async (state: GameState): Promise<GameState> => ({
-          ...state,
-          currentTrick: {
-            ...state.currentTrick,
-            cards: [
-              {
-                card: state.players[0].hand[0],
-                playerId: state.players[0].id,
-                order: 0,
-              },
-            ],
-          },
-          players: state.players.map((p, index) =>
-            index === 0 ? { ...p, hand: p.hand.slice(1) } : p
-          ),
-        })
-      )
-
+    it('applies the card the AI chose', async () => {
       const result = await processAITurn(createPlayingState())
 
       expect(result.currentTrick.cards).toHaveLength(1)
+      expect(result.currentTrick.cards[0].card.id).toBe('ai-thinker-c1')
       expect(result.players[0].hand.map((c) => c.id)).toEqual(['ai-thinker-c2'])
-      // 復元しても副官情報は正しい
-      expect(
-        result.players.find((p) => p.id === 'ai-adjutant')?.isAdjutant
-      ).toBe(true)
     })
 
     it('does not mutate the original (server side) state', async () => {
@@ -261,15 +245,17 @@ describe('processAITurn - adjutant identity hidden from AI', () => {
         original.players.find((p) => p.id === 'ai-adjutant')?.isAdjutant
       ).toBe(true)
       expect(original.soloNapoleon).toBe(false)
+      expect(original.currentTrick.cards).toHaveLength(0)
     })
   })
 
   describe('human turn', () => {
-    it('does not mask when the current player is human', async () => {
+    it('does not run the AI at all when the current player is human', async () => {
       const state = createPlayingState({ currentPlayerIndex: 3 })
-      await processAITurn(state)
+      const result = await processAITurn(state)
 
-      expect(processAIPlayingPhase).toHaveBeenCalledWith(state)
+      expect(selectAICardForCurrentPlayer).not.toHaveBeenCalled()
+      expect(result).toBe(state)
     })
   })
 })

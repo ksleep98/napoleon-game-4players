@@ -120,32 +120,17 @@ export function maskGameStateForPlayer(
   }
 }
 
-/**
- * マスクした副官情報を、未マスクの状態から復元する
+/*
+ * かつてここには `restoreAdjutantIdentity`（マスク済みビューから AI が作った
+ * 次状態に、真の副官情報を戻す関数）があった。削除済み。
  *
- * サーバーサイド AI は「マスク済みビューを入力に取り、そこから次の状態を作って返す」
- * ため（processAIPlayingPhase → playCard）、戻り値をそのまま DB に保存すると
- * 副官フラグが永久に失われる。AI が触らない秘匿フィールドだけを真の値へ戻す。
+ * その復元は「マスク済みビューでゲームを 1 手進める」ことを前提にしていたが、
+ * その前提自体が不具合の原因だった。playCard → completeTrick →
+ * scoring.isGameDecided は players[].isAdjutant でチームを分けるため、
+ * マスク済みビューで進めると副官の取ったトリックが連合軍側に計上され、
+ * 「連合軍が上限超過」で勝敗が誤って早期確定する。役職を後から戻しても
+ * 確定してしまった phase は戻せない。
  *
- * プレイングフェーズ中は `isAdjutant` / `soloNapoleon` は変化しない
- * （設定されるのは ADJUTANT フェーズの setAdjutant のみ）ため、この復元で
- * AI の着手結果を取りこぼすことはない。
- *
- * @param maskedResult マスク済みビューを入力に AI が返した状態
- * @param sourceOfTruth マスク前のゲーム状態
+ * 現在は gameLogic.processAITurn が「思考だけマスク済みビュー、着手は
+ * 未マスクの真の状態」に分離しているため、復元は不要になった。
  */
-export function restoreAdjutantIdentity(
-  maskedResult: GameState,
-  sourceOfTruth: GameState
-): GameState {
-  return {
-    ...maskedResult,
-    soloNapoleon: sourceOfTruth.soloNapoleon,
-    players: maskedResult.players.map((player) => {
-      const truth = sourceOfTruth.players.find((p) => p.id === player.id)
-      return truth === undefined
-        ? player
-        : { ...player, isAdjutant: truth.isAdjutant }
-    }),
-  }
-}

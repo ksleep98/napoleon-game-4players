@@ -1,9 +1,9 @@
-import { processAIPlayingPhase, processAllAIPhases } from '@/lib/ai/gameTricks'
-import { GAME_PHASES } from '@/lib/constants'
 import {
-  maskAdjutantIdentityForPlayer,
-  restoreAdjutantIdentity,
-} from '@/lib/game/maskGameState'
+  processAllAIPhases,
+  selectAICardForCurrentPlayer,
+} from '@/lib/ai/gameTricks'
+import { GAME_PHASES } from '@/lib/constants'
+import { maskAdjutantIdentityForPlayer } from '@/lib/game/maskGameState'
 import { determineWinnerWithSpecialRules } from '@/lib/napoleonCardRules'
 import { isGameDecided } from '@/lib/scoring'
 import type {
@@ -258,6 +258,16 @@ export function setAdjutant(
     players: finalPlayers,
     phase: GAME_PHASES.EXCHANGE,
     napoleonCard: adjutantCard,
+    // 宣言側にも副官指定カードを記録する。
+    // AI ナポレオンは宣言時に adjutantCard を決めるが、人間は宣言後に
+    // AdjutantSelector で選ぶ（setAdjutantAction → ここ）ため、napoleonCard
+    // だけが埋まり napoleonDeclaration.adjutantCard は undefined のままだった。
+    // playCard の revealsAdjutant 判定 (gameLogic.ts) と DeclarationDisplay は
+    // napoleonDeclaration.adjutantCard を見るので、人間ナポレオンでは
+    // 埋め札の副官カードを出しても副官公開フラグが立たなかった。
+    napoleonDeclaration: gameState.napoleonDeclaration
+      ? { ...gameState.napoleonDeclaration, adjutantCard }
+      : gameState.napoleonDeclaration,
     soloNapoleon,
     updatedAt: new Date(),
   }
@@ -328,6 +338,16 @@ export function exchangeCards(
  * サーバーは DB から未マスクの状態を読むため、そのまま渡すと AI だけが
  * 未公開の副官の正体を知って打つことになり、人間との情報量が対等でなくなる
  * （ルール上はナポレオン本人ですら公開まで誰が副官かを知らない）。
+ *
+ * ⚠️ マスクを掛けてよいのは「AI がどのカードを選ぶか」の思考だけで、
+ * 着手の記帳（playCard → completeTrick → isGameDecided）は必ず未マスクの
+ * 真の状態に対して行う。isGameDecided は players[].isAdjutant からチームを
+ * 決める（scoring.getTeamFaceCardCounts）ため、マスク済みビューで完了判定まで
+ * 走らせると副官の取ったトリックが連合軍側に計上され、
+ * 「連合軍が上限超過」の分岐で勝敗が誤って早期確定してしまう。
+ * 実際にそれが起き、5トリック目で終了して結果画面が
+ * 「ナポレオン 10 枚なのに連合軍 0 枚で連合軍の勝ち」という
+ * 内部矛盾した表示になっていた。
  */
 export async function processAITurn(gameState: GameState): Promise<GameState> {
   if (
@@ -336,21 +356,25 @@ export async function processAITurn(gameState: GameState): Promise<GameState> {
     gameState.phase === GAME_PHASES.EXCHANGE
   ) {
     // これらのフェーズでは副官はまだ確定していない（setAdjutant が確定させる）。
-    // ここでマスクすると確定結果を復元時に潰してしまうため、素の状態を渡す。
+    // ここでマスクすると確定結果を潰してしまうため、素の状態を渡す。
     return await processAllAIPhases(gameState)
   }
 
   if (gameState.phase === GAME_PHASES.PLAYING) {
     const currentPlayer = getCurrentPlayer(gameState)
     if (!currentPlayer?.isAI) {
-      return await processAIPlayingPhase(gameState)
+      return gameState
     }
 
+    // 思考はマスク済みビューで
     const aiView = maskAdjutantIdentityForPlayer(gameState, currentPlayer.id)
-    const played = await processAIPlayingPhase(aiView)
+    const cardToPlay = await selectAICardForCurrentPlayer(aiView)
+    if (!cardToPlay) {
+      return gameState
+    }
 
-    // AI はマスク済みビューから次の状態を作るため、保存前に秘匿情報を戻す
-    return restoreAdjutantIdentity(played, gameState)
+    // 記帳・勝敗判定は必ず未マスクの真の状態で
+    return playCard(gameState, currentPlayer.id, cardToPlay.id)
   }
 
   return gameState
