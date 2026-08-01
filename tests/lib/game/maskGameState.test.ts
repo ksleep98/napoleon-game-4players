@@ -3,7 +3,11 @@
  */
 
 import { GAME_PHASES, MASKED_CARD } from '@/lib/constants'
-import { maskGameStateForPlayer } from '@/lib/game/maskGameState'
+import {
+  maskAdjutantIdentityForPlayer,
+  maskGameStateForPlayer,
+  restoreAdjutantIdentity,
+} from '@/lib/game/maskGameState'
 import type { Card, GameState, PlayedCard, Player, Trick } from '@/types/game'
 
 const createCard = (id: string, rank: Card['rank']): Card => ({
@@ -233,5 +237,117 @@ describe('maskGameStateForPlayer - adjutant identity', () => {
         expect(card.id.startsWith(MASKED_CARD.ID_PREFIX)).toBe(true)
       }
     })
+  })
+})
+
+/**
+ * サーバーサイド AI へ渡すビュー用。副官の正体だけを伏せ、手札は残す
+ * （手札まで潰すと AI が着手を選べなくなる）。
+ */
+describe('maskAdjutantIdentityForPlayer', () => {
+  it('hides another player isAdjutant flag before the reveal', () => {
+    const view = maskAdjutantIdentityForPlayer(createAdjutantGameState(), 'me')
+
+    expect(view.players.find((p) => p.id === 'other')?.isAdjutant).toBe(false)
+  })
+
+  it('keeps the adjutant own flag visible to themselves', () => {
+    const view = maskAdjutantIdentityForPlayer(
+      createAdjutantGameState(),
+      'other'
+    )
+
+    expect(view.players.find((p) => p.id === 'other')?.isAdjutant).toBe(true)
+  })
+
+  it('exposes isAdjutant after the reveal', () => {
+    const state = createAdjutantGameState({
+      tricks: [
+        createCompletedTrick([
+          { card: adjutantDesignationCard, playerId: 'other', order: 0 },
+        ]),
+      ],
+    })
+    const view = maskAdjutantIdentityForPlayer(state, 'me')
+
+    expect(view.players.find((p) => p.id === 'other')?.isAdjutant).toBe(true)
+  })
+
+  it('keeps every hand and the hidden pile intact', () => {
+    const state = createAdjutantGameState()
+    const view = maskAdjutantIdentityForPlayer(state, 'me')
+
+    expect(view.players.map((p) => p.hand.map((c) => c.id))).toEqual(
+      state.players.map((p) => p.hand.map((c) => c.id))
+    )
+    expect(view.hiddenCards).toEqual(state.hiddenCards)
+    expect(view.exchangedCards).toEqual(state.exchangedCards)
+  })
+
+  it('hides soloNapoleon from everyone but Napoleon before the reveal', () => {
+    const state = createAdjutantGameState({ soloNapoleon: true })
+
+    expect(maskAdjutantIdentityForPlayer(state, 'other').soloNapoleon).toBe(
+      undefined
+    )
+    expect(maskAdjutantIdentityForPlayer(state, 'me').soloNapoleon).toBe(true)
+  })
+
+  it('does not mutate the original (server side) state', () => {
+    const original = createAdjutantGameState({ soloNapoleon: true })
+    maskAdjutantIdentityForPlayer(original, 'other')
+
+    expect(original.players.find((p) => p.id === 'other')?.isAdjutant).toBe(
+      true
+    )
+    expect(original.soloNapoleon).toBe(true)
+  })
+})
+
+describe('restoreAdjutantIdentity', () => {
+  it('restores isAdjutant and soloNapoleon from the unmasked state', () => {
+    const truth = createAdjutantGameState({ soloNapoleon: true })
+    const view = maskAdjutantIdentityForPlayer(truth, 'me')
+
+    const restored = restoreAdjutantIdentity(view, truth)
+
+    expect(restored.players.find((p) => p.id === 'other')?.isAdjutant).toBe(
+      true
+    )
+    expect(restored.soloNapoleon).toBe(true)
+  })
+
+  it('keeps the changes the caller made on the masked view', () => {
+    const truth = createAdjutantGameState()
+    const view = maskAdjutantIdentityForPlayer(truth, 'me')
+    const played: GameState = {
+      ...view,
+      players: view.players.map((player) => ({
+        ...player,
+        hand: player.hand.slice(1),
+      })),
+    }
+
+    const restored = restoreAdjutantIdentity(played, truth)
+
+    expect(restored.players.map((p) => p.hand.length)).toEqual([1, 1])
+    expect(restored.players.find((p) => p.id === 'other')?.isAdjutant).toBe(
+      true
+    )
+  })
+
+  it('leaves unknown players untouched', () => {
+    const truth = createAdjutantGameState()
+    const view = maskAdjutantIdentityForPlayer(truth, 'me')
+    const withNewcomer: GameState = {
+      ...view,
+      players: [...view.players, createPlayer('newcomer', [])],
+    }
+
+    const restored = restoreAdjutantIdentity(withNewcomer, truth)
+
+    expect(restored.players.find((p) => p.id === 'newcomer')?.isAdjutant).toBe(
+      false
+    )
   })
 })

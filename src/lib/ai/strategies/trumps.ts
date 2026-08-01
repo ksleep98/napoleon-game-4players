@@ -9,37 +9,33 @@ import {
   isTrumpJack as checkIsTrumpJack,
 } from '@/lib/napoleonCardRules'
 import type { Card, GameState, Player, Suit, Trick } from '@/types/game'
-import {
-  calculateGameProgress,
-  getBestTrickCard,
-  getCardStrengthSafe,
-  isFaceCard,
-} from './helpers'
+import { calculateGameProgress, isFaceCard } from './helpers'
+import { getCurrentTrickWinner, wouldWinTrick } from './trickOutcome'
 import type { HandComposition, TrumpTracking } from './types'
 
 /**
  * ナポレオンチームが現在のトリックで勝っているか判定
+ *
+ * 勝者は素の強度ではなく実際の勝者判定（特殊ルール込み）で求める。
+ * 狩りJ・よろめきは素の強度と勝敗が逆転するため、強度比較のままだと
+ * 「ナポレオンが勝っている」と誤認して不要なブロックや絵札パスを招く。
  */
 export function isNapoleonWinning(
   currentTrick: Trick,
   gameState: GameState
 ): boolean {
   // リード局面（まだ 1 枚も出ていない）では誰も勝っていない。
-  // ガードが無いと getBestTrickCard が throw し、AI 全体が
-  // ランダム着手にフォールバックしてしまう。
+  // ガードが無いと勝者判定が null を返し、以降の分岐が壊れる。
   if (currentTrick.cards.length === 0) return false
 
   const napoleon = gameState.players.find((p) => p.isNapoleon)
   const adjutant = gameState.players.find((p) => p.isAdjutant)
   if (!napoleon) return false
 
-  const bestCard = getBestTrickCard(currentTrick, gameState)
-  return currentTrick.cards.some(
-    (trickCard) =>
-      (trickCard.playerId === napoleon.id ||
-        trickCard.playerId === adjutant?.id) &&
-      trickCard.card === bestCard.card
-  )
+  const winner = getCurrentTrickWinner(currentTrick, gameState)
+  if (!winner) return false
+
+  return winner.playerId === napoleon.id || winner.playerId === adjutant?.id
 }
 
 /**
@@ -56,14 +52,11 @@ export function isAllianceWinning(
   const adjutant = gameState.players.find((p) => p.isAdjutant)
   if (!napoleon) return false
 
-  const bestCard = getBestTrickCard(currentTrick, gameState)
-  // 最強カードがナポレオンチーム以外のプレイヤーのものか確認
-  return currentTrick.cards.some(
-    (trickCard) =>
-      trickCard.playerId !== napoleon.id &&
-      trickCard.playerId !== adjutant?.id &&
-      trickCard.card === bestCard.card
-  )
+  const winner = getCurrentTrickWinner(currentTrick, gameState)
+  if (!winner) return false
+
+  // 勝者がナポレオンチーム以外のプレイヤーか確認
+  return winner.playerId !== napoleon.id && winner.playerId !== adjutant?.id
 }
 
 /**
@@ -92,15 +85,16 @@ export function shouldInterventWithTrump(
   )
 
   if (trumpInTrick) {
-    // 切り札が既に出ている場合、勝てる切り札があるかチェック
+    // 切り札が既に出ている場合、勝てる切り札があるかチェック。
+    // 判定は実際の勝者判定（特殊ルール込み）で行う。素の強度比較では
+    // 狩J（場の表J を狩る J）を「勝てない」と誤判定していた。
     const canWin = playableCards.some(
       (card) =>
         (card.suit === trumpSuit ||
           checkIsMighty(card) ||
           checkIsTrumpJack(card, trumpSuit) ||
           checkIsCounterJack(card, trumpSuit)) &&
-        getCardStrengthSafe(card, gameState) >
-          getCardStrengthSafe(trumpInTrick.card, gameState)
+        wouldWinTrick(card, currentTrick, gameState)
     )
 
     if (!canWin) {

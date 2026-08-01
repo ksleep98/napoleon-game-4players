@@ -6,13 +6,18 @@
 import type { Card, GameState, Player, Suit, Trick } from '@/types/game'
 import {
   calculateGameProgress,
-  getBestTrickCard,
   getCardStrengthSafe,
   getLowestWinningCard,
   getWeakestCard,
   isFaceCard,
 } from './helpers'
 import { extractPartnerSignals } from './signalDecoder'
+import {
+  getCurrentTrickWinner,
+  getWinningCards,
+  isTrickSafeAfterPlaying,
+  wouldWinTrick,
+} from './trickOutcome'
 import type {
   CardCountingInfo,
   CooperativeStrategyInfo,
@@ -81,7 +86,25 @@ export function evaluateAllianceCooperation(
   // 2. 味方に勝たせる戦略の判断
   if (shouldLetPartnerWin(currentTrick, gameState, player, partnerSignals)) {
     const weakestCard = getWeakestCard(playableCards, gameState)
-    const faceCardToPass = getFaceCardToPassToAlliance(playableCards, gameState)
+    const candidate = getFaceCardToPassToAlliance(playableCards, gameState)
+
+    // 絵札を渡してよいのは、その絵札を出してもトリックが味方のものとして
+    // 確定する場合だけ。位置を見ずに渡すと後続のナポレオンチームに抜かれ、
+    // 渡した絵札ごと相手の得点になる。
+    const faceCardToPass =
+      candidate &&
+      isTrickSafeAfterPlaying(
+        candidate,
+        currentTrick,
+        gameState,
+        player.hand,
+        (playerId) => {
+          const owner = gameState.players.find((p) => p.id === playerId)
+          return owner ? !owner.isNapoleon && !owner.isAdjutant : false
+        }
+      )
+        ? candidate
+        : null
 
     return {
       shouldSignal: true,
@@ -285,9 +308,7 @@ export function coordinateBlockingStrategy(
     const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
     const nonTrumpWinners = playableCards.filter(
       (card) =>
-        card.suit !== trumpSuit &&
-        getCardStrengthSafe(card, gameState) >
-          getBestTrickCard(currentTrick, gameState).strength
+        card.suit !== trumpSuit && wouldWinTrick(card, currentTrick, gameState)
     )
 
     if (nonTrumpWinners.length > 0) {
@@ -519,17 +540,9 @@ function isNapoleonTeamWinning(
 ): boolean {
   if (currentTrick.cards.length === 0) return false
 
-  // 最強のカードを持つPlayedCardを見つける
-  let bestPlayedCard = currentTrick.cards[0]
-  let bestStrength = getCardStrengthSafe(bestPlayedCard.card, gameState)
-
-  for (const playedCard of currentTrick.cards) {
-    const strength = getCardStrengthSafe(playedCard.card, gameState)
-    if (strength > bestStrength) {
-      bestPlayedCard = playedCard
-      bestStrength = strength
-    }
-  }
+  // 勝者は素の強度ではなく実際の勝者判定（狩りJ・よろめき込み）で求める
+  const winner = getCurrentTrickWinner(currentTrick, gameState)
+  if (!winner) return false
 
   const napoleon = gameState.players.find((p) => p.isNapoleon)
   const adjutant = gameState.players.find((p) => p.isAdjutant)
@@ -537,8 +550,8 @@ function isNapoleonTeamWinning(
   if (!napoleon) return false
 
   return (
-    bestPlayedCard.playerId === napoleon.id ||
-    (adjutant !== undefined && bestPlayedCard.playerId === adjutant.id)
+    winner.playerId === napoleon.id ||
+    (adjutant !== undefined && winner.playerId === adjutant.id)
   )
 }
 
@@ -548,19 +561,10 @@ function isNapoleonTeamWinning(
 function isAllianceWinning(currentTrick: Trick, gameState: GameState): boolean {
   if (currentTrick.cards.length === 0) return false
 
-  // 最強のカードを持つPlayedCardを見つける
-  let bestPlayedCard = currentTrick.cards[0]
-  let bestStrength = getCardStrengthSafe(bestPlayedCard.card, gameState)
+  const winner = getCurrentTrickWinner(currentTrick, gameState)
+  if (!winner) return false
 
-  for (const playedCard of currentTrick.cards) {
-    const strength = getCardStrengthSafe(playedCard.card, gameState)
-    if (strength > bestStrength) {
-      bestPlayedCard = playedCard
-      bestStrength = strength
-    }
-  }
-
-  const player = gameState.players.find((p) => p.id === bestPlayedCard.playerId)
+  const player = gameState.players.find((p) => p.id === winner.playerId)
 
   if (!player) return false
 
@@ -568,7 +572,7 @@ function isAllianceWinning(currentTrick: Trick, gameState: GameState): boolean {
 }
 
 /**
- * 現在のトリックで勝てるか
+ * 現在のトリックで勝てるか（特殊ルール込み）
  */
 function canWinCurrentTrick(
   cards: Card[],
@@ -577,10 +581,7 @@ function canWinCurrentTrick(
 ): boolean {
   if (currentTrick.cards.length === 0) return true
 
-  const bestOpponentCard = getBestTrickCard(currentTrick, gameState)
-  return cards.some(
-    (card) => getCardStrengthSafe(card, gameState) > bestOpponentCard.strength
-  )
+  return getWinningCards(cards, currentTrick, gameState).length > 0
 }
 
 /**
