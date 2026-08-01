@@ -14,6 +14,12 @@ import {
   getCardStrengthSafe,
   isFaceCard,
 } from './helpers'
+import {
+  canLeadingSuitThreatTakeTrick,
+  isTrickSafeAfterPlaying,
+  isTrickWonByTeamWithoutPlaying,
+  wouldWinTrick,
+} from './trickOutcome'
 import { isNapoleonWinning } from './trumps'
 import type { AdjutantTacticalInfo, WinningRequirements } from './types'
 
@@ -41,6 +47,48 @@ export function evaluateAdjutantStrategy(
 }
 
 /**
+ * 副官呼びに応えて副官カードを出してよいか（安全判定）。
+ *
+ * 二段構え:
+ *  1. トリックが自チームのものとして確定するなら、文句なく出してよい
+ *  2. 確定しなくても、同じリードスートの未確認札に上から被せられる危険が
+ *     無いなら出してよい
+ *
+ * 2 を残しているのは、マイティのよろめきリスク（未確認の♥Q）のように
+ * 「その札に固有で、いつ出しても避けられないリスク」まで理由に手を止めると、
+ * 副官カードを最後まで抱え込んで呼びに一度も応えられなくなるため。
+ * 逆に、副官カードが普通の絵札（♠K など）で未確認の♠A に抜かれる、という
+ * 回避可能な失点だけは 2 で確実に弾ける。
+ */
+function isAdjutantCallSafe(
+  adjutantCard: Card,
+  currentTrick: Trick,
+  gameState: GameState,
+  hand: Card[],
+  isTeammate: (playerId: string) => boolean
+): boolean {
+  if (
+    isTrickSafeAfterPlaying(
+      adjutantCard,
+      currentTrick,
+      gameState,
+      hand,
+      isTeammate
+    )
+  ) {
+    return true
+  }
+
+  return !canLeadingSuitThreatTakeTrick(
+    adjutantCard,
+    currentTrick,
+    gameState,
+    hand,
+    isTeammate
+  )
+}
+
+/**
  * 副官の戦術を評価
  * 副官特有の戦略（カード開示、ナポレオンへのサポート、協調プレイ）を最適化
  */
@@ -48,8 +96,11 @@ export function evaluateAdjutantTactics(
   playableCards: Card[],
   currentTrick: Trick,
   gameState: GameState,
-  requirements: WinningRequirements
+  requirements: WinningRequirements,
+  hand: Card[] = playableCards
 ): AdjutantTacticalInfo {
+  const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
+
   // ナポレオンを取得
   const napoleon = gameState.players.find((p) => p.isNapoleon)
 
@@ -113,7 +164,6 @@ export function evaluateAdjutantTactics(
       else optimalRevealTiming = 3 // 終盤は遅い
 
       // 特殊カードとの競合チェック
-      const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
       if (
         checkIsMighty(adjutantCard) ||
         checkIsTrumpJack(adjutantCard, trumpSuit) ||
@@ -123,14 +173,12 @@ export function evaluateAdjutantTactics(
       }
 
       // トリック内に特殊カードがある場合は開示しない
-      const hasMightyOrJack = currentTrick.cards.some((tc) => {
-        const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
-        return (
+      const hasMightyOrJack = currentTrick.cards.some(
+        (tc) =>
           checkIsMighty(tc.card) ||
           checkIsTrumpJack(tc.card, trumpSuit) ||
           checkIsCounterJack(tc.card, trumpSuit)
-        )
-      })
+      )
       if (hasMightyOrJack) {
         optimalRevealTiming = Math.max(0, optimalRevealTiming - 5)
       }
@@ -147,9 +195,52 @@ export function evaluateAdjutantTactics(
   const shouldProtectNapoleon =
     napoleonNeedsHelp || (faceCardsInTrick >= 2 && !napoleonIsWinning)
 
-  // 絵札をナポレオンに渡すべきか
-  const shouldPassFaceCard =
-    napoleonIsWinning && faceCardsInTrick >= 1 && playableCards.some(isFaceCard)
+  // ナポレオンの「副官呼び」に副官カードで応えるべきか。
+  //
+  // ナポレオンは副官指定カードのスートを（10 や Q あたりで）リードして副官を
+  // 呼び出す。副官がそれに応えず絵札だけ捨てると、後続の連合軍に絵札ごと
+  // トリックを持っていかれる。副官カードで実際にトリックを取れるなら出す。
+  //
+  // 開示タイミング評価（optimalRevealTiming）はマイティ・表J・裏Jを 0 に
+  // 落とすため、副官カードがマイティのときに永久に出せなくなっていた。
+  // 「呼ばれていて、かつ勝てる」場面は温存する理由がないので別判定にする。
+  //
+  // ただし「今勝てる」だけでは足りない:
+  //  - 副官カードが普通の絵札（♠K など）だと、後続の連合軍に♠A で抜かれて
+  //    絵札ごと献上することになる → 抜かれないことを確認する
+  //  - 既に自チームがトリックを取り切っているなら、マイティを重ねるのは
+  //    ただの無駄打ち → 自陣が確定勝ちの局面では出さない
+  const currentLeadingSuit = currentTrick.leadingSuit || gameState.leadingSuit
+  const isNapoleonTeamMember = (playerId: string): boolean =>
+    playerId === napoleon?.id
+
+  // 自分が出す前に、既に自チームでトリックが確定しているか
+  const alreadySecuredWithoutMe =
+    napoleonIsWinning &&
+    currentTrick.cards.length > 0 &&
+    isTrickWonByTeamWithoutPlaying(currentTrick, gameState, hand, (playerId) =>
+      isNapoleonTeamMember(playerId)
+    )
+
+  const adjutantCallWins =
+    adjutantCard !== null &&
+    currentTrick.cards.length > 0 &&
+    currentLeadingSuit === adjutantCard.suit &&
+    faceCardsInTrick >= 1 &&
+    wouldWinTrick(adjutantCard, currentTrick, gameState)
+
+  const shouldAnswerAdjutantCall =
+    adjutantCallWins &&
+    !alreadySecuredWithoutMe &&
+    adjutantCard !== null &&
+    isAdjutantCallSafe(
+      adjutantCard,
+      currentTrick,
+      gameState,
+      hand,
+      isNapoleonTeamMember
+    )
+  const adjutantCallCard = shouldAnswerAdjutantCall ? adjutantCard : null
 
   // ナポレオンのために勝つべきか（ナポレオンが弱い時）
   const shouldWinForNapoleon =
@@ -159,29 +250,50 @@ export function evaluateAdjutantTactics(
     remainingTricks <= 6 // 中盤以降
 
   // ナポレオンに渡すべき絵札を選択
-  let faceCardToPass: Card | null = null
-  if (shouldPassFaceCard) {
-    // マイティーだけでなく表J・裏Jも除外する。これらは「弱い絵札」ではなく
-    // 単独で別トリックを取れる最強級カードなので、マイティーが既に勝っている
-    // トリックに被せて捨ててはいけない（連合軍側の getFaceCardToPassToAlliance
-    // と同じ除外条件に揃える）。
-    const trumpSuit = (gameState.trumpSuit as Suit) || 'spades'
-    const faceCards = playableCards.filter(
-      (card) =>
-        isFaceCard(card) &&
-        !checkIsMighty(card) &&
-        !checkIsTrumpJack(card, trumpSuit) &&
-        !checkIsCounterJack(card, trumpSuit)
+  //
+  // マイティーだけでなく表J・裏Jも除外する。これらは「弱い絵札」ではなく
+  // 単独で別トリックを取れる最強級カードなので、マイティーが既に勝っている
+  // トリックに被せて捨ててはいけない（連合軍側の getFaceCardToPassToAlliance
+  // と同じ除外条件に揃える）。
+  const passableFaceCards = playableCards.filter(
+    (card) =>
+      isFaceCard(card) &&
+      !checkIsMighty(card) &&
+      !checkIsTrumpJack(card, trumpSuit) &&
+      !checkIsCounterJack(card, trumpSuit)
+  )
+
+  // 最も弱い絵札を選択（10 > Q > K > A の順）
+  const weakestFaceCard =
+    passableFaceCards.length > 0
+      ? [...passableFaceCards].sort(
+          (a, b) =>
+            getCardStrengthSafe(a, gameState) -
+            getCardStrengthSafe(b, gameState)
+        )[0]
+      : null
+
+  // 絵札をナポレオンに渡すべきか
+  //
+  // 「ナポレオンが今勝っている」だけでは渡してはいけない。自分がまだ 2 番手・
+  // 3 番手なら後続の連合軍に抜かれ、渡した絵札ごと相手の得点になる。実際に
+  // 「ナポレオンが副官を呼ぶ 10/Q を出したのに、副官が別の絵札を捨てて
+  // 連合軍に取られる」という事故が起きていた。
+  // 渡してよいのは、その絵札を出してもトリックが自チームのものとして
+  // 確定する場合だけ。
+  const shouldPassFaceCard =
+    napoleonIsWinning &&
+    faceCardsInTrick >= 1 &&
+    weakestFaceCard !== null &&
+    isTrickSafeAfterPlaying(
+      weakestFaceCard,
+      currentTrick,
+      gameState,
+      hand,
+      (playerId) => playerId === napoleon?.id
     )
 
-    if (faceCards.length > 0) {
-      // 最も弱い絵札を選択（10 > Q > K > A の順）
-      faceCardToPass = faceCards.sort(
-        (a, b) =>
-          getCardStrengthSafe(a, gameState) - getCardStrengthSafe(b, gameState)
-      )[0]
-    }
-  }
+  const faceCardToPass = shouldPassFaceCard ? weakestFaceCard : null
 
   return {
     shouldRevealNow,
@@ -194,5 +306,7 @@ export function evaluateAdjutantTactics(
     napoleonIsWinning,
     adjutantCard,
     faceCardToPass,
+    shouldAnswerAdjutantCall,
+    adjutantCallCard,
   }
 }

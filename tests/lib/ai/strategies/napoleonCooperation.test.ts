@@ -150,6 +150,8 @@ function createMockAdjutantTactics(
     napoleonIsWinning: false,
     adjutantCard: null,
     faceCardToPass: null,
+    shouldAnswerAdjutantCall: false,
+    adjutantCallCard: null,
     ...overrides,
   }
 }
