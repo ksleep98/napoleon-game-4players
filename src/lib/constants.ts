@@ -180,6 +180,15 @@ export const SOLO_NAPOLEON_LABELS = {
 // 秘匿情報である「誰が副官か」と取り違えられないよう、必ず Card を明記する
 export const ADJUTANT_CARD_LABEL = `${PLAYER_ROLES.ADJUTANT} Card`
 
+// 競り（GAME_PHASES.NAPOLEON）中の表示ラベル。
+// この時点の宣言はまだ上乗せされうる暫定値で、ナポレオン・副官・連合軍の
+// いずれも確定していない。確定した宣言・チームと同じ見た目にしないこと
+export const BIDDING_LABELS = {
+  SECTION_TITLE: 'Current Highest Bid',
+  BID_BY: 'Highest bid by:',
+  UNDECIDED_NOTE: 'Bidding in progress - teams are not decided yet',
+} as const
+
 export const GAME_CONFIG = {
   PLAYERS_COUNT: 4,
   CARDS_PER_PLAYER: 12, // 52枚（Joker除外）から4人に12枚ずつ配って残り4枚

@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  BIDDING_LABELS,
   GAME_PHASES,
   NAPOLEON_RULES,
   PLAYER_ROLES,
@@ -31,6 +32,12 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
   const adjutantPlayer = gameState.players.find((p) => p.isAdjutant)
   // マスク済みなので、閲覧者に公開してよい場合のみ true になる
   const soloNapoleon = isSoloNapoleon(gameState)
+
+  // 競りの最中。declareNapoleon は宣言のたびに isNapoleon / trumpSuit を
+  // 立てるため、この時点でも napoleonPlayer は取れてしまうが、それは
+  // 「現在の最高提示者」でしかない。まだ誰でも上乗せしてナポレオンを
+  // 奪えるので、確定したチーム・役職として見せてはいけない
+  const isBidding = gameState.phase === GAME_PHASES.NAPOLEON
 
   const currentPlayerStats = currentPlayerId
     ? getPlayerStats(gameState, currentPlayerId)
@@ -91,7 +98,7 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
       {gameState.napoleonDeclaration && (
         <div className="border-b pb-2 md:pb-3">
           <h4 className="font-semibold text-sm md:text-base text-gray-800 mb-1 md:mb-2">
-            Napoleon Declaration
+            {isBidding ? BIDDING_LABELS.SECTION_TITLE : 'Napoleon Declaration'}
           </h4>
           <div className="bg-yellow-50 border border-yellow-200 p-2 md:p-3 rounded-lg">
             <div className="flex items-center justify-center gap-2 md:gap-4 text-sm">
@@ -114,10 +121,18 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
             </div>
             <div className="text-center text-xs md:text-sm text-yellow-700 mt-1 md:mt-2">
               <span className="font-semibold">
-                Declared by: {napoleonPlayer?.name}
+                {isBidding ? BIDDING_LABELS.BID_BY : 'Declared by:'}{' '}
+                {napoleonPlayer?.name}
               </span>
             </div>
-            {/* 副官「指定カード」は宣言時に全員へ告げられる公開情報 */}
+            {isBidding && (
+              <div className="text-center text-[0.6rem] md:text-xs text-gray-600 mt-1">
+                {BIDDING_LABELS.UNDECIDED_NOTE}
+              </div>
+            )}
+            {/* 副官「指定カード」は宣言が確定したあとの公開情報。
+                競りの最中は maskGameStateForPlayer が宣言者以外へ渡さないため、
+                ここは undefined になり表示されない */}
             {gameState.napoleonCard && (
               <div className="flex justify-center mt-2 pt-2 border-t border-yellow-200">
                 <AdjutantCardBadge
@@ -131,8 +146,11 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
         </div>
       )}
 
-      {/* チーム構成 - 副官は判明した場合のみ表示 */}
-      {napoleonPlayer && (
+      {/* チーム構成 - 副官は判明した場合のみ表示。
+          競りの最中は「Napoleon / Adjutant / Allied Forces」がまだ確定して
+          いないので出さない（上乗せすれば閲覧者自身がナポレオンになりうる）。
+          最高提示者は上の Current Highest Bid ブロックが示している */}
+      {napoleonPlayer && !isBidding && (
         <div className="border-b pb-3">
           <h4 className="font-semibold text-gray-800 mb-2">Teams</h4>
           <div className="space-y-2 text-sm">
@@ -314,12 +332,17 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
         <div className="border-b pb-3">
           <h4 className="font-semibold text-gray-800 mb-2">Your Stats</h4>
           <div className="space-y-1 text-sm">
-            <div className="flex justify-between">
-              <span>Role:</span>
-              <span className="font-medium">
-                {getRoleDisplay(currentPlayerStats.role)}
-              </span>
-            </div>
+            {/* 競り中の role は「今のところナポレオンではない」だけの暫定値。
+                Allied Forces と断定表示すると、上乗せでナポレオンになれる
+                ことが伝わらないので出さない */}
+            {!isBidding && (
+              <div className="flex justify-between">
+                <span>Role:</span>
+                <span className="font-medium">
+                  {getRoleDisplay(currentPlayerStats.role)}
+                </span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span>Face Cards Won:</span>
               <span>{currentPlayerStats.faceCardsWon}</span>
