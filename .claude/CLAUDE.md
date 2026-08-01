@@ -291,6 +291,20 @@ terraform plan  # 変更内容を確認
 - SHALL limit response token length to avoid usage limit.
 - SHALL break down large files for stepwise parsing.
 
+### エージェント編成（既定）
+
+実装を伴う作業は、原則として `agent-flow` skill の編成で進めること。
+
+1. まず自分で原因を特定する（可能なら再現テストで実証してから委譲する）
+2. 課題ごとに `implementer` を1体ずつ、並行起動。**編集してよいディレクトリを
+   エージェント間で排他にする**
+3. 実装が出揃ってから `reviewer` と `security-reviewer` を並行起動
+4. 指摘は file:line を自分で確認してから反映し、`pnpm ci-check` の実出力で報告
+
+適用範囲・除外条件・各エージェントへの指示に必ず含める項目は
+`.claude/skills/agent-flow/SKILL.md` を参照。typo 修正や1ファイル数行の変更、
+コード変更を伴わない調査には使わない（4エージェント起動は安くない）。
+
 ### 開発フロー
 
 1. `feature/xxx` ブランチで開発
