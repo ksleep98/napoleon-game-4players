@@ -1,0 +1,26 @@
+# Dockerfile:12 が `COPY . .` なので、除外しないものは全てイメージに焼き込まれる。
+#
+# このディレクトリは Hugging Face Space へ丸ごと push する配布単位であり、Space は
+# GitHub とは別の git リポジトリなのでリポジトリルートの .gitignore は継承されない。
+# ここと python/.gitignore が最後の防波堤になる。
+
+# 認証情報。`vercel env pull` の出力は development の全変数 (SUPABASE_SERVICE_ROLE_KEY /
+# ENCRYPTION_KEY を含む) を平文で持つ。fetch_data.py の _load_env() が起動時に
+# python/.env を os.environ へ読むので、焼き込むと Space のプロセス環境に載る。
+.env
+.env.*
+!.env.example
+
+# 学習済みモデル (数百 MB)。Space 上で Train ボタンから再生成する前提。
+model/models/
+
+# ローカル作業用の一時ディレクトリ (リポジトリルートの .gitignore にも登録済み)
+.scratch/
+
+# キャッシュ・テスト成果物
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+tests/

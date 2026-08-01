@@ -91,10 +91,34 @@ uv run python app.py          # serve on http://localhost:7860
 `pnpm sim` has accumulated there. Production has no Supabase configuration at
 all, so no gameplay from the live site reaches this dataset.
 
-## Model accuracy is not data-limited
+## The model is a candidate scorer, not a 52-class classifier
 
-At 27,664 rows: accuracy 27.94%, top-3 52.46%. At ~526 games it was 26% / 52%.
-Fifty times the data moved it barely at all, exactly as the note in
-`src/lib/ai/aiStrategy.ts` predicted — a 52-class Random Forest splits its 200
-trees' votes across too many candidates. Collecting more games is not the lever;
-changing the model or reframing the task is.
+**Superseded (2026-08-01).** The old note here said accuracy was stuck at ~27%
+and "changing the model or reframing the task" was the lever. That turned out to
+be right, and it was done — see
+[`docs/ml/CARD_PREDICTION_MODEL.md`](../docs/ml/CARD_PREDICTION_MODEL.md).
+
+The task is now "score each legal card, pick the best", not "pick 1 of 52". The
+old feature vector never encoded _which_ cards were in hand — only per-suit and
+per-high-rank counts — so the 52-class target was not a function of the input.
+That, not data volume, was why fifty times the data moved accuracy almost
+nowhere.
+
+At 34,840 rows / 903 games, measured the way play actually works (argmax over
+legal moves, game-level split):
+
+|                                 | old (52-class) | new (candidate scoring) |
+| ------------------------------- | -------------- | ----------------------- |
+| accuracy                        | 57.28%\*       | **66.04%**              |
+| accuracy excluding forced moves | 47.8%          | **58.33%**              |
+| top-1 confidence, median        | 0.587          | 0.588                   |
+| uniform-over-legal baseline     | 42.08%         | 42.08%                  |
+
+\* the old code _reported_ 27.12%, because it argmaxed over all 52 classes and
+returned un-renormalized probabilities. Both numbers come from the same model.
+
+**Saved models are not compatible across the two formats.** `/api/predict-card`
+returns 503 with a "retrain" message when it loads a model without
+`model_type == "candidate_scorer"`; the Next.js client treats 503 as a soft miss
+and falls back to MCTS. After deploying this directory to the Space, **press
+Train** before expecting predictions.

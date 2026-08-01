@@ -214,9 +214,12 @@ describe('AI Strategy Actions', () => {
       expect(saveGameStateAction).toHaveBeenCalledWith(updatedGameState, 'p1')
     })
 
-    // COM が副官のとき、AI と DB 保存には未マスクの isAdjutant が渡り、
-    // クライアントへのレスポンスだけが伏せられることを保証する
-    it('gives the AI the unmasked adjutant flag while masking the response', async () => {
+    // COM が副官のとき、processAITurn と DB 保存には未マスクの isAdjutant が渡り、
+    // クライアントへのレスポンスだけが伏せられることを保証する。
+    // AI 評価層へ渡すビューのマスクは processAITurn の内側で行われるため
+    // （tests/lib/game/aiAdjutantVisibility.test.ts）、ここで先にマスクしては
+    // ならない。DB へ副官情報を保存できなくなる。
+    it('passes the unmasked state to processAITurn and to the DB while masking the response', async () => {
       const aiAdjutant = { ...createPlayer('ai-1', true), isAdjutant: true }
       const gameState = createGameState([aiAdjutant, createPlayer('p1')])
       const updatedGameState = { ...gameState }
@@ -227,7 +230,7 @@ describe('AI Strategy Actions', () => {
 
       const result = await processAITurnAction('game-1', 'p1')
 
-      // AI 側は未マスク
+      // processAITurn への入力は未マスク
       const stateGivenToAI = (processAITurn as jest.Mock).mock
         .calls[0][0] as GameState
       expect(

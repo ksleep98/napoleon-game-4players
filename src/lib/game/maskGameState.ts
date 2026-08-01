@@ -13,8 +13,10 @@
  * 一人ナポレオン（`soloNapoleon`）も同じ理由で伏せる。ナポレオン本人だけは
  * 指定カードが自分の手札に入るため常に知っている。
  *
- * AI の思考はすべてサーバーサイド（processAITurn / processAIPlayingPhase）で
- * 行われ、DB から読み直した未マスクの状態を使うため、マスキングの影響を受けない。
+ * AI の思考はサーバーサイド（processAITurn / processAIPlayingPhase）で行われ、
+ * DB から読み直した未マスクの状態を使う。ただし副官の正体だけは AI にも
+ * 見せてはいけない（人間より多くを知って打つのはフェアネス違反）ため、
+ * processAITurn が maskAdjutantIdentityForPlayer で手番 AI 視点のビューを作る。
  */
 
 import { MASKED_CARD } from '@/lib/constants'
@@ -35,11 +37,16 @@ function maskCards(cards: Card[], ownerKey: string): Card[] {
 }
 
 /**
- * 閲覧者以外の手札・伏せ札・副官の正体をマスクしたゲーム状態を返す
+ * 副官の正体（`isAdjutant` / `soloNapoleon`）だけをマスクしたゲーム状態を返す
+ *
+ * 手札・伏せ札はそのまま残す。サーバーサイド AI の思考へ渡すビューを作るための
+ * 関数で、AI は自分の手札はもちろん、シミュレーション（determinization）でも
+ * `players[].hand` の実体を参照するため、ここで手札まで潰すと着手を選べなくなる。
+ *
  * @param gameState 未マスクのゲーム状態
- * @param viewerPlayerId 閲覧者（認証済みプレイヤー）のID
+ * @param viewerPlayerId 閲覧者（人間プレイヤー、または手番の AI）のID
  */
-export function maskGameStateForPlayer(
+export function maskAdjutantIdentityForPlayer(
   gameState: GameState,
   viewerPlayerId: string
 ): GameState {
@@ -70,9 +77,36 @@ export function maskGameStateForPlayer(
         ? player
         : {
             ...player,
-            hand: maskCards(player.hand, player.id),
             // 副官本人以外には、公開されるまで副官フラグを渡さない
             isAdjutant: adjutantIsPublic ? player.isAdjutant : false,
+          }
+    ),
+  }
+}
+
+/**
+ * 閲覧者以外の手札・伏せ札・副官の正体をマスクしたゲーム状態を返す
+ * @param gameState 未マスクのゲーム状態
+ * @param viewerPlayerId 閲覧者（認証済みプレイヤー）のID
+ */
+export function maskGameStateForPlayer(
+  gameState: GameState,
+  viewerPlayerId: string
+): GameState {
+  // 副官の秘匿ルールは maskAdjutantIdentityForPlayer に一本化する
+  const identityMasked = maskAdjutantIdentityForPlayer(
+    gameState,
+    viewerPlayerId
+  )
+
+  return {
+    ...identityMasked,
+    players: identityMasked.players.map((player) =>
+      player.id === viewerPlayerId
+        ? player
+        : {
+            ...player,
+            hand: maskCards(player.hand, player.id),
           }
     ),
     hiddenCards: maskCards(
@@ -83,5 +117,35 @@ export function maskGameStateForPlayer(
     exchangedCards: gameState.exchangedCards
       ? maskCards(gameState.exchangedCards, MASKED_CARD.HIDDEN_PILE_OWNER)
       : undefined,
+  }
+}
+
+/**
+ * マスクした副官情報を、未マスクの状態から復元する
+ *
+ * サーバーサイド AI は「マスク済みビューを入力に取り、そこから次の状態を作って返す」
+ * ため（processAIPlayingPhase → playCard）、戻り値をそのまま DB に保存すると
+ * 副官フラグが永久に失われる。AI が触らない秘匿フィールドだけを真の値へ戻す。
+ *
+ * プレイングフェーズ中は `isAdjutant` / `soloNapoleon` は変化しない
+ * （設定されるのは ADJUTANT フェーズの setAdjutant のみ）ため、この復元で
+ * AI の着手結果を取りこぼすことはない。
+ *
+ * @param maskedResult マスク済みビューを入力に AI が返した状態
+ * @param sourceOfTruth マスク前のゲーム状態
+ */
+export function restoreAdjutantIdentity(
+  maskedResult: GameState,
+  sourceOfTruth: GameState
+): GameState {
+  return {
+    ...maskedResult,
+    soloNapoleon: sourceOfTruth.soloNapoleon,
+    players: maskedResult.players.map((player) => {
+      const truth = sourceOfTruth.players.find((p) => p.id === player.id)
+      return truth === undefined
+        ? player
+        : { ...player, isAdjutant: truth.isAdjutant }
+    }),
   }
 }

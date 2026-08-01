@@ -1,5 +1,9 @@
 import { processAIPlayingPhase, processAllAIPhases } from '@/lib/ai/gameTricks'
 import { GAME_PHASES } from '@/lib/constants'
+import {
+  maskAdjutantIdentityForPlayer,
+  restoreAdjutantIdentity,
+} from '@/lib/game/maskGameState'
 import { determineWinnerWithSpecialRules } from '@/lib/napoleonCardRules'
 import { isGameDecided } from '@/lib/scoring'
 import type {
@@ -319,6 +323,11 @@ export function exchangeCards(
 
 /**
  * AI フェーズを処理してゲーム状態を更新
+ *
+ * プレイングフェーズでは、AI 評価層へ渡す前に「手番の AI 視点のビュー」を作る。
+ * サーバーは DB から未マスクの状態を読むため、そのまま渡すと AI だけが
+ * 未公開の副官の正体を知って打つことになり、人間との情報量が対等でなくなる
+ * （ルール上はナポレオン本人ですら公開まで誰が副官かを知らない）。
  */
 export async function processAITurn(gameState: GameState): Promise<GameState> {
   if (
@@ -326,11 +335,22 @@ export async function processAITurn(gameState: GameState): Promise<GameState> {
     gameState.phase === GAME_PHASES.ADJUTANT ||
     gameState.phase === GAME_PHASES.EXCHANGE
   ) {
+    // これらのフェーズでは副官はまだ確定していない（setAdjutant が確定させる）。
+    // ここでマスクすると確定結果を復元時に潰してしまうため、素の状態を渡す。
     return await processAllAIPhases(gameState)
   }
 
   if (gameState.phase === GAME_PHASES.PLAYING) {
-    return await processAIPlayingPhase(gameState)
+    const currentPlayer = getCurrentPlayer(gameState)
+    if (!currentPlayer?.isAI) {
+      return await processAIPlayingPhase(gameState)
+    }
+
+    const aiView = maskAdjutantIdentityForPlayer(gameState, currentPlayer.id)
+    const played = await processAIPlayingPhase(aiView)
+
+    // AI はマスク済みビューから次の状態を作るため、保存前に秘匿情報を戻す
+    return restoreAdjutantIdentity(played, gameState)
   }
 
   return gameState
