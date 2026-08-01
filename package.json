@@ -49,6 +49,7 @@
     "test:e2e:production:headed": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --config=playwright-production.config.ts --headed",
     "test:e2e:production:ui": "node tests/setup-test-directories.js && SKIP_E2E_TESTS=${SKIP_E2E_TESTS:-false} PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test --config=playwright-production.config.ts --ui",
     "smoke": "tsx scripts/smoke-test.ts",
+    "ml:fixtures": "tsx scripts/dump-rule-fixtures.ts",
     "type-check": "tsc --noEmit",
     "type-check:fast": "tsc --noEmit --skipLibCheck",
     "lint:fast": "npx @biomejs/biome check . --reporter=compact",

@@ -59,20 +59,31 @@ def make_row(
 def make_training_df(n_games: int = 4, rows_per_game: int = 16) -> pd.DataFrame:
     """Build a synthetic, well-formed training DataFrame.
 
-    Targets cycle through TARGET_CARDS so every class is represented many times,
-    which keeps CalibratedClassifierCV(cv=3) happy on small data.
+    Two properties matter for the candidate-scoring tests and are easy to lose:
+
+    1. **The selected card is not always first in the hand.** It rotates through
+       every position, so a bug that hard-codes the positive label to index 0
+       (`build_candidate_dataset`) fails instead of passing by accident.
+    2. **`trick_number` starts at 0.** The Next.js side records "completed tricks"
+       (`src/lib/ml/dataExtractor.ts`), so the first trick is 0, and
+       `card_strength` disables ordinary trumps only on trick 0. Generating 1..12
+       would let an off-by-one in that check pass unnoticed.
     """
     rows: list[dict] = []
+    filler = [CARD_DIAMONDS_7, CARD_CLUBS_2]
     for g in range(n_games):
         for i in range(rows_per_game):
             target = TARGET_CARDS[(g * rows_per_game + i) % len(TARGET_CARDS)]
+            # 正解カードの位置を巡回させる (手札は target + filler の 3 枚)
+            position = (g * rows_per_game + i) % (len(filler) + 1)
+            hand = [*filler[:position], target, *filler[position:]]
             rows.append(
                 make_row(
                     game_id=f"game-{g}",
                     player_id=f"player-{i % 4}",
-                    trick_number=(i % 12) + 1,
+                    trick_number=(g * rows_per_game + i) % 13,
                     selected_card=target,
-                    hand=[target, CARD_DIAMONDS_7, CARD_CLUBS_2],
+                    hand=hand,
                 )
             )
     return pd.DataFrame(rows)
