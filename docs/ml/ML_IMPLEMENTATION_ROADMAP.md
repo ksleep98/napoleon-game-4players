@@ -207,7 +207,14 @@ joblib==1.3.2
 
 #### 3.3 機械学習モデル実装
 
-**モデル1: カード選択予測**
+> ⚠️ **この節の設計は 2026-08-01 に置き換えられた。**
+> 下記の「入力特徴量 / 出力 52種類 / Random Forest 多クラス分類」は実装したが
+> 構造的に解けないことが判明した（特徴量が手札のカード identity を持たないため）。
+> 現行設計と、置き換えの理由・数値は
+> [CARD_PREDICTION_MODEL.md](./CARD_PREDICTION_MODEL.md) を参照。
+> 以下は経緯として残す。
+
+**モデル1: カード選択予測（旧設計・廃止）**
 
 **入力特徴量**:
 
@@ -324,6 +331,16 @@ export async function getMLEnhancedAIMove(
 ### 📊 Phase 5: モデル評価・改善
 
 **期間**: 1週間
+
+> ⚠️ **成功基準の測り方が変わった（2026-08-01）。**
+> 「モデル精度60%以上 / Top-3精度85%以上」は 52 クラス上の accuracy を前提にした
+> 数字だが、実プレイでは合法手の中からしか選ばない。現行は **合法手の中での
+> argmax** で測る（accuracy 66.04% / top-3 90.32%、うち強制手を除くと 58.33%）。
+> 比較対象も「52分の1 = 1.92%」ではなく「合法手からの一様ランダム = 42.08%」。
+> 詳細: [CARD_PREDICTION_MODEL.md](./CARD_PREDICTION_MODEL.md)
+>
+> また 5.2「データ拡充」は**この課題の主因ではなかった**。34,840 行 (903 ゲーム)
+> でも旧設計は 27% のままで、効いたのはモデルの作り替えの方だった。
 
 #### 5.1 モデル精度評価
 
@@ -526,6 +543,7 @@ grid_search.fit(X_train, y_train)
 
 ## 📚 関連ドキュメント
 
+- [CARD_PREDICTION_MODEL.md](./CARD_PREDICTION_MODEL.md) - 現行モデル設計・52クラス分類を廃止した理由・before/after
 - [ML_DATA_COLLECTION.md](../database/ML_DATA_COLLECTION.md) - データベース詳細
 - [DATA_COLLECTION_USAGE.md](./DATA_COLLECTION_USAGE.md) - 使用方法
 - [ml_training_data_schema.sql](../database/ml_training_data_schema.sql) - SQLスキーマ
