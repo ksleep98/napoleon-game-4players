@@ -305,6 +305,14 @@ worktree で `pnpm` を動かす場合は `node_modules` を symlink する:
 `ln -sfn /Users/kk/napoleon-game-4players/node_modules <worktree>/node_modules`
 （コミット前に symlink を消してから `git worktree remove` すること）
 
+**例外: Claude Code 自身が書き出すファイルは対象外。** サブエージェントの
+トランスクリプト（`/private/tmp/claude-<uid>/.../tasks/*.output`）とセッション
+スクラッチパッドはハーネスが場所を決めており、環境変数でも settings.json でも
+変更できない。`CLAUDE_CODE_TMPDIR` は実機で効果がなく、関連 issue も
+anthropics/claude-code#17936 と #25292 がいずれも not planned でクローズ済み。
+**この調査を繰り返さないこと。** 気になる場合はセッション終了後に
+`/private/tmp/claude-*` を削除する。
+
 ### エージェント編成（既定）
 
 実装を伴う作業は、原則として `agent-flow` skill の編成で進めること。
