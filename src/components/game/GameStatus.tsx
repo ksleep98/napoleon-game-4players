@@ -2,6 +2,7 @@
 
 import {
   BIDDING_LABELS,
+  DECLARATION_LABELS,
   GAME_PHASES,
   NAPOLEON_RULES,
   PLAYER_ROLES,
@@ -106,8 +107,10 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
                 <div className="text-base md:text-xl font-bold text-yellow-700">
                   {gameState.napoleonDeclaration.targetTricks}
                 </div>
+                {/* targetTricks は「絵札数」。トリック数ではないので
+                    ラベルを face cards にして誤解を防ぐ */}
                 <div className="text-[0.6rem] md:text-xs text-yellow-600">
-                  tricks
+                  {DECLARATION_LABELS.FACE_CARDS}
                 </div>
               </div>
               <div className="text-center">

@@ -1,6 +1,10 @@
 'use client'
 
-import { SUIT_DISPLAY_COLORS, SUIT_NAMES } from '@/lib/constants'
+import {
+  DECLARATION_LABELS,
+  SUIT_DISPLAY_COLORS,
+  SUIT_NAMES,
+} from '@/lib/constants'
 import type { NapoleonDeclaration, Suit } from '@/types/game'
 import {
   ADJUTANT_BADGE_SUIT_LABELS,
@@ -38,7 +42,9 @@ export function DeclarationDisplay({
             <div className="text-2xl font-bold text-yellow-700">
               {declaration.targetTricks}
             </div>
-            <div className="text-sm text-yellow-600">face cards</div>
+            <div className="text-sm text-yellow-600">
+              {DECLARATION_LABELS.FACE_CARDS}
+            </div>
           </div>
           <div className="text-center">
             <div

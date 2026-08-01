@@ -197,6 +197,24 @@ export const GAME_CONFIG = {
   TARGET_FACE_CARDS: 13, // ナポレオンが取る必要がある絵札数
 } as const
 
+// ナポレオン宣言（絵札数）の表示ラベル。
+// 型のフィールド名が `targetTricks` であるためトリック数と誤解されやすいが、
+// 実体は「取る予定の絵札数（10〜A の 20 枚中）」なので、
+// 画面には必ず face cards であることが分かる語を出す
+export const DECLARATION_LABELS = {
+  DECLARED: 'Declared',
+  FACE_CARDS: 'face cards',
+  PROGRESS: 'Face cards toward declaration',
+  // 「あと何枚」を両陣営の視点で出す。連合軍は達成枚数ではなく
+  // 「あと何枚奪えば阻止できるか」が知りたいため、残り枚数を必ず併記する
+  NEEDS: 'needs', // Napoleon（単数）
+  NEED: 'need', // Allied Forces（複数）
+  MORE: 'more',
+  SEPARATOR: ' · ',
+  NAPOLEON_MET: 'declaration met',
+  ALLIANCE_MET: 'declaration blocked',
+} as const
+
 export const NAPOLEON_RULES = {
   TARGET_FACE_CARDS: 13, // 絵札（10〜A）の最低獲得枚数
   TOTAL_FACE_CARDS: 20, // 場に存在する絵札の総数（10, J, Q, K, A × 4スート）
