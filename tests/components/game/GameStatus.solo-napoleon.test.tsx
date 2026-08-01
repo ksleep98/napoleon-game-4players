@@ -6,15 +6,27 @@
  * - 公開後はナポレオン本人に Napoleon と Adjutant の両方を出す
  * - Teams パネルでナポレオンが 2 行に重複しない / Allied Forces に混ざらない
  * - 通常ゲームの表示は従来どおり
+ *
+ * ⚠️ 描画されるフェーズだけで検証すること。
+ * GameStatus は PLAYING では描画されない（page.tsx の PLAYING 専用レイアウトは
+ * TopHUD だけを出す）。以前はこのテストが phase: PLAYING で
+ * 「Face Cards Won by Player」セクションの N/A バッジを見ていたが、
+ * そのセクションごとアプリ上に存在しなかったため検証が空回りしていた。
+ * 実際に描画されるのは競り後の準備フェーズ（ADJUTANT / EXCHANGE）と
+ * 終了画面（FINISHED）なので、公開前後をこの 2 つで表現する。
  */
 
 import { render, screen, within } from '@testing-library/react'
 import { GameStatus } from '@/components/game/GameStatus'
-import { GAME_PHASES, PLAYER_ROLES } from '@/lib/constants'
-import type { Card, GameState, Player, Trick } from '@/types/game'
+import {
+  GAME_PHASES,
+  PLAYER_ROLES,
+  SOLO_NAPOLEON_LABELS,
+} from '@/lib/constants'
+import type { Card, GameState, Player } from '@/types/game'
 
 // rank は K を使う。A にすると「A of hearts」等の本文と
-// 副官バッジの "A" がテキスト検索で衝突するため
+// 役職ピルのテキスト検索が衝突するため
 const adjutantCard: Card = {
   id: 'adjutant-card',
   suit: 'hearts',
@@ -23,8 +35,9 @@ const adjutantCard: Card = {
 }
 
 const NAPOLEON_NAME = 'Napoleon Player'
-const ADJUTANT_BADGE_TEXT = 'A'
-const NAPOLEON_BADGE_TEXT = 'N'
+const ADJUTANT_NAME = 'Second Player'
+const HIDDEN_ADJUTANT_TEXT = '??? (Hidden)'
+const HIDDEN_ADJUTANT_NOTE = /includes hidden adjutant/
 
 const createPlayer = (
   id: string,
@@ -41,30 +54,16 @@ const createPlayer = (
   ...overrides,
 })
 
-/** ナポレオンが埋め札の副官カードを出したトリック（= 公開済み） */
-const revealingTrick: Trick = {
-  id: 'trick-reveal',
-  completed: true,
-  winnerPlayerId: 'nap',
-  cards: [
-    {
-      card: { ...adjutantCard, wasHidden: true },
-      playerId: 'nap',
-      order: 0,
-      revealsAdjutant: true,
-    },
-  ],
-}
-
 const createGameState = (overrides: Partial<GameState> = {}): GameState => ({
   id: 'test-game',
   players: [
     createPlayer('nap', NAPOLEON_NAME, { isNapoleon: true }),
-    createPlayer('p2', 'Second Player'),
+    createPlayer('p2', ADJUTANT_NAME),
     createPlayer('p3', 'Third Player'),
     createPlayer('p4', 'Fourth Player'),
   ],
-  phase: GAME_PHASES.PLAYING,
+  // 副官の正体がまだ伏せられている、実際に GameStatus が描画されるフェーズ
+  phase: GAME_PHASES.EXCHANGE,
   currentPlayerIndex: 0,
   currentTrick: { id: 'trick-1', cards: [], completed: false },
   tricks: [],
@@ -85,6 +84,10 @@ const createGameState = (overrides: Partial<GameState> = {}): GameState => ({
   ...overrides,
 })
 
+/** 終了画面（= 副官の正体が公開されるフェーズ）の state */
+const createFinishedState = (overrides: Partial<GameState> = {}): GameState =>
+  createGameState({ phase: GAME_PHASES.FINISHED, ...overrides })
+
 /** 見出しを持つセクション（見出しの親要素）を取得する */
 const getSection = (headingText: string): HTMLElement => {
   const heading = screen.getByText(headingText)
@@ -93,17 +96,18 @@ const getSection = (headingText: string): HTMLElement => {
   return section
 }
 
-/** "Face Cards Won by Player" 一覧から指定プレイヤーの行を取得する */
-const getPlayerRow = (playerName: string): HTMLElement => {
-  const section = getSection('Face Cards Won by Player')
-  const nameSpan = within(section).getByText(playerName)
-  const row = nameSpan.parentElement
-  if (!row) throw new Error(`Player row not found: ${playerName}`)
+const getTeams = (): HTMLElement => getSection('Teams')
+
+/** Teams パネル内で、指定した役職ピルと同じ行（親要素）を返す */
+const getRoleRow = (roleLabel: string): HTMLElement => {
+  const pill = within(getTeams()).getByText(roleLabel)
+  const row = pill.parentElement
+  if (!row) throw new Error(`Role row not found: ${roleLabel}`)
   return row
 }
 
 describe('GameStatus - solo napoleon badges', () => {
-  it('shows no adjutant badge before the buried card is played', () => {
+  it('shows no adjutant badge before the game is finished', () => {
     // マスク済み状態を模す: 未公開の閲覧者には soloNapoleon が届かない
     render(
       <GameStatus
@@ -112,16 +116,23 @@ describe('GameStatus - solo napoleon badges', () => {
       />
     )
 
-    // 副官は「??? (Hidden)」のまま。誰にも A バッジは付かない
-    expect(screen.getByText('??? (Hidden)')).toBeInTheDocument()
-    const section = getSection('Face Cards Won by Player')
+    const teams = getTeams()
+    // 副官は「??? (Hidden)」のまま
+    expect(within(teams).getByText(HIDDEN_ADJUTANT_TEXT)).toBeInTheDocument()
+    // ソロであることも伏せられている
     expect(
-      within(section).queryByText(ADJUTANT_BADGE_TEXT)
+      within(teams).queryByText(SOLO_NAPOLEON_LABELS.BADGE)
+    ).not.toBeInTheDocument()
+    // ナポレオンの行に Adjutant ピルは付かない
+    expect(
+      within(getRoleRow(PLAYER_ROLES.NAPOLEON)).queryByText(
+        PLAYER_ROLES.ADJUTANT
+      )
     ).not.toBeInTheDocument()
   })
 
   it('shows no adjutant badge to Napoleon either before the reveal', () => {
-    // ナポレオン本人は soloNapoleon を受け取るが、公開前は出さない
+    // ナポレオン本人は soloNapoleon を受け取るが、公開前は A を出さない
     render(
       <GameStatus
         gameState={createGameState({ soloNapoleon: true })}
@@ -129,70 +140,57 @@ describe('GameStatus - solo napoleon badges', () => {
       />
     )
 
-    const section = getSection('Face Cards Won by Player')
     expect(
-      within(section).queryByText(ADJUTANT_BADGE_TEXT)
+      within(getRoleRow(PLAYER_ROLES.NAPOLEON)).queryByText(
+        PLAYER_ROLES.ADJUTANT
+      )
     ).not.toBeInTheDocument()
   })
 
-  it('gives Napoleon both the N and A badges after the reveal', () => {
+  it('gives Napoleon both the Napoleon and Adjutant pills after the reveal', () => {
     render(
       <GameStatus
-        gameState={createGameState({
-          soloNapoleon: true,
-          tricks: [revealingTrick],
-        })}
+        gameState={createFinishedState({ soloNapoleon: true })}
         currentPlayerId="p2"
       />
     )
 
-    const napoleonRow = getPlayerRow(NAPOLEON_NAME)
+    // 同じ行に Napoleon と Adjutant のピルが並ぶ
+    const napoleonRow = getRoleRow(PLAYER_ROLES.NAPOLEON)
     expect(
-      within(napoleonRow).getByText(NAPOLEON_BADGE_TEXT)
+      within(napoleonRow).getByText(PLAYER_ROLES.ADJUTANT)
     ).toBeInTheDocument()
-    expect(
-      within(napoleonRow).getByText(ADJUTANT_BADGE_TEXT)
-    ).toBeInTheDocument()
+    expect(within(napoleonRow).getByText(NAPOLEON_NAME)).toBeInTheDocument()
 
-    // A バッジは一覧全体で 1 つだけ = 他プレイヤーには付いていない
-    const section = getSection('Face Cards Won by Player')
-    expect(within(section).getAllByText(ADJUTANT_BADGE_TEXT)).toHaveLength(1)
+    // Adjutant ピルは Teams 全体で 1 つだけ = 他プレイヤーには付いていない
+    expect(within(getTeams()).getAllByText(PLAYER_ROLES.ADJUTANT)).toHaveLength(
+      1
+    )
   })
 
   it('does not duplicate Napoleon in the Teams panel after the reveal', () => {
     render(
       <GameStatus
-        gameState={createGameState({
-          soloNapoleon: true,
-          tricks: [revealingTrick],
-        })}
+        gameState={createFinishedState({ soloNapoleon: true })}
         currentPlayerId="p2"
       />
     )
 
-    const teams = getSection('Teams')
+    const teams = getTeams()
 
     // ナポレオン名は Teams パネル内で 1 回だけ（副官用の行が増えない）
     expect(within(teams).getAllByText(NAPOLEON_NAME)).toHaveLength(1)
 
-    // 同じ行に Napoleon と Adjutant のピルが並ぶ
-    const napoleonPill = within(teams).getByText(PLAYER_ROLES.NAPOLEON)
-    const row = napoleonPill.parentElement
-    if (!row) throw new Error('Napoleon team row not found')
-    expect(within(row).getByText(PLAYER_ROLES.ADJUTANT)).toBeInTheDocument()
-    expect(within(row).getByText(NAPOLEON_NAME)).toBeInTheDocument()
-
     // 「??? (Hidden)」は消えている
-    expect(within(teams).queryByText('??? (Hidden)')).not.toBeInTheDocument()
+    expect(
+      within(teams).queryByText(HIDDEN_ADJUTANT_TEXT)
+    ).not.toBeInTheDocument()
   })
 
   it('keeps Napoleon out of the Allied Forces list in a solo game', () => {
     render(
       <GameStatus
-        gameState={createGameState({
-          soloNapoleon: true,
-          tricks: [revealingTrick],
-        })}
+        gameState={createFinishedState({ soloNapoleon: true })}
         currentPlayerId="p2"
       />
     )
@@ -200,69 +198,74 @@ describe('GameStatus - solo napoleon badges', () => {
     const alliedLine = screen.getByText(/Allied Forces:/)
     const text = alliedLine.textContent ?? ''
 
-    expect(text).toContain('Second Player')
+    expect(text).toContain(ADJUTANT_NAME)
     expect(text).toContain('Third Player')
     expect(text).toContain('Fourth Player')
     expect(text).not.toContain(NAPOLEON_NAME)
     // 存在しない副官を待たせる文言を出さない
-    expect(text).not.toContain('includes hidden adjutant')
+    expect(text).not.toMatch(HIDDEN_ADJUTANT_NOTE)
   })
 })
 
 describe('GameStatus - normal game is unchanged', () => {
-  const normalState = (overrides: Partial<GameState> = {}) =>
-    createGameState({
-      soloNapoleon: false,
-      players: [
-        createPlayer('nap', NAPOLEON_NAME, { isNapoleon: true }),
-        createPlayer('p2', 'Second Player', { isAdjutant: true }),
-        createPlayer('p3', 'Third Player'),
-        createPlayer('p4', 'Fourth Player'),
-      ],
-      ...overrides,
-    })
+  /** 実在する副官がいる通常ゲーム */
+  const normalPlayers = (): Player[] => [
+    createPlayer('nap', NAPOLEON_NAME, { isNapoleon: true }),
+    createPlayer('p2', ADJUTANT_NAME, { isAdjutant: true }),
+    createPlayer('p3', 'Third Player'),
+    createPlayer('p4', 'Fourth Player'),
+  ]
 
   it('still hides the adjutant before the designation card is played', () => {
-    render(<GameStatus gameState={normalState()} currentPlayerId="p3" />)
-
-    expect(screen.getByText('??? (Hidden)')).toBeInTheDocument()
-    const section = getSection('Face Cards Won by Player')
-    expect(
-      within(section).queryByText(ADJUTANT_BADGE_TEXT)
-    ).not.toBeInTheDocument()
-    expect(screen.getByText(/includes hidden adjutant/)).toBeInTheDocument()
-  })
-
-  it('shows the A badge on the real adjutant only, after the reveal', () => {
-    const revealedByAdjutant: Trick = {
-      id: 'trick-a',
-      completed: true,
-      winnerPlayerId: 'p2',
-      cards: [{ card: adjutantCard, playerId: 'p2', order: 0 }],
-    }
-
+    // maskGameStateForPlayer は未公開の閲覧者へ isAdjutant: false で渡す
     render(
       <GameStatus
-        gameState={normalState({ tricks: [revealedByAdjutant] })}
+        gameState={createGameState({
+          soloNapoleon: false,
+          players: normalPlayers().map((player) => ({
+            ...player,
+            isAdjutant: false,
+          })),
+        })}
         currentPlayerId="p3"
       />
     )
 
-    const adjutantRow = getPlayerRow('Second Player')
+    const teams = getTeams()
+    expect(within(teams).getByText(HIDDEN_ADJUTANT_TEXT)).toBeInTheDocument()
+    expect(within(teams).getByText(HIDDEN_ADJUTANT_NOTE)).toBeInTheDocument()
+    // 副官名が役職として示されていない
     expect(
-      within(adjutantRow).getByText(ADJUTANT_BADGE_TEXT)
+      within(getRoleRow(PLAYER_ROLES.ADJUTANT)).queryByText(ADJUTANT_NAME)
+    ).not.toBeInTheDocument()
+  })
+
+  it('names the real adjutant only, after the reveal', () => {
+    render(
+      <GameStatus
+        gameState={createFinishedState({
+          soloNapoleon: false,
+          players: normalPlayers(),
+        })}
+        currentPlayerId="p3"
+      />
+    )
+
+    // Adjutant ピルの行に副官の名前が出る
+    expect(
+      within(getRoleRow(PLAYER_ROLES.ADJUTANT)).getByText(ADJUTANT_NAME)
     ).toBeInTheDocument()
 
-    // ナポレオンには N のみ、A は付かない
-    const napoleonRow = getPlayerRow(NAPOLEON_NAME)
+    // ナポレオンの行には Adjutant ピルが付かない
     expect(
-      within(napoleonRow).getByText(NAPOLEON_BADGE_TEXT)
-    ).toBeInTheDocument()
-    expect(
-      within(napoleonRow).queryByText(ADJUTANT_BADGE_TEXT)
+      within(getRoleRow(PLAYER_ROLES.NAPOLEON)).queryByText(
+        PLAYER_ROLES.ADJUTANT
+      )
     ).not.toBeInTheDocument()
 
-    const section = getSection('Face Cards Won by Player')
-    expect(within(section).getAllByText(ADJUTANT_BADGE_TEXT)).toHaveLength(1)
+    // Adjutant ピルは Teams 全体で 1 つだけ
+    expect(within(getTeams()).getAllByText(PLAYER_ROLES.ADJUTANT)).toHaveLength(
+      1
+    )
   })
 })

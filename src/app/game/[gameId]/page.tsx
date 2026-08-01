@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { calculateGameResultAction } from '@/app/actions/gameResultActions'
 import { AIDifficultyBadge } from '@/components/game/AIDifficultyBadge'
 import { Card } from '@/components/game/Card'
-import { CompactGameProgress, GameStatus } from '@/components/game/GameStatus'
+import { GameStatus } from '@/components/game/GameStatus'
 import { PlayerHand } from '@/components/game/PlayerHand'
 import { TopHUD } from '@/components/game/TopHUD'
 import { TurnCue } from '@/components/game/TurnCue'
@@ -335,11 +335,6 @@ function GamePageContent() {
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-2 md:gap-6">
               <div className="lg:col-span-3 space-y-2 md:space-y-6">
-                {/* コンパクトなProgress表示 - モバイルのみ */}
-                <div className="lg:hidden">
-                  <CompactGameProgress gameState={gameState} />
-                </div>
-
                 {/* ゲームボード - 最後のトリックのカードを表示 */}
                 <GameBoard
                   gameState={gameState}
@@ -655,10 +650,6 @@ function GamePageContent() {
                   onCardExchange={handleCardExchange}
                 />
               )}
-
-            <div className="lg:hidden">
-              <CompactGameProgress gameState={gameState} />
-            </div>
 
             {currentPlayer && (
               <div className="space-y-2 md:space-y-4">
