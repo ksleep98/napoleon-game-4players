@@ -14,6 +14,23 @@ export interface PredictCardRequest {
 
 export interface PredictCardCandidate {
   cardId: string // "${suit}-${rank}" e.g. "hearts-A"
+  /**
+   * 合法手の中でこのカードが選ばれる確率。
+   *
+   * 2026-08-01 以降、推論側 (python/app.py) が「フォロー義務を満たすカード」だけを
+   * スコアリングし、その中で正規化して返す。値はそのまま的中率に対応し、0.6 以上なら
+   * 参照ポリシーと約 81% 一致する (強制手を除いた実効値。合法手が 1 枚の局面は
+   * selectAICard が ML を呼ばずに短絡するため、本番で観測されるのはこちら)。
+   *
+   * ⚠️ topK の confidence は合計 1 にならない。正規化自体は合法手全体に対して行うが、
+   * サーバが上位 5 件までしか返さないため、合法手が 6 枚以上なら合計は 1 未満になる
+   * (実測: 合法手 12 枚のとき上位 5 件の合計 0.8237)。「合計 1」を前提にした再正規化を
+   * 書かないこと。
+   *
+   * それ以前は 52 枚分の確率から手札分を抜き出して正規化せずに返していたため、
+   * 確率質量の大半が出せないカードに残り、値が 0.10〜0.25 に張り付いていた。
+   * 詳細: docs/ml/CARD_PREDICTION_MODEL.md
+   */
   confidence: number
 }
 
@@ -34,9 +51,12 @@ const DEFAULT_TIMEOUT_MS = 20_000
  * Returns null when:
  * - NEXT_PUBLIC_ML_API_URL is not configured
  * - Network/timeout/server error
- * - Model not trained yet (503)
+ * - Model not trained yet, or the Space still holds a legacy 52-class model (503)
  *
  * Callers should fall back to the local MCTS strategy on null.
+ *
+ * 合法手 (フォロー義務) の絞り込みはサーバ側が hand と tableCards から導出する。
+ * ルールを 2 箇所に持つと必ず片方だけ変わるので、ここでは送らない。
  */
 export async function predictBestCard(
   request: PredictCardRequest,

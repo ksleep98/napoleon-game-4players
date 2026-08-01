@@ -1,0 +1,22 @@
+# このディレクトリは Hugging Face Space へ丸ごと push する配布単位で、Space は
+# GitHub とは別の git リポジトリ。リポジトリルートの .gitignore は Space 側の
+# `git add` を守らないので、同じ除外をここにも置く。
+
+# 認証情報。`vercel env pull` の出力は development の全変数
+# (SUPABASE_SERVICE_ROLE_KEY / ENCRYPTION_KEY を含む) を平文で持つ。
+# ここに置くと Space に push され、_load_env() 経由でプロセス環境に載る。
+.env
+.env.*
+!.env.example
+
+# 学習済みモデル (数百 MB)。Space 上で Train ボタンから再生成する。
+model/models/
+
+# ローカル作業用の一時ディレクトリ
+.scratch/
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
