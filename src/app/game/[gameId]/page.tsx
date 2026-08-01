@@ -13,7 +13,9 @@ import { TurnCue } from '@/components/game/TurnCue'
 import { GameProvider, useGame } from '@/contexts/GameContext'
 import { usePlayerSession } from '@/hooks/useSupabase'
 import {
+  GAME_CONFIG,
   GAME_PHASES,
+  NAPOLEON_RULES,
   PLAYER_ROLES,
   ROLE_LABEL_SEPARATOR,
   SOLO_NAPOLEON_LABELS,
@@ -369,6 +371,10 @@ function GamePageContent() {
     }
 
     const result = calculateGameResult(gameState)
+    const declaredTargetFaceCards =
+      gameState.napoleonDeclaration?.targetTricks ??
+      NAPOLEON_RULES.TARGET_FACE_CARDS
+    const tricksPlayed = gameState.tricks.length
 
     return (
       <div className="min-h-screen bg-gray-100 py-8">
@@ -386,9 +392,21 @@ function GamePageContent() {
                   ? 'Napoleon Team Wins!'
                   : 'Allied Forces Win!'}
               </div>
+              {/* 分母に総絵札数 20 を出すと誤解を招く。
+                  早期終了（scoring.isGameDecided）ではまだ場に出ていない絵札が
+                  残っており、「20 枚中 10 枚」と読めてしまうため。
+                  実際に意味があるのは宣言した目標枚数との比較なので、
+                  目標と消化トリック数を併記する */}
               <p className="text-gray-600">
-                Napoleon team won {result.faceCardsWon} out of 20 face cards
+                Napoleon team won {result.faceCardsWon} face cards (declared{' '}
+                {declaredTargetFaceCards} of {NAPOLEON_RULES.TOTAL_FACE_CARDS})
               </p>
+              {tricksPlayed < GAME_CONFIG.CARDS_PER_PLAYER && (
+                <p className="text-sm text-gray-500 mt-1">
+                  Decided after {tricksPlayed} of {GAME_CONFIG.CARDS_PER_PLAYER}{' '}
+                  tricks — the remaining face cards were never played
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">

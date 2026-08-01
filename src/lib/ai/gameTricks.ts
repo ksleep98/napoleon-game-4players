@@ -196,11 +196,58 @@ export async function processAlliancePhase(
   return updatedGameState
 }
 
+/**
+ * 手番の AI が出すカードを選ぶ（ゲーム状態は進めない）
+ *
+ * ⚠️ 「思考」と「記帳」を分けるための関数。
+ * AI の思考には副官の正体を伏せたビュー（maskAdjutantIdentityForPlayer）を
+ * 渡すが、そのビューで着手の記帳まで行ってはならない。
+ * playCard → completeTrick → isGameDecided は players[].isAdjutant を読んで
+ * チームを分けるため（scoring.getTeamFaceCardCounts）、マスク済みビューでは
+ * 副官の取ったトリックが連合軍側に計上され、勝敗が誤って早期確定する。
+ * よって呼び出し側は「選択はビュー、playCard は未マスクの真の状態」とすること。
+ */
+export async function selectAICardForCurrentPlayer(
+  gameState: GameState
+): Promise<Card | null> {
+  const currentPlayer = getCurrentPlayer(gameState)
+
+  if (!currentPlayer?.isAI) {
+    return null
+  }
+
+  // AIが出すカードを選択（非同期対応）
+  const cardToPlay = await selectAICard(currentPlayer.hand, gameState)
+
+  if (!cardToPlay) {
+    return null
+  }
+
+  // 機械学習用データ収集（playCard前の状態を記録）
+  if (gameState.phase === GAME_PHASES.PLAYING) {
+    const mlData = extractMLTrainingData(
+      gameState,
+      currentPlayer.id,
+      cardToPlay
+    )
+    if (mlData) {
+      recordGameMove(mlData).catch((error) => {
+        console.error(
+          '[ML Data Collection] Failed to record AI move (non-blocking):',
+          error
+        )
+      })
+    }
+  }
+
+  return cardToPlay
+}
+
 // プレイングフェーズの AI 処理
 export async function processAIPlayingPhase(
   gameState: GameState
 ): Promise<GameState> {
-  let updatedState = { ...gameState }
+  const updatedState = { ...gameState }
 
   // 現在のプレイヤーがAIかチェック
   const currentPlayer = getCurrentPlayer(updatedState)
@@ -209,31 +256,13 @@ export async function processAIPlayingPhase(
     return updatedState
   }
 
-  // AIが出すカードを選択（非同期対応）
-  const cardToPlay = await selectAICard(currentPlayer.hand, updatedState)
+  const cardToPlay = await selectAICardForCurrentPlayer(updatedState)
 
-  if (cardToPlay) {
-    // 機械学習用データ収集（playCard前の状態を記録）
-    if (updatedState.phase === GAME_PHASES.PLAYING) {
-      const mlData = extractMLTrainingData(
-        updatedState,
-        currentPlayer.id,
-        cardToPlay
-      )
-      if (mlData) {
-        recordGameMove(mlData).catch((error) => {
-          console.error(
-            '[ML Data Collection] Failed to record AI move (non-blocking):',
-            error
-          )
-        })
-      }
-    }
-
-    updatedState = playCard(updatedState, currentPlayer.id, cardToPlay.id)
+  if (!cardToPlay) {
+    return updatedState
   }
 
-  return updatedState
+  return playCard(updatedState, currentPlayer.id, cardToPlay.id)
 }
 
 // AIのカード選択ロジック（ハイブリッド戦略版）
