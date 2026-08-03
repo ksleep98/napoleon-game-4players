@@ -150,7 +150,7 @@ pydantic==2.13.4
     #   realtime
     #   storage3
     #   supabase-auth
-pydantic-core==2.46.4
+pydantic-core==2.47.0
     # via pydantic
 pydub==0.25.1
     # via gradio
@@ -212,7 +212,7 @@ supabase-functions==2.31.0
     # via supabase
 threadpoolctl==3.6.0
     # via scikit-learn
-tomlkit==0.14.0
+tomlkit==0.15.1
     # via gradio
 tqdm==4.70.0
     # via huggingface-hub
@@ -246,7 +246,7 @@ watchfiles==1.2.0
     # via uvicorn
 wcwidth==0.8.2
     # via prettytable
-websockets==15.0.1
+websockets==16.1.1
     # via
     #   realtime
     #   uvicorn
