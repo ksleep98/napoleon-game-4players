@@ -59,7 +59,7 @@ h11==0.16.0
     # via
     #   httpcore
     #   uvicorn
-h2==4.4.0
+h2==4.4.1
     # via httpx
 hf-gradio==0.4.1
     # via gradio
