@@ -537,26 +537,37 @@ jobs:
 
 ### Hugging Face Spaces特有の注意点
 
-**requirements.txt の管理**:
+**依存の管理（本プロジェクトの現状）**:
 
-```txt
-# requirements.txt - Hugging Face Spacesで使用
-fastapi==0.104.1  # 具体的なバージョンを指定
-gradio==4.8.0
-uvicorn==0.24.0
-supabase==2.1.0
-pandas==2.1.3
-numpy==1.26.2
-scikit-learn==1.3.2
+`python/requirements.txt` は**存在しない**。依存の唯一のソースは
+`python/uv.lock` で、直接依存は `python/pyproject.toml` に書く。Space の
+Docker ビルドが `uv export --no-hashes --no-dev` でピン済みの集合を導出して
+`pip install` する（`python/Dockerfile`）。
+
+```dockerfile
+# python/Dockerfile （抜粋）
+COPY pyproject.toml uv.lock ./
+RUN pip install --no-cache-dir "uv==${UV_VERSION}" \
+    && uv export --no-cache --no-hashes --no-dev --no-header --format requirements-txt \
+        > "${EXPORTED_REQUIREMENTS}" \
+    && pip install --no-cache-dir -r "${EXPORTED_REQUIREMENTS}"
 ```
+
+かつては `uv export` の生成物を `requirements.txt` としてコミットしていたが、
+Dependabot が `uv.lock` と独立にそれを編集し、**推移的依存**のピンを他の制約と
+両立しない版へ単独で上げていた（#520 / #527 の `tomlkit==0.15.1` は
+`gradio 6.22.0` の `tomlkit<0.15.0` と衝突。同じ組み合わせが実際に Space の
+ビルドを `ResolutionImpossible` で落としている → #509）。Dependabot を pip から
+uv へ切り替えても（#523）推移的依存は止まらないため、ファイル自体を削除した。
 
 **セキュリティチェックリスト**:
 
-- [ ] `requirements.txt` に具体的なバージョンを指定
-- [ ] ローカルで `pip-audit` 実行済み
-- [ ] Dependabotで自動監視設定済み
-- [ ] GitHub Actions で週次監査設定済み
-- [ ] クールダウン機能設定済み（uvの場合）
+- [ ] 直接依存は `pyproject.toml` に記載し `uv lock` でロックを更新
+- [ ] CI の `uv sync --locked` が通る（lock と pyproject の整合性検証）
+- [ ] ローカルで `uv run --group dev pip-audit` 実行済み
+- [ ] Dependabot（uv エコシステム）で自動監視設定済み
+- [ ] GitHub Actions で週次監査設定済み（`python-security-audit.yml`）
+- [ ] クールダウン機能設定済み（`.github/dependabot.yml` の `cooldown`）
 
 ---
 

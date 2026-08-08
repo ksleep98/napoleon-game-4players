@@ -45,23 +45,10 @@ jobs:
       - name: Sync dev dependencies (locked)
         run: uv sync --locked --group dev
 
-      # requirements.txt は Hugging Face Space 側の唯一の依存定義で、Dockerfile が
-      # `pip install -r requirements.txt` で使う。CI は uv.lock しか見ていなかったため、
-      # Dependabot が requirements.txt だけを個別にバンプして解決不能になっても
-      # 誰も気付かなかった (#498 が tomlkit を gradio の制約 <0.15.0 を超えて上げ、
-      # 同時に pydantic-core が pydantic の要求と食い違っていた)。
-      # Space は別リポジトリで再デプロイ時にしかビルドされないので、実際に踏むのは
-      # 数か月後の push になる。ここで生成物との一致を検証して即座に落とす。
-      - name: Verify requirements.txt matches the lockfile
-        run: |
-          uv export --no-hashes --no-dev --no-header --format requirements-txt \
-            | diff -u - <(tail -n +3 requirements.txt) \
-            || {
-              echo "::error::requirements.txt が uv.lock と一致していません。"
-              echo "::error::次を実行して両方をコミットしてください:"
-              echo "::error::  cd python && uv lock && uv export --no-hashes --no-dev --format requirements-txt -o requirements.txt"
-              exit 1
-            }
+      # かつてここに "Verify requirements.txt matches the lockfile" があった。
+      # python/requirements.txt を削除し、Dockerfile がビルド時に uv export で
+      # 導出するようにしたので、検証すべき生成物がリポジトリに存在しない。
+      # 依存の整合性は直前の `uv sync --locked` が担保する。
 
       - name: Ruff lint
         run: uv run --group dev ruff check .
