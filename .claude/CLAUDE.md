@@ -8,15 +8,30 @@
 
 ## 技術スタック
 
-- **Language**: TypeScript
-- **Framework**: Next.js 15.4 (App Router)
+バージョンは `package.json` / `python/pyproject.toml` が正。ここは概観。
+
+### Web アプリ
+
+- **Language**: TypeScript 6.x (strict mode)
+- **Framework**: Next.js 16.x (App Router)
 - **UI Library**: React 19.x
-- **Styling**: Tailwind CSS
+- **Styling**: Tailwind CSS 4.x
 - **Database**: Supabase (PostgreSQL)
-- **Testing**: Jest + React Testing Library
-- **Code Quality**: Biome (Linter + Formatter)
-- **Pre-commit**: Husky + lint-staged
+- **Testing**: Jest 30 + React Testing Library（ユニット）/ Playwright（E2E）
+- **Code Quality**: Biome 2.x (Linter + Formatter) + Prettier（yml/yaml/md のみ）
+- **Pre-commit**: Husky 9 + lint-staged
+- **Hosting**: Vercel
 - **Infrastructure**: Terraform + Terraform Cloud (GitHub管理)
+
+### ML（`python/`・別ホスティング）
+
+- **Language**: Python 3.13
+- **Package manager**: uv（`uv.lock` が唯一の正。`requirements.txt` は置かない）
+- **Serving**: FastAPI + Gradio / **Uvicorn**
+- **ML**: scikit-learn + pandas + numpy、モデル永続化は skops
+- **Hosting**: Hugging Face Spaces（`ksleep98/napoleon-ml-trainer`・**GitHub とは別リポジトリ**）
+
+詳細: [ML 実装](../docs/ml/) / [python/README.md](../python/README.md)
 
 ## ブランチ戦略
 
@@ -35,9 +50,10 @@
 
 ## 開発環境
 
-- Node.js 22.14.0
-- pnpm (package manager) - 高速・効率的
+- Node.js **22.22.0**（`.nvmrc`。`package.json` の engines は `22.x`）
+- pnpm **10.15.1**（`packageManager` で固定。engines は `>=10.0.0`）
 - VSCode推奨 + Biome拡張
+- Python 3.13 + uv（`python/` を触るときのみ）
 
 ## クイック スタート
 
@@ -81,7 +97,7 @@ cd napoleon-game-4players
 # → http://localhost:3000
 ```
 
-詳細: [Dockerシンプルセットアップ](./docs/setup/DOCKER_SIMPLE_SETUP.md)
+詳細: [Dockerシンプルセットアップ](../docs/setup/DOCKER_SIMPLE_SETUP.md)
 
 ### Docker Compose環境 (フルスタック・DB含む)
 
@@ -100,71 +116,87 @@ docker-compose up -d
 # → http://localhost:3000
 ```
 
-詳細: [Docker Composeセットアップ](./docs/setup/DOCKER_SETUP.md)
+詳細: [Docker Composeセットアップ](../docs/setup/DOCKER_SETUP.md)
 
 ## 詳細ドキュメント
 
 ### 📋 セットアップ・環境構築
 
-- [プロジェクトセットアップ](./docs/setup/PROJECT_SETUP.md) - 技術スタック・初期設定
-- [Dockerシンプルセットアップ](./docs/setup/DOCKER_SIMPLE_SETUP.md) - Dockerコンテナで開発（シンプル・推奨）
-- [Docker Composeセットアップ](./docs/setup/DOCKER_SETUP.md) - フルスタックローカル環境・DB含む
-- [開発コマンド一覧](./docs/development/COMMANDS.md) - pnpm scripts・使い方
-- [フォーマット設定](./docs/development/FORMATTING_SETUP.md) - Biome/Prettier統合・VSCode設定
-- [コーディングルール](./docs/development/CODING_RULES.md) - 定数参照・静的import・品質基準
-- [ブランチクリーンアップ](./scripts/) - マージ後のブランチ整理（手動実行）
+- [プロジェクトセットアップ](../docs/setup/PROJECT_SETUP.md) - 技術スタック・初期設定
+- [Dockerシンプルセットアップ](../docs/setup/DOCKER_SIMPLE_SETUP.md) - Dockerコンテナで開発（シンプル・推奨）
+- [Docker Composeセットアップ](../docs/setup/DOCKER_SETUP.md) - フルスタックローカル環境・DB含む
+- [開発コマンド一覧](../docs/development/COMMANDS.md) - pnpm scripts・使い方
+- [フォーマット設定](../docs/development/FORMATTING_SETUP.md) - Biome/Prettier統合・VSCode設定
+- [コーディングルール](../docs/development/CODING_RULES.md) - 定数参照・静的import・品質基準
+- [ブランチクリーンアップ](../scripts/) - マージ後のブランチ整理（手動実行）
 
 ### 🧪 テスト・品質管理
 
-- [Jest テスト設定](./docs/testing/JEST_SETUP.md) - テスト環境・146テスト実装状況
-- [GitHub Actions](./docs/ci-cd/GITHUB_ACTIONS.md) - CI/CDパイプライン・自動品質チェック
-- [Pre-commit Hooks](./docs/ci-cd/PRE_COMMIT_HOOKS.md) - Husky・自動修正・品質チェック
-- [PR自動化](./docs/ci-cd/PR_AUTOMATION.md) - PR説明自動生成・コード分析
-- [自動リリース](./docs/ci-cd/AUTO_RELEASE.md) - develop→main自動PR・リリース管理
+- [Jest テスト設定](../docs/testing/JEST_SETUP.md) - テスト環境・設定
+- [E2E テスト](../docs/testing/E2E_TESTING.md) - Playwright・実行方法
+- [GitHub Actions](../docs/ci-cd/GITHUB_ACTIONS.md) - CI/CDパイプライン・自動品質チェック
+- [Pre-commit Hooks](../docs/ci-cd/PRE_COMMIT_HOOKS.md) - Husky・自動修正・品質チェック
+- [PR自動化](../docs/ci-cd/PR_AUTOMATION.md) - PR説明自動生成・コード分析
+- [自動リリース](../docs/ci-cd/AUTO_RELEASE.md) - develop→main自動PR・リリース管理
 
 ### 🔒 セキュリティ
 
-- [セキュリティ設定](./docs/security/RLS_SETUP.md) - Supabase RLS・Server Actions・認証
-- [開発環境セキュリティ](./docs/security/DEVELOPMENT_SECURITY.md) - セキュリティベストプラクティス・チェック手順
+- [セキュリティ設定](../docs/security/RLS_SETUP.md) - Supabase RLS・Server Actions・認証
+- [開発環境セキュリティ](../docs/security/DEVELOPMENT_SECURITY.md) - セキュリティベストプラクティス・チェック手順
+- [環境変数セキュリティ](../docs/security/ENVIRONMENT_VARIABLES.md) - `.env` 管理・Vercel 一元化
+- [サプライチェーンセキュリティ](../docs/security/SUPPLY_CHAIN_SECURITY.md) - 依存の供給網・Dependabot cooldown・Spaces 固有の注意
+
+### 🤖 AI・ML
+
+- [カード予測モデル](../docs/ml/CARD_PREDICTION_MODEL.md) - 候補スコアリング方式・精度実測
+- [ML 実装ロードマップ](../docs/ml/ML_IMPLEMENTATION_ROADMAP.md) - フェーズ計画（**Phase 3 以前の記述は現状とズレあり**）
+- [データ収集の使い方](../docs/ml/DATA_COLLECTION_USAGE.md) - 学習データの貯め方
+- [Python セキュリティチェックリスト](../docs/ml/PYTHON_SECURITY_CHECKLIST.md) - （**未追従。`fastapi==0.104.1` 等、現状と乖離**）
+- [モンテカルロ実装提案](../docs/ai/MONTE_CARLO_IMPLEMENTATION_PROPOSAL.md) - MCTS の設計
 
 ### 🏗️ インフラ管理
 
-- [Terraform README](./terraform/README.md) - GitHub管理・Terraform Cloud設定・運用ガイド
+- [Terraform README](../terraform/README.md) - GitHub管理・Terraform Cloud設定・運用ガイド
 
 ### 🎮 ゲーム実装
 
-- [実装状況](./docs/game-logic/IMPLEMENTATION_STATUS.md) - Napoleon Game機能・UI・データ管理・セキュリティ強化
-- [最新改善ログ](./docs/game-logic/RECENT_IMPROVEMENTS.md) - UI改善・ゲームルール修正・COMタイミング制御
+- [実装状況](../docs/game-logic/IMPLEMENTATION_STATUS.md) - Napoleon Game機能・UI・データ管理・セキュリティ強化
+- [最新改善ログ](../docs/game-logic/RECENT_IMPROVEMENTS.md) - UI改善・ゲームルール修正・COMタイミング制御
 
 ### 💨 パフォーマンス最適化
 
-- [データベース最適化セットアップ](./docs/database/DATABASE_PERFORMANCE_SETUP.md) - 50-120ms性能向上・PostgreSQL関数・インデックス
+- [データベース最適化セットアップ](../docs/database/DATABASE_PERFORMANCE_SETUP.md) - 50-120ms性能向上・PostgreSQL関数・インデックス
 
 ## 現在のステータス
+
+> 個別の実装状況は [実装状況](../docs/game-logic/IMPLEMENTATION_STATUS.md) が正。
+> ここは「何が済んでいて何が残っているか」の粒度に留める。
 
 ### ✅ 完了
 
 - **開発環境**: TypeScript, Next.js, Tailwind CSS, Biome
-- **テスト環境**: Jest設定完了（141テスト実装・全合格）
+- **テスト環境**: Jest（`pnpm test` で **71 suites / 889 tests** 全合格）+ Playwright E2E
 - **CI/CD**: GitHub Actions・pre-commit hooks・品質チェック自動化
-- **PR自動化**: 説明自動生成・コード分析・レビュー支援（GitHub Actions構文修正済み）
+- **PR自動化**: 説明自動生成・コード分析・レビュー支援
 - **ゲームロジック**: 52枚デッキ・4人プレイ・基本ルール・スコア計算
 - **Supabase統合**: データベース接続・リアルタイム同期・セッション管理
 - **セキュリティ強化**: RLS・Server Actions・入力検証・レート制限・プレイヤーID同期
 - **Quick Start**: 4人対戦ゲームの即座開始機能
-- **エラー修正**: 404/PGRST202エラー解消・RLS設定最適化・プレイヤーID不一致修正
+- **AI対戦**: COM3人との対戦。ルールベース戦略 + **モンテカルロ木探索**（`src/lib/ai/`）
+- **ML カード予測**: 候補スコアリングモデル + Hugging Face Space 推論 API（`src/lib/ml/` / `python/`）。
+  失敗時は MCTS にフォールバックするので、Space が落ちてもゲームは動く
 - **ブランチクリーンアップ**: マージ済みブランチの整理・GitHub CLI連携（手動実行のみ。post-merge hook による自動発火は廃止）
-- **パフォーマンス最適化**: PostgreSQL関数統合・50-120ms改善・Vercel日本リージョン対応
+- **パフォーマンス最適化**: PostgreSQL関数統合・50-120ms改善
 - **Infrastructure as Code**: Terraform + Terraform Cloud・GitHub Repository Ruleset管理・VCS-driven workflow
 
 ### 🚧 進行中
 
 - **UI改善**: アニメーション・レスポンシブ対応
 - **マルチプレイヤー**: リアルタイム対戦機能の拡張
+- **ML 精度改善**: 直近の実測は accuracy 65.06% / top3 90.14%（116,451 行で学習）
 
 ### 📋 予定
 
-- **AI対戦**: コンピュータ対戦相手
 - **統計機能**: プレイヤー履歴・戦績
 - **本番環境**: RLS有効化・セキュリティ強化
 
@@ -185,7 +217,7 @@ docker-compose up -d
 - ✅ `.env.example`, `.env.docker.example` のみGit追跡
 - ❌ `.env`, `.env.local`, `.env.production` はGit追跡禁止
 - `.env.production` ファイルは作成しない（Vercel管理）
-- 詳細: [環境変数セキュリティガイド](./docs/security/ENVIRONMENT_VARIABLES.md)
+- 詳細: [環境変数セキュリティガイド](../docs/security/ENVIRONMENT_VARIABLES.md)
 
 ## インフラ管理（Infrastructure as Code）
 
@@ -196,11 +228,14 @@ GitHubリポジトリの設定をTerraformで管理し、VCS-driven workflowで�
 #### 設定ファイル構成
 
 - `terraform/` - Terraform設定ディレクトリ
-  - `terraform.tf` - Terraform Cloud設定・GitHub Provider
-  - `variables.tf` - 変数定義
+  - `terraform.tf` - Terraform Cloud設定・GitHub Provider（`integrations/github ~> 6.0`）
+  - `variables.tf` - 変数定義（`github_owner` / `github_token` / `repository_name` /
+    `repository_description` / `default_branch` / `production_branch`）
   - `github.tf` - リポジトリ・Ruleset・ラベル設定
-  - `terraform.tfvars` - 変数値（Git追跡禁止）
-  - `terraform.tfvars.example` - 変数値のテンプレート
+  - `.terraform.lock.hcl` - プロバイダのバージョンロック（**Git 追跡対象**）
+
+**`terraform.tfvars` は存在しません。** 変数値は Terraform Cloud の Workspace Variables
+で管理しています。ローカルに作らないこと（`github_token` を平文で置くことになる）。
 
 #### Terraform Cloud 設定
 
@@ -213,12 +248,16 @@ GitHubリポジトリの設定をTerraformで管理し、VCS-driven workflowで�
 
 #### Repository Ruleset 設定
 
+正は `terraform/github.tf`。以下は 2026-08-10 に GitHub API
+（`gh api repos/:owner/:repo/rulesets`）で実物と突き合わせた内容です。
+
 **develop ブランチ:**
 
 - ブランチ作成・削除・Force push禁止
 - Pull Request必須
 - スカッシュマージのみ許可（feature → develop）
 - レビュー要件: 不要（個人開発）
+- **必須ステータスチェック: `ci-pipeline`**
 
 **main ブランチ:**
 
@@ -226,12 +265,24 @@ GitHubリポジトリの設定をTerraformで管理し、VCS-driven workflowで�
 - Pull Request必須
 - 通常マージのみ許可（develop → main）
 - レビュー要件: 不要（個人開発）
+- **必須ステータスチェックは無し**（develop 側で通っている前提）
 
 **重要な設計決定:**
 
-- ✅ CI必須チェック: 有効（`ci-pipeline` ステータスチェック必須）
-- ✅ Strict Status Checks: 無効（"Update branch" 不要）
-- ✅ Bypass Actors: 無効（"Merge without waiting..." チェックボックス非表示）
+- ✅ CI必須チェック: **develop のみ**有効（`ci-pipeline`）。main には設定していない
+- ⚠️ **Strict Status Checks: 有効**（`strict_required_status_checks_policy = true`、
+  `terraform/github.tf`）。**develop が進むと他の PR は `BEHIND` になり、
+  追随するまでマージできません。**
+- ✅ Bypass Actors: 空（管理者バイパス無し。`gh pr merge --admin` も
+  "Required status check ci-pipeline is expected" で失敗する）
+
+**`BEHIND` になった PR の扱い:**
+
+- Dependabot PR → `@dependabot rebase` をコメントし、CI 再実行を待ってからマージ
+- 自分の PR → develop を取り込んで push（ただし
+  [ブランチクリーンアップ](#ブランチクリーンアップ手動実行のみ)の事故歴に注意）
+- **auto-merge はリポジトリ設定で無効**なので `gh pr merge --auto` は使えません。
+  複数 PR を捌くときは1本ずつ直列に処理します
 
 #### 運用フロー
 
@@ -243,9 +294,11 @@ GitHubリポジトリの設定をTerraformで管理し、VCS-driven workflowで�
 
 **注意事項:**
 
-- `terraform.tfvars` は絶対にコミットしない（GitHub PAT含む）
-- Terraform Cloud の環境変数で `github_token` を管理（Sensitive設定）
+- Terraform Cloud の Workspace Variables で `github_token` を管理（Sensitive設定）。
+  ローカルの `terraform.tfvars` に PAT を置かない
 - 手動で `terraform apply` を実行しない（VCS-driven workflowに任せる）
+- **PAT が期限切れになると Terraform Cloud のチェックが全て 401 で落ちます。**
+  リリース PR まで巻き込むので、TFC のチェックが赤いときは真っ先に PAT を疑うこと
 
 #### 認証情報管理
 
@@ -283,7 +336,7 @@ terraform plan  # 変更内容を確認
 - **定数**: 文字列リテラル禁止・定数参照徹底
 - **Import**: 動的import禁止・静的import推奨
 
-**詳細**: [コーディングルール](./docs/development/CODING_RULES.md) を参照
+**詳細**: [コーディングルール](../docs/development/CODING_RULES.md) を参照
 
 ### Claude Code設定
 
@@ -364,22 +417,27 @@ pnpm run develop:unprotect
 - developブランチへの直接プッシュ防止（pre-push hook）
 - 自動的にfeatureブランチ作成を促すメッセージ表示
 
-### E2E テスト制御
+### E2E テスト
 
-E2Eテストは環境変数で制御可能:
+CI では2つのワークフローに分かれています。**PR の "E2E Tests" は Playwright を
+動かしていません**（名前に反するので注意）。
 
-- **スキップ**: `SKIP_E2E_TESTS=true` - CI/CDでE2Eテストを無効化
-- **有効化**: `SKIP_E2E_TESTS=false` またはunset - E2Eテストを実行
+| ワークフロー                            | 発火                           | 実際にやること                                                                          |
+| --------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------- |
+| `e2e.yml` — "E2E Tests"                 | PR / push                      | `pnpm build` + `pnpm smoke`（Next.js 起動とトップページ 200 の確認）のみ                |
+| `e2e-develop.yml` — "E2E Develop Tests" | develop の Vercel デプロイ完了 | 実デプロイ先に対して Playwright を実行（`SKIP_E2E_TESTS: "false"`）→ リリース PR を作成 |
+
+リリース PR（タイトルに `🚀 Release` を含む）では `e2e.yml` はスキップされます。
+
+`SKIP_E2E_TESTS` 環境変数でローカル実行を制御できます（未設定時は `false` = 実行する）:
 
 ```bash
-# E2Eテストをスキップしてローカルで実行
-SKIP_E2E_TESTS=true pnpm test:e2e
-
-# 通常のE2Eテスト実行（環境変数未設定時はfalseがデフォルト）
+# 通常のE2Eテスト実行
 pnpm test:e2e
-```
 
-**注意**: 現在はCloudflare開発環境セットアップまでE2Eテストをスキップ中
+# スキップ
+SKIP_E2E_TESTS=true pnpm test:e2e
+```
 
 ### ブランチクリーンアップ（手動実行のみ）
 
@@ -402,21 +460,53 @@ feature ブランチ上でのマージを検知して develop へ切り替え、
 - `pnpm cleanup:polling` - GitHub API を 5 分間隔でポーリングし、マージ済み PR に
   対応するローカルブランチを削除する常駐版（明示的に起動したときのみ動作）
 
+## ML / Python（`python/`）
+
+`python/` は **Hugging Face Space へ丸ごと push する配布単位**です。Space は GitHub とは
+別の git リポジトリで、**何も自動同期しません**。GitHub にマージしただけでは Space は
+古いまま動き続けます（セキュリティ修正も届きません）。
+
+### 依存は `uv.lock` 一本
+
+**`python/requirements.txt` を作らないこと。** 直接依存は `pyproject.toml` に足して
+`uv lock`、`Dockerfile` がビルド時に `uv export --no-hashes --no-dev` で導出します。
+
+生成物をコミットしていた頃、Dependabot が `uv.lock` と独立に**推移的依存**のピンだけを
+上げ、解決不能な組み合わせを2回作りました（#520 / #527: `gradio 6.22.0` が
+`tomlkit<0.15.0` を要求するのに `tomlkit==0.15.1`）。同じ組み合わせが実際に Space の
+ビルドを `ResolutionImpossible` で落としています（#509）。ファイルを置かなければ
+この経路自体が消えます（#528）。
+
+### Space へのデプロイ
+
+```bash
+git clone https://huggingface.co/spaces/ksleep98/napoleon-ml-trainer
+# python/ の追跡ファイルを同期してコミット → push
+```
+
+- **永続ストレージが無いため、push によるリビルドで学習済みモデルが消えます。**
+  成功・失敗にかかわらず Gradio の **Train を再実行**する必要があります。
+  パッチ1つのために push するかは、この再学習コストと天秤にかけること
+- 認証トークンの状況は運用メモを参照（`napoleon-ml-trainer-deploy` は失効済み）
+- GitHub Actions での自動デプロイは**意図的にやっていません**（HF write token を
+  リポジトリ secret に置きたくないため。理由は `python/README.md`）
+
+### 推論が落ちてもゲームは壊れない
+
+`/api/predict-card` が 503 を返すと Next.js 側は MCTS にフォールバックします。
+モデル未学習・スキーマ不一致・Space 停止のいずれでも同じ挙動です。
+
 ## パフォーマンス最適化
 
 ### データベース最適化済み
 
 - **PostgreSQL関数統合**: 50-120ms性能改善
-- **Vercel日本リージョン**: レイテンシ大幅削減
 - **最適化されたクエリ**: インデックス活用・高頻度処理対応
 
-**詳細**: [データベースパフォーマンス設定](./docs/database/DATABASE_PERFORMANCE_SETUP.md)
+> リージョン等の Vercel 側の設定は Dashboard 管理で、`vercel.json` には入っていません
+> （`vercel.json` が持つのはデプロイ対象ブランチと alias のみ）。
 
-## 次のステップ
-
-1. **Supabaseプロジェクト設定** - データベース・環境変数
-2. **4人対戦実装** - COM3人との対戦モード
-3. **UI/UX改善** - ゲーム体験向上
+**詳細**: [データベースパフォーマンス設定](../docs/database/DATABASE_PERFORMANCE_SETUP.md)
 
 ---
 
