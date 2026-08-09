@@ -65,9 +65,9 @@ This directory is the source of truth, but the Space has its own git history and
 **nothing syncs automatically**. Pushing to GitHub does not update the Space.
 
 As of 2026-07-30 the deployed Space was several dependency bumps behind: it built
-`supabase==2.30.0` / `fastapi==0.136.3` from its own copy of `requirements.txt`
-while this repo was already on `2.31.0` / `0.139.2`. Dependabot updates the files
-here; it cannot reach the Space. **Security patches do not arrive on their own.**
+`supabase==2.30.0` / `fastapi==0.136.3` from its own copy of the sources while
+this repo was already on `2.31.0` / `0.139.2`. Dependabot updates the files here;
+it cannot reach the Space. **Security patches do not arrive on their own.**
 
 To deploy, push this directory to the Space's git remote (or edit through the HF
 web UI). After any dependency change here, remember the Space needs a separate
@@ -90,6 +90,23 @@ uv run python app.py          # serve on http://localhost:7860
 **development** environment, so the training data this Space reads is whatever
 `pnpm sim` has accumulated there. Production has no Supabase configuration at
 all, so no gameplay from the live site reaches this dataset.
+
+## Dependencies: `uv.lock` is the only source
+
+There is no `requirements.txt` in this directory, and none should be added. Add
+or bump direct dependencies in `pyproject.toml`, then `uv lock`. The `Dockerfile`
+derives the pinned set at build time with `uv export --no-hashes --no-dev`, so
+the Space installs exactly what the lockfile resolves.
+
+It used to be committed here as a generated file. Dependabot then edited it
+independently of `uv.lock` and bumped **transitive** pins on their own — pins
+that appear nowhere else and so have nothing to keep them consistent. #520 and
+#527 both proposed `tomlkit==0.15.1` against `gradio 6.22.0`, which requires
+`tomlkit<0.15.0`; that exact pair had already broken the Space's Docker build
+with `ResolutionImpossible` (fixed in #509). Switching Dependabot from `pip` to
+`uv` (#523) fixed direct dependencies — those live in `pyproject.toml`, so all
+files move together — but not transitive ones. Deleting the file removes the
+route entirely.
 
 ## The model is a candidate scorer, not a 52-class classifier
 
