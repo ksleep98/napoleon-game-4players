@@ -121,10 +121,11 @@ describe('Fix A: adjutant does not cover Mighty with the trump Jack', () => {
       requirements
     )
 
-    expect(tactics.shouldPassFaceCard).toBe(true)
     // The trump Jack must never be passed (it would be wasted on Napoleon's
-    // already-winning Mighty trick).
+    // already-winning Mighty trick). With no other passable face card there is
+    // nothing to pass, so the whole "pass" decision is off.
     expect(tactics.faceCardToPass).toBeNull()
+    expect(tactics.shouldPassFaceCard).toBe(false)
   })
 
   test('a regular spade face card is still passed when available', () => {

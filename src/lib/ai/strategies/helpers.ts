@@ -4,6 +4,7 @@
 
 import { getCardStrength } from '@/lib/napoleonCardRules'
 import type { Card, GameState, Suit, Trick } from '@/types/game'
+import { getWinningCards } from './trickOutcome'
 
 /**
  * カードが絵札（10, J, Q, K, A）かどうかを判定
@@ -64,6 +65,12 @@ export function getBestTrickCard(currentTrick: Trick, gameState: GameState) {
  *
  * リード局面（空トリック）では「勝つために必要な札」を定義できないので、
  * 最弱カードを返して落ちないようにする。
+ *
+ * 勝ち札の抽出は素の強度比較ではなく実際の勝者判定（`wouldWinTrick`）で行う。
+ * 素の強度だけを見ていた頃は、狩J（切り札♠のときの♥J など）が「そのスート内で
+ * 最弱」に見えるせいで、場に表J が出ていても「勝てない」と判断して出さなかった。
+ * 並び替えは従来どおり素の強度の昇順なので、強度の低い狩J は自然に最優先で
+ * 選ばれる（＝一番安い勝ち札を使う、という元の意図どおりになる）。
  */
 export function getLowestWinningCard(
   cards: Card[],
@@ -74,10 +81,7 @@ export function getLowestWinningCard(
     return getWeakestCard([...cards], gameState)
   }
 
-  const bestOpponent = getBestTrickCard(currentTrick, gameState)
-  const winningCards = cards.filter(
-    (card) => getCardStrengthSafe(card, gameState) > bestOpponent.strength
-  )
+  const winningCards = getWinningCards(cards, currentTrick, gameState)
 
   if (winningCards.length === 0) return cards[0]
 

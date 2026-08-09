@@ -1,6 +1,5 @@
 'use server'
 
-import { processAIPlayingPhase } from '@/lib/ai/gameTricks'
 import {
   assertCanActAsPlayer,
   requireAuthenticatedPlayerId,
@@ -19,6 +18,7 @@ import {
   getCurrentPlayer,
   passNapoleonDeclaration,
   playCard,
+  processAITurn,
   redealCards,
   setAdjutant,
 } from '@/lib/gameLogic'
@@ -417,8 +417,11 @@ export async function closeTrickResultAction(
     if (updatedGameState.phase === GAME_PHASES.PLAYING) {
       const nextPlayer = getCurrentPlayer(updatedGameState)
       if (nextPlayer?.isAI) {
-        // AIの処理を実行（サーバーサイドで）
-        updatedGameState = await processAIPlayingPhase(updatedGameState)
+        // AIの処理を実行（サーバーサイドで）。
+        // processAIPlayingPhase を直接呼ばず processAITurn を経由するのは、
+        // 未公開の副官の正体を AI から隠すマスク処理がそこにあるため。
+        // 直接呼ぶとこの経路の AI だけが副官を知って打つことになる。
+        updatedGameState = await processAITurn(updatedGameState)
       }
     }
 

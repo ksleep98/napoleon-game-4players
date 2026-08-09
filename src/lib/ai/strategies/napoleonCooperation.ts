@@ -10,6 +10,7 @@ import {
   getCardStrengthSafe,
   isFaceCard,
 } from './helpers'
+import { getWinningCards as getWinningCardsWithSpecialRules } from './trickOutcome'
 import type {
   AdjutantTacticalInfo,
   CardCountingInfo,
@@ -246,7 +247,8 @@ function selectCoordinatedNapoleonCard(
       playableCards,
       currentTrick,
       gameState,
-      requirements
+      requirements,
+      player.hand
     )
 
     // シグナルで強化
@@ -255,6 +257,16 @@ function selectCoordinatedNapoleonCard(
       napoleonSignals,
       gameState
     )
+
+    // 0. ナポレオンの副官呼びに応える（副官カードで実際に取れる場合）
+    // この協調経路は selectFollowingCard より先に評価されるため、
+    // ここにも同じ判定を置かないと呼び応答が握り潰される。
+    if (
+      enhancedTactics.shouldAnswerAdjutantCall &&
+      enhancedTactics.adjutantCallCard
+    ) {
+      return enhancedTactics.adjutantCallCard
+    }
 
     // 1. 副官カード早期開示（最適なタイミング）
     if (enhancedTactics.shouldRevealNow && enhancedTactics.adjutantCard) {
@@ -512,19 +524,8 @@ function getWinningCards(
 ): Card[] {
   if (currentTrick.cards.length === 0) return []
 
-  // 現在のトリックで最強のカードを見つける
-  let bestStrength = 0
-  for (const playedCard of currentTrick.cards) {
-    const strength = getCardStrengthSafe(playedCard.card, gameState)
-    if (strength > bestStrength) {
-      bestStrength = strength
-    }
-  }
-
-  // 最強カードより強いカードを返す
-  return playableCards.filter(
-    (card) => getCardStrengthSafe(card, gameState) > bestStrength
-  )
+  // 勝敗は素の強度比較ではなく実際の勝者判定（狩りJ・よろめき込み）で求める
+  return getWinningCardsWithSpecialRules(playableCards, currentTrick, gameState)
 }
 
 /**

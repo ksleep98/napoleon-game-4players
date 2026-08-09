@@ -74,7 +74,7 @@ jobs:
 
       - name: Setup pnpm
         if: steps.changes.outputs.needs == 'true'
-        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
       - name: Setup Node.js with cache
         if: steps.changes.outputs.needs == 'true'
@@ -90,11 +90,23 @@ jobs:
           pnpm install --frozen-lockfile
 
           echo "🔧 Fixing Biome installation for Linux..."
-          # Remove potentially corrupted Biome installation
-          rm -rf node_modules/@biomejs/biome node_modules/.bin/biome 2>/dev/null || true
+          # Biome はバイナリをプラットフォーム別の optional dependency として配る。
+          # キャッシュ復元後にそれが欠けたり壊れたりするケースを踏んだため、
+          # ここで一度消してから入れ直す。
+          #
+          # 入れ直す先は必ずロックファイルの版であること。以前は
+          # `pnpm add @biomejs/biome@latest` としており、CI だけが全開発者と
+          # 違うフォーマッタで動いていた。biome が整形を変えるリリースを出すと
+          # 無関係な PR が一斉に落ちる（#512 で実際に発生）。加えて毎回
+          # 公開直後のパッケージを引くことになり、サプライチェーン対策として
+          # Dependabot の 7 日クールダウンを敷いている方針とも矛盾する。
+          #
+          # 消す前にロックで解決済みの版を控え、その版を明示して入れ直す。
+          BIOME_VERSION="$(node -p "require('./node_modules/@biomejs/biome/package.json').version")"
+          echo "🔒 Locked Biome version: ${BIOME_VERSION}"
 
-          # Fresh install of Biome with correct platform binary
-          pnpm add @biomejs/biome@latest
+          rm -rf node_modules/@biomejs/biome node_modules/.bin/biome 2>/dev/null || true
+          pnpm add "@biomejs/biome@${BIOME_VERSION}"
 
           # Verify installation
           if npx @biomejs/biome --version; then

@@ -83,7 +83,35 @@ updates:
           - "patch"
 
   # Python (ML training: /python) の監視
-  - package-ecosystem: "pip"
+  #
+  # pip ではなく uv を使う。pip エコシステムは python/requirements.txt を
+  # 直接書き換えるが、このファイルは `uv export --no-hashes --no-dev` の
+  # 生成物であり、正は uv.lock である。生成物を独立に編集させると 2 つ壊れる。
+  #
+  # 1. uv.lock と必ずズレる。#509 で `uv sync --locked` の検証を入れるまで、
+  #    この不整合は CI をすり抜けていた（CI は uv.lock しか見ておらず、
+  #    requirements.txt が pip で解決できるかを検証していなかった）。
+  # 2. 推移的依存のピンを単独で上げてしまう。tomlkit は gradio の、
+  #    pydantic-core は pydantic の依存であり、他の制約と両立しない版に
+  #    上げられる。実例として #520 は tomlkit を 0.15.1 に上げようとしたが、
+  #    gradio 6.22.0 は tomlkit<0.15.0 を要求するため解決不能だった。
+  #    まったく同じ組み合わせが Hugging Face Space の Docker ビルドを
+  #    ResolutionImpossible で落としており（#509 で修正）、Space は別リポジトリで
+  #    再デプロイ時にしかビルドされないため、発覚まで数か月かかっている。
+  #
+  # uv エコシステムなら pyproject.toml と uv.lock を一組で更新する。
+  #
+  # ただし #523 でここを pip → uv に切り替えても、2. は止まらなかった。
+  # #527 のブランチは `dependabot/uv/python/...` でありながら requirements.txt
+  # だけを編集し、再び tomlkit 0.15.1 を提案してきた（#520 と同じ理由でクローズ）。
+  # 直接依存は pyproject.toml に書いてあるので 3 ファイル揃って更新される
+  # （#525 の uvicorn はこれで正常にマージできた）が、推移的依存は
+  # requirements.txt にしか現れないため、生成物が存在する限り単独で編集される。
+  #
+  # 根治は生成物を持たないこと。python/requirements.txt は削除し、Hugging Face
+  # Space の Docker ビルドが `uv export` で導出するようにした
+  # （python/Dockerfile を参照）。依存のソースは uv.lock 一本。
+  - package-ecosystem: "uv"
     directory: "/python"
     schedule:
       interval: "weekly"

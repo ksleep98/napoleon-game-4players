@@ -101,6 +101,8 @@ export interface AdjutantTacticalInfo {
   napoleonIsWinning: boolean // ナポレオンが現在のトリックで勝っているか
   adjutantCard: Card | null // 副官指定カード
   faceCardToPass: Card | null // ナポレオンに渡すべき絵札
+  shouldAnswerAdjutantCall: boolean // ナポレオンの副官呼びに副官カードで応えるべきか
+  adjutantCallCard: Card | null // 副官呼びに応えて出す副官指定カード
 }
 
 /**

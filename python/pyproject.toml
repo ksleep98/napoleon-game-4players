@@ -6,9 +6,9 @@ requires-python = ">=3.13,<3.14"
 dependencies = [
   "fastapi>=0.118",
   "gradio>=6.7.0",
-  "uvicorn[standard]==0.51.0",
+  "uvicorn[standard]==0.52.1",
   "supabase==2.31.0",
-  "pandas==3.0.3",
+  "pandas==3.0.5",
   "numpy==2.5.1",
   "scikit-learn==1.9.0",
   "skops>=0.14.0",

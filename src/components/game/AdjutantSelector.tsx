@@ -5,6 +5,7 @@ import {
   ACTION_TYPES,
   CARD_RANKS,
   createDeck,
+  DECLARATION_LABELS,
   SUIT_ENUM,
   SUIT_NAMES,
   SUIT_SYMBOLS,
@@ -164,7 +165,10 @@ export function AdjutantSelector({
             <div className="text-2xl font-bold text-yellow-700">
               {gameState.napoleonDeclaration.targetTricks}
             </div>
-            <div className="text-sm text-yellow-600">tricks</div>
+            {/* targetTricks は「絵札数」。トリック数と取り違えられないようにする */}
+            <div className="text-sm text-yellow-600">
+              {DECLARATION_LABELS.FACE_CARDS}
+            </div>
           </div>
           <div className="text-center">
             <div className={`text-3xl font-bold ${getSuitColor(trumpSuit)}`}>

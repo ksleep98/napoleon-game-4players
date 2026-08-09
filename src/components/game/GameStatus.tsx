@@ -1,19 +1,21 @@
 'use client'
 
 import {
+  BIDDING_LABELS,
+  DECLARATION_LABELS,
   GAME_PHASES,
-  NAPOLEON_RULES,
   PLAYER_ROLES,
   SOLO_NAPOLEON_LABELS,
   SUIT_SYMBOLS,
 } from '@/lib/constants'
-import {
-  getGameProgress,
-  getPlayerFaceCardCount,
-  getPlayerStats,
-} from '@/lib/scoring'
+import { getPlayerStats } from '@/lib/scoring'
 import type { GameState } from '@/types/game'
-import { isSoloNapoleon, showsAdjutantBadge } from '@/utils/gameUtils'
+import {
+  checkAdjutantRevealed,
+  isAdjutantIdentityPublic,
+  isSoloNapoleon,
+  showsAdjutantBadge,
+} from '@/utils/gameUtils'
 import {
   ADJUTANT_BADGE_SUIT_LABELS,
   ADJUTANT_BADGE_TONES,
@@ -26,11 +28,16 @@ interface GameStatusProps {
 }
 
 export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
-  const progress = getGameProgress(gameState)
   const napoleonPlayer = gameState.players.find((p) => p.isNapoleon)
   const adjutantPlayer = gameState.players.find((p) => p.isAdjutant)
   // マスク済みなので、閲覧者に公開してよい場合のみ true になる
   const soloNapoleon = isSoloNapoleon(gameState)
+
+  // 競りの最中。declareNapoleon は宣言のたびに isNapoleon / trumpSuit を
+  // 立てるため、この時点でも napoleonPlayer は取れてしまうが、それは
+  // 「現在の最高提示者」でしかない。まだ誰でも上乗せしてナポレオンを
+  // 奪えるので、確定したチーム・役職として見せてはいけない
+  const isBidding = gameState.phase === GAME_PHASES.NAPOLEON
 
   const currentPlayerStats = currentPlayerId
     ? getPlayerStats(gameState, currentPlayerId)
@@ -45,28 +52,19 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
     return roleMap[role as keyof typeof roleMap] || role
   }
 
-  // 副官が判明しているかどうかをチェック
-  // 1. 副官プレイヤーが副官指定カードを出した場合（従来）
-  // 2. ナポレオンが隠しカードから副官指定カードを出した場合（新機能）
-  const isAdjutantRevealed =
-    gameState.phase === GAME_PHASES.PLAYING &&
-    // ケース1: 副官プレイヤーが副官指定カードを出した
-    ((adjutantPlayer &&
-      gameState.tricks.some((trick) =>
-        trick.cards.some(
-          (playedCard) =>
-            gameState.napoleonCard &&
-            playedCard.card.id === gameState.napoleonCard.id
-        )
-      )) ||
-      // ケース2: ナポレオンが隠しカードから副官指定カードを出した
-      gameState.tricks.some((trick) =>
-        trick.cards.some((playedCard) => playedCard.revealsAdjutant)
-      ) ||
-      // ケース3: 現在のトリックでナポレオンが隠しカードから副官カードを出した
-      gameState.currentTrick.cards.some(
-        (playedCard) => playedCard.revealsAdjutant
-      ))
+  // 副官の正体を出してよいかは共通ヘルパーに委ねる。
+  // 旧実装はここで `phase === PLAYING` を先頭条件に置いた独自式を持っていたが、
+  // GameStatus は PLAYING では描画されない（PLAYING は page.tsx の専用
+  // レイアウトが TopHUD だけを出す）ため、常に false になっていた。
+  // その結果、実際に描画される終了画面でも副官が「??? (Hidden)」のままだった。
+  // 判定を二重に持たず isAdjutantIdentityPublic に一本化する
+  // （競り前フェーズはトリックが 1 つも無いので、従来どおり非公開のまま）
+  const isAdjutantRevealed = isAdjutantIdentityPublic(gameState)
+
+  // 副官指定カードが実際に場に出たか。早期終了（isGameDecided）では
+  // 1 度も出ないまま終わるため、「このカードで見つかった」という表示だけは
+  // 正体の公開可否ではなくカードが出たかどうかで判定する
+  const adjutantCardPlayed = checkAdjutantRevealed(gameState)
 
   // 一人ナポレオンで公開済みなら、ナポレオン本人を副官としても表示する。
   // 判定は共通ヘルパーに委ねる（player.isAdjutant は立てていない）
@@ -74,7 +72,7 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
     ? showsAdjutantBadge({
         player: napoleonPlayer,
         soloNapoleon,
-        isAdjutantRevealed: Boolean(isAdjutantRevealed),
+        isAdjutantRevealed,
       })
     : false
 
@@ -91,7 +89,7 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
       {gameState.napoleonDeclaration && (
         <div className="border-b pb-2 md:pb-3">
           <h4 className="font-semibold text-sm md:text-base text-gray-800 mb-1 md:mb-2">
-            Napoleon Declaration
+            {isBidding ? BIDDING_LABELS.SECTION_TITLE : 'Napoleon Declaration'}
           </h4>
           <div className="bg-yellow-50 border border-yellow-200 p-2 md:p-3 rounded-lg">
             <div className="flex items-center justify-center gap-2 md:gap-4 text-sm">
@@ -99,8 +97,10 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
                 <div className="text-base md:text-xl font-bold text-yellow-700">
                   {gameState.napoleonDeclaration.targetTricks}
                 </div>
+                {/* targetTricks は「絵札数」。トリック数ではないので
+                    ラベルを face cards にして誤解を防ぐ */}
                 <div className="text-[0.6rem] md:text-xs text-yellow-600">
-                  tricks
+                  {DECLARATION_LABELS.FACE_CARDS}
                 </div>
               </div>
               <div className="text-center">
@@ -114,10 +114,18 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
             </div>
             <div className="text-center text-xs md:text-sm text-yellow-700 mt-1 md:mt-2">
               <span className="font-semibold">
-                Declared by: {napoleonPlayer?.name}
+                {isBidding ? BIDDING_LABELS.BID_BY : 'Declared by:'}{' '}
+                {napoleonPlayer?.name}
               </span>
             </div>
-            {/* 副官「指定カード」は宣言時に全員へ告げられる公開情報 */}
+            {isBidding && (
+              <div className="text-center text-[0.6rem] md:text-xs text-gray-600 mt-1">
+                {BIDDING_LABELS.UNDECIDED_NOTE}
+              </div>
+            )}
+            {/* 副官「指定カード」は宣言が確定したあとの公開情報。
+                競りの最中は maskGameStateForPlayer が宣言者以外へ渡さないため、
+                ここは undefined になり表示されない */}
             {gameState.napoleonCard && (
               <div className="flex justify-center mt-2 pt-2 border-t border-yellow-200">
                 <AdjutantCardBadge
@@ -131,8 +139,11 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
         </div>
       )}
 
-      {/* チーム構成 - 副官は判明した場合のみ表示 */}
-      {napoleonPlayer && (
+      {/* チーム構成 - 副官は判明した場合のみ表示。
+          競りの最中は「Napoleon / Adjutant / Allied Forces」がまだ確定して
+          いないので出さない（上乗せすれば閲覧者自身がナポレオンになりうる）。
+          最高提示者は上の Current Highest Bid ブロックが示している */}
+      {napoleonPlayer && !isBidding && (
         <div className="border-b pb-3">
           <h4 className="font-semibold text-gray-800 mb-2">Teams</h4>
           <div className="space-y-2 text-sm">
@@ -211,115 +222,21 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
         </div>
       )}
 
-      {/* ゲーム進行状況 */}
-      {gameState.phase === GAME_PHASES.PLAYING && (
-        <div className="border-b pb-3">
-          <h4 className="font-semibold text-gray-800 mb-2">Progress</h4>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span>Tricks Played:</span>
-              <span>{progress.tricksPlayed}/12</span>
-            </div>
-            <div className="flex justify-between">
-              <span>{PLAYER_ROLES.NAPOLEON} Team Face Cards:</span>
-              <span className="font-medium text-yellow-600">
-                {progress.napoleonTeamFaceCards}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>Allied Forces Face Cards:</span>
-              <span className="font-medium text-blue-600">
-                {progress.citizenTeamFaceCards}
-              </span>
-            </div>
-            <div className="flex justify-between text-xs text-gray-600">
-              <span>{PLAYER_ROLES.NAPOLEON} needs:</span>
-              <span>{progress.napoleonNeedsToWin} more face cards</span>
-            </div>
-
-            {/* プログレスバー */}
-            <div className="mt-3">
-              <div className="flex justify-between text-xs mb-1">
-                <span>{PLAYER_ROLES.NAPOLEON} Face Card Progress</span>
-                <span>
-                  {progress.napoleonTeamFaceCards}/
-                  {gameState.napoleonDeclaration?.targetTricks ??
-                    NAPOLEON_RULES.TARGET_FACE_CARDS}
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-yellow-500 h-2 rounded-full transition-all duration-300"
-                  style={{
-                    width: `${(progress.napoleonTeamFaceCards / (gameState.napoleonDeclaration?.targetTricks ?? NAPOLEON_RULES.TARGET_FACE_CARDS)) * 100}%`,
-                  }}
-                ></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* プレイヤー別絵札獲得数 */}
-      {gameState.phase === GAME_PHASES.PLAYING && (
-        <div className="border-b pb-3">
-          <h4 className="font-semibold text-gray-800 mb-2">
-            Face Cards Won by Player
-          </h4>
-          <div className="space-y-1 text-sm">
-            {gameState.players.map((player) => {
-              const faceCardsWon = getPlayerFaceCardCount(gameState, player.id)
-              // 一人ナポレオンの公開後は、ナポレオンに N と A の両方が付く
-              const showAdjutantMark = showsAdjutantBadge({
-                player,
-                soloNapoleon,
-                isAdjutantRevealed: Boolean(isAdjutantRevealed),
-              })
-              const roleColor = player.isNapoleon
-                ? 'text-yellow-600'
-                : showAdjutantMark
-                  ? 'text-green-600'
-                  : 'text-blue-600'
-
-              return (
-                <div
-                  key={player.id}
-                  className="flex justify-between items-center"
-                >
-                  <div className="flex items-center gap-2">
-                    <span>{player.name}</span>
-                    {player.isNapoleon && (
-                      <span className="px-1 py-0 bg-yellow-200 text-yellow-800 rounded text-xs">
-                        N
-                      </span>
-                    )}
-                    {showAdjutantMark && (
-                      <span className="px-1 py-0 bg-green-200 text-green-800 rounded text-xs">
-                        A
-                      </span>
-                    )}
-                  </div>
-                  <span className={`font-medium ${roleColor}`}>
-                    {faceCardsWon} face cards
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* 現在のプレイヤー情報 */}
       {currentPlayerStats && (
         <div className="border-b pb-3">
           <h4 className="font-semibold text-gray-800 mb-2">Your Stats</h4>
           <div className="space-y-1 text-sm">
-            <div className="flex justify-between">
-              <span>Role:</span>
-              <span className="font-medium">
-                {getRoleDisplay(currentPlayerStats.role)}
-              </span>
-            </div>
+            {/* 競り中の role は「今のところナポレオンではない」だけの暫定値。
+                Allied Forces と断定表示すると、上乗せでナポレオンになれる
+                ことが伝わらないので出さない */}
+            {!isBidding && (
+              <div className="flex justify-between">
+                <span>Role:</span>
+                <span className="font-medium">
+                  {getRoleDisplay(currentPlayerStats.role)}
+                </span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span>Face Cards Won:</span>
               <span>{currentPlayerStats.faceCardsWon}</span>
@@ -355,8 +272,9 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
         </div>
       )}
 
-      {/* 副官指定カードは隠す - 判明後のみヒント表示 */}
-      {gameState.napoleonCard && isAdjutantRevealed && (
+      {/* 「このカードで副官が見つかった」は、指定カードが実際に場に出た
+          ときだけ意味を持つ。早期終了で 1 度も出ずに終わった場合に出すと嘘になる */}
+      {gameState.napoleonCard && adjutantCardPlayed && (
         <div className="bg-green-50 border border-green-200 p-3 rounded-lg">
           <div className="text-sm text-green-700">
             <span className="font-semibold">
@@ -366,63 +284,6 @@ export function GameStatus({ gameState, currentPlayerId }: GameStatusProps) {
               {gameState.napoleonCard.rank} of {gameState.napoleonCard.suit}
             </span>
           </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// モバイル用のコンパクトなProgress表示
-export function CompactGameProgress({ gameState }: { gameState: GameState }) {
-  const progress = getGameProgress(gameState)
-  const napoleonPlayer = gameState.players.find((p) => p.isNapoleon)
-
-  // PLAYINGフェーズでのみ表示
-  if (gameState.phase !== GAME_PHASES.PLAYING) {
-    return null
-  }
-
-  return (
-    <div className="bg-white rounded-lg shadow-md p-2 text-xs">
-      <div className="flex items-center justify-between gap-2">
-        {/* Tricks */}
-        <div className="flex flex-col items-center">
-          <span className="text-gray-600">Tricks</span>
-          <span className="font-bold text-sm">{progress.tricksPlayed}/12</span>
-        </div>
-
-        {/* Napoleon Team */}
-        <div className="flex flex-col items-center">
-          <span className="text-gray-600">Napoleon</span>
-          <span className="font-bold text-yellow-600 text-sm">
-            {progress.napoleonTeamFaceCards}
-          </span>
-        </div>
-
-        {/* Alliance Team */}
-        <div className="flex flex-col items-center">
-          <span className="text-gray-600">Alliance</span>
-          <span className="font-bold text-blue-600 text-sm">
-            {progress.citizenTeamFaceCards}
-          </span>
-        </div>
-
-        {/* Napoleon needs */}
-        <div className="flex flex-col items-center text-center">
-          <span className="text-gray-600">Napoleon needs</span>
-          <span className="font-bold text-sm">
-            {progress.napoleonNeedsToWin} more
-          </span>
-        </div>
-      </div>
-
-      {/* Adjutant Card info - コンパクト表示 */}
-      {gameState.napoleonCard && napoleonPlayer && (
-        <div className="mt-1 pt-1 border-t text-center text-gray-600">
-          <span className="text-[0.65rem]">
-            Adjutant Card: {gameState.napoleonCard.rank}{' '}
-            {SUIT_SYMBOLS[gameState.napoleonCard.suit]}
-          </span>
         </div>
       )}
     </div>

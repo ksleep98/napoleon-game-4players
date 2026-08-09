@@ -6,6 +6,12 @@ on:
   pull_request:
     paths:
       - "python/**"
+      # ルール移植のフィクスチャは TS 側の実装から生成される。TS を変えて
+      # `pnpm ml:fixtures` を忘れると test_rule_parity.py が落ちるべきなので、
+      # 移植元のファイルも起動条件に含める。
+      - "src/lib/napoleonCardRules.ts"
+      - "src/lib/ai/gameSimulator.ts"
+      - "scripts/dump-rule-fixtures.ts"
       - ".github/workflows/python-lint.yml"
   workflow_dispatch:
 
@@ -32,11 +38,25 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Sync dev dependencies (frozen)
-        run: uv sync --frozen --group dev
+      # --locked は「uv.lock が pyproject.toml と整合しているか」を検証して落ちる。
+      # --frozen はロックを検証せずそのまま使うため、Dependabot が pyproject.toml
+      # だけ更新して uv.lock を放置した不整合 (#448 / c078e7e) が CI をすり抜けた。
+      # Dependabot の Python PR が lock 未更新だとここで落ちるようになる。
+      - name: Sync dev dependencies (locked)
+        run: uv sync --locked --group dev
+
+      # かつてここに "Verify requirements.txt matches the lockfile" があった。
+      # python/requirements.txt を削除し、Dockerfile がビルド時に uv export で
+      # 導出するようにしたので、検証すべき生成物がリポジトリに存在しない。
+      # 依存の整合性は直前の `uv sync --locked` が担保する。
 
       - name: Ruff lint
         run: uv run --group dev ruff check .
 
       - name: Black format check
         run: uv run --group dev black --check .
+
+      # これが無いと test_rule_parity.py (TS↔Python のルール移植ズレ検知) も
+      # 特徴量・学習・推論のテストも CI で一切走らない。
+      - name: Pytest
+        run: uv run --group dev pytest -q

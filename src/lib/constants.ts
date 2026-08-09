@@ -180,12 +180,39 @@ export const SOLO_NAPOLEON_LABELS = {
 // 秘匿情報である「誰が副官か」と取り違えられないよう、必ず Card を明記する
 export const ADJUTANT_CARD_LABEL = `${PLAYER_ROLES.ADJUTANT} Card`
 
+// 競り（GAME_PHASES.NAPOLEON）中の表示ラベル。
+// この時点の宣言はまだ上乗せされうる暫定値で、ナポレオン・副官・連合軍の
+// いずれも確定していない。確定した宣言・チームと同じ見た目にしないこと
+export const BIDDING_LABELS = {
+  SECTION_TITLE: 'Current Highest Bid',
+  BID_BY: 'Highest bid by:',
+  UNDECIDED_NOTE: 'Bidding in progress - teams are not decided yet',
+} as const
+
 export const GAME_CONFIG = {
   PLAYERS_COUNT: 4,
   CARDS_PER_PLAYER: 12, // 52枚（Joker除外）から4人に12枚ずつ配って残り4枚
   TOTAL_CARDS_USED: 52, // Jokerを除外した52枚使用
   HIDDEN_CARDS: 4,
   TARGET_FACE_CARDS: 13, // ナポレオンが取る必要がある絵札数
+} as const
+
+// ナポレオン宣言（絵札数）の表示ラベル。
+// 型のフィールド名が `targetTricks` であるためトリック数と誤解されやすいが、
+// 実体は「取る予定の絵札数（10〜A の 20 枚中）」なので、
+// 画面には必ず face cards であることが分かる語を出す
+export const DECLARATION_LABELS = {
+  DECLARED: 'Declared',
+  FACE_CARDS: 'face cards',
+  PROGRESS: 'Face cards toward declaration',
+  // 「あと何枚」を両陣営の視点で出す。連合軍は達成枚数ではなく
+  // 「あと何枚奪えば阻止できるか」が知りたいため、残り枚数を必ず併記する
+  NEEDS: 'needs', // Napoleon（単数）
+  NEED: 'need', // Allied Forces（複数）
+  MORE: 'more',
+  SEPARATOR: ' · ',
+  NAPOLEON_MET: 'declaration met',
+  ALLIANCE_MET: 'declaration blocked',
 } as const
 
 export const NAPOLEON_RULES = {

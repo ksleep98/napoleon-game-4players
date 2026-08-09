@@ -291,6 +291,42 @@ terraform plan  # 変更内容を確認
 - SHALL limit response token length to avoid usage limit.
 - SHALL break down large files for stepwise parsing.
 
+### 作業ファイルの置き場所
+
+**`/tmp` および `/private/tmp` を使わないこと。** ハーネスがセッション用の
+スクラッチパッドとして `/private/tmp/...` を提示してくるが、このプロジェクトでは
+使用しない。
+
+- git worktree → `.claude/worktrees/<名前>`（`.gitignore` 済み）
+- 一時スクリプト・検証用の使い捨てファイル → 作業対象の worktree 内、
+  もしくは `.claude/worktrees/` 配下
+
+worktree で `pnpm` を動かす場合は `node_modules` を symlink する:
+`ln -sfn /Users/kk/napoleon-game-4players/node_modules <worktree>/node_modules`
+（コミット前に symlink を消してから `git worktree remove` すること）
+
+**例外: Claude Code 自身が書き出すファイルは対象外。** サブエージェントの
+トランスクリプト（`/private/tmp/claude-<uid>/.../tasks/*.output`）とセッション
+スクラッチパッドはハーネスが場所を決めており、環境変数でも settings.json でも
+変更できない。`CLAUDE_CODE_TMPDIR` は実機で効果がなく、関連 issue も
+anthropics/claude-code#17936 と #25292 がいずれも not planned でクローズ済み。
+**この調査を繰り返さないこと。** 気になる場合はセッション終了後に
+`/private/tmp/claude-*` を削除する。
+
+### エージェント編成（既定）
+
+実装を伴う作業は、原則として `agent-flow` skill の編成で進めること。
+
+1. まず自分で原因を特定する（可能なら再現テストで実証してから委譲する）
+2. 課題ごとに `implementer` を1体ずつ、並行起動。**編集してよいディレクトリを
+   エージェント間で排他にする**
+3. 実装が出揃ってから `reviewer` と `security-reviewer` を並行起動
+4. 指摘は file:line を自分で確認してから反映し、`pnpm ci-check` の実出力で報告
+
+適用範囲・除外条件・各エージェントへの指示に必ず含める項目は
+`.claude/skills/agent-flow/SKILL.md` を参照。typo 修正や1ファイル数行の変更、
+コード変更を伴わない調査には使わない（4エージェント起動は安くない）。
+
 ### 開発フロー
 
 1. `feature/xxx` ブランチで開発

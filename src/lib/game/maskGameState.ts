@@ -13,11 +13,17 @@
  * 一人ナポレオン（`soloNapoleon`）も同じ理由で伏せる。ナポレオン本人だけは
  * 指定カードが自分の手札に入るため常に知っている。
  *
- * AI の思考はすべてサーバーサイド（processAITurn / processAIPlayingPhase）で
- * 行われ、DB から読み直した未マスクの状態を使うため、マスキングの影響を受けない。
+ * さらに競り（`GAME_PHASES.NAPOLEON`）の最中は、副官「指定カード」そのもの
+ * （`napoleonDeclaration.adjutantCard` / `napoleonCard`）も宣言者以外へ渡さない。
+ * 詳細は maskBiddingDeclarationForPlayer のコメントを参照。
+ *
+ * AI の思考はサーバーサイド（processAITurn / processAIPlayingPhase）で行われ、
+ * DB から読み直した未マスクの状態を使う。ただし副官の正体だけは AI にも
+ * 見せてはいけない（人間より多くを知って打つのはフェアネス違反）ため、
+ * processAITurn が maskAdjutantIdentityForPlayer で手番 AI 視点のビューを作る。
  */
 
-import { MASKED_CARD } from '@/lib/constants'
+import { GAME_PHASES, MASKED_CARD } from '@/lib/constants'
 import type { Card, GameState } from '@/types/game'
 import { isAdjutantIdentityPublic } from '@/utils/gameUtils'
 
@@ -35,11 +41,16 @@ function maskCards(cards: Card[], ownerKey: string): Card[] {
 }
 
 /**
- * 閲覧者以外の手札・伏せ札・副官の正体をマスクしたゲーム状態を返す
+ * 副官の正体（`isAdjutant` / `soloNapoleon`）だけをマスクしたゲーム状態を返す
+ *
+ * 手札・伏せ札はそのまま残す。サーバーサイド AI の思考へ渡すビューを作るための
+ * 関数で、AI は自分の手札はもちろん、シミュレーション（determinization）でも
+ * `players[].hand` の実体を参照するため、ここで手札まで潰すと着手を選べなくなる。
+ *
  * @param gameState 未マスクのゲーム状態
- * @param viewerPlayerId 閲覧者（認証済みプレイヤー）のID
+ * @param viewerPlayerId 閲覧者（人間プレイヤー、または手番の AI）のID
  */
-export function maskGameStateForPlayer(
+export function maskAdjutantIdentityForPlayer(
   gameState: GameState,
   viewerPlayerId: string
 ): GameState {
@@ -70,9 +81,82 @@ export function maskGameStateForPlayer(
         ? player
         : {
             ...player,
-            hand: maskCards(player.hand, player.id),
             // 副官本人以外には、公開されるまで副官フラグを渡さない
             isAdjutant: adjutantIsPublic ? player.isAdjutant : false,
+          }
+    ),
+  }
+}
+
+/**
+ * 競り（ナポレオン宣言フェーズ）中の「呼ぶ札」を宣言者以外から伏せる
+ *
+ * AI は宣言と同時に副官指定カードを決める（ai/napoleon.ts の
+ * `selectAdjutantCard` → `declaration.adjutantCard`）のに対し、人間は宣言後の
+ * AdjutantSelector で選ぶ（NapoleonSelector に指定カードの入力は無い）。
+ * この非対称のせいで、AI が宣言した瞬間に呼ぶ札が
+ * `napoleonDeclaration.adjutantCard` と `napoleonCard`（declareNapoleon が
+ * 互換用に複製する）へ載り、まだ上乗せできる人間へそのまま届いていた。
+ * 「♠A が呼ばれている＝自分が副官になれる／なれない」と分かった状態で
+ * 競りを続けられるのは明確なアドバンテージになる。
+ *
+ * 隠すのは競りの最中だけでよい。ルール上、呼ぶ札は宣言が確定したあとは
+ * 全員への公開情報（docs/game-logic/NAPOLEON_RULES.md の副官選択フェーズ）で、
+ * 実際 ADJUTANT フェーズ以降は GameStatus / TopHUD が常時表示している。
+ * よって `GAME_PHASES.NAPOLEON` の間だけ落とせば足りる。
+ *
+ * ⚠️ この関数はクライアントへ返す直前（maskGameStateForPlayer）専用。
+ * サーバー側の権威ある処理（setAdjutant / findAdjutant / isAdjutantCardBuried、
+ * および AI の processAdjutantPhase）は DB から読んだ未マスクの状態を使うこと。
+ * マスク済み state を権威ある処理へ流すと、AI ナポレオンの
+ * `napoleonDeclaration.adjutantCard` が消えて副官が成立しなくなる。
+ */
+function maskBiddingDeclarationForPlayer(
+  gameState: GameState,
+  viewerPlayerId: string
+): GameState {
+  if (gameState.phase !== GAME_PHASES.NAPOLEON) {
+    return gameState
+  }
+
+  // 宣言した本人（AI 含む）は自分が指定した札を当然知っている
+  const declaration = gameState.napoleonDeclaration
+  if (declaration && declaration.playerId === viewerPlayerId) {
+    return gameState
+  }
+
+  return {
+    ...gameState,
+    napoleonDeclaration: declaration
+      ? { ...declaration, adjutantCard: undefined }
+      : declaration,
+    napoleonCard: undefined,
+  }
+}
+
+/**
+ * 閲覧者以外の手札・伏せ札・副官の正体をマスクしたゲーム状態を返す
+ * @param gameState 未マスクのゲーム状態
+ * @param viewerPlayerId 閲覧者（認証済みプレイヤー）のID
+ */
+export function maskGameStateForPlayer(
+  gameState: GameState,
+  viewerPlayerId: string
+): GameState {
+  // 副官の秘匿ルールは maskAdjutantIdentityForPlayer に一本化する
+  const identityMasked = maskBiddingDeclarationForPlayer(
+    maskAdjutantIdentityForPlayer(gameState, viewerPlayerId),
+    viewerPlayerId
+  )
+
+  return {
+    ...identityMasked,
+    players: identityMasked.players.map((player) =>
+      player.id === viewerPlayerId
+        ? player
+        : {
+            ...player,
+            hand: maskCards(player.hand, player.id),
           }
     ),
     hiddenCards: maskCards(
@@ -85,3 +169,18 @@ export function maskGameStateForPlayer(
       : undefined,
   }
 }
+
+/*
+ * かつてここには `restoreAdjutantIdentity`（マスク済みビューから AI が作った
+ * 次状態に、真の副官情報を戻す関数）があった。削除済み。
+ *
+ * その復元は「マスク済みビューでゲームを 1 手進める」ことを前提にしていたが、
+ * その前提自体が不具合の原因だった。playCard → completeTrick →
+ * scoring.isGameDecided は players[].isAdjutant でチームを分けるため、
+ * マスク済みビューで進めると副官の取ったトリックが連合軍側に計上され、
+ * 「連合軍が上限超過」で勝敗が誤って早期確定する。役職を後から戻しても
+ * 確定してしまった phase は戻せない。
+ *
+ * 現在は gameLogic.processAITurn が「思考だけマスク済みビュー、着手は
+ * 未マスクの真の状態」に分離しているため、復元は不要になった。
+ */

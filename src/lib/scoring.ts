@@ -175,6 +175,7 @@ export function getGameProgress(gameState: GameState): {
   napoleonTeamFaceCards: number
   citizenTeamFaceCards: number
   napoleonNeedsToWin: number
+  allianceNeedsToWin: number
 } {
   const { napoleonTeam, citizenTeam } = getTeamFaceCardCounts(gameState)
   const tricksPlayed = gameState.tricks.length
@@ -186,12 +187,20 @@ export function getGameProgress(gameState: GameState): {
     NAPOLEON_RULES.TARGET_FACE_CARDS
   const napoleonNeedsToWin = Math.max(0, targetFaceCards - napoleonTeam)
 
+  // 連合軍の勝利は「宣言の阻止」。isGameDecided と同じ条件
+  // （citizenTeamFaceCards > TOTAL - target）を満たす最小枚数から逆算する。
+  // 連合軍視点では「あと何枚奪えば阻止が確定するか」がそのまま目標になる
+  const allianceTargetFaceCards =
+    NAPOLEON_RULES.TOTAL_FACE_CARDS - targetFaceCards + 1
+  const allianceNeedsToWin = Math.max(0, allianceTargetFaceCards - citizenTeam)
+
   return {
     tricksPlayed,
     tricksRemaining,
     napoleonTeamFaceCards: napoleonTeam,
     citizenTeamFaceCards: citizenTeam,
     napoleonNeedsToWin,
+    allianceNeedsToWin,
   }
 }
 
