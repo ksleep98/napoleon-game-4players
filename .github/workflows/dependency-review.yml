@@ -29,10 +29,39 @@ jobs:
 
           # ライセンスポリシー
           # 許可しないライセンスを含む依存関係があれば失敗
+          #
+          # ⚠️ deny-licenses は Action 側で deprecated 扱い（次のメジャーで削除の
+          #    可能性あり）。代替は allow-licenses だが、そちらは「許可するものを
+          #    全列挙」する方式で、未知のライセンスが出るたびに CI が落ちる。
+          #    運用コストが跳ね上がるので、削除が現実になるまでは据え置く。
           deny-licenses: GPL-2.0, LGPL-2.0
 
-          # 許可するライセンスのみを指定（オプション）
-          # allow-licenses: MIT, Apache-2.0, BSD-3-Clause
+          # ライセンスチェックから除外するパッケージ（purl 形式）
+          #
+          # @img/sharp-libvips-* は LGPL-3.0-or-later。sharp のプリビルド
+          # ネイティブバイナリで、sharp は Next.js の画像最適化が引く依存のため
+          # 外せない。
+          #
+          # この Action は「その PR で新しく現れたバージョン」だけを見るので、
+          # 既に develop に入っている版は素通りし、bump したときだけ落ちる。
+          # 実際 #534 (next 16.2.12 → 16.3.0) が libvips 1.2.4 → 1.3.2 の
+          # 更新だけで落ちた。develop には 1.2.4 が既にあり、ライセンス上の露出は
+          # 変わっていないのに赤くなる。この状態を放置すると「dependency-review が
+          # 赤いのは毎度のこと」になり、本物の指摘を見逃す。
+          #
+          # 対象は lockfile 上に存在する 10 パッケージ全て。バージョンを付けない
+          # purl は全バージョンにマッチするので、bump のたびに追記する必要はない。
+          allow-dependencies-licenses: >-
+            pkg:npm/@img/sharp-libvips-darwin-arm64,
+            pkg:npm/@img/sharp-libvips-darwin-x64,
+            pkg:npm/@img/sharp-libvips-linux-arm,
+            pkg:npm/@img/sharp-libvips-linux-arm64,
+            pkg:npm/@img/sharp-libvips-linux-ppc64,
+            pkg:npm/@img/sharp-libvips-linux-riscv64,
+            pkg:npm/@img/sharp-libvips-linux-s390x,
+            pkg:npm/@img/sharp-libvips-linux-x64,
+            pkg:npm/@img/sharp-libvips-linuxmusl-arm64,
+            pkg:npm/@img/sharp-libvips-linuxmusl-x64
 
           # スコープ制限（dev依存関係も含める）
           fail-on-scopes: runtime, development
