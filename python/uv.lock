@@ -330,7 +330,7 @@ wheels = [
 
 [[package]]
 name = "gradio"
-version = "6.24.0"
+version = "6.25.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -362,9 +362,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/65/1c/f97a1dc890348b6cffb2714a45203eef3a65815d910d89b094b0a4a5b112/gradio-6.24.0.tar.gz", hash = "sha256:2072be0c0803da1859f918a45dc568fafc7b0eebd581943bee8acc78f752e166", size = 44575933, upload-time = "2026-08-12T22:51:40.625Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/34/d0/1712223ffee883f87b8878c44afa35caa2f0eca85bb0a7dc837103f59565/gradio-6.25.0.tar.gz", hash = "sha256:0cb0755d67d2c3546b454074bbccae469f732bfb650e0d403b4041461b5690b0", size = 44648022, upload-time = "2026-08-19T20:33:40.271Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/52/6b/cc8f41dd9bd4fe6efae80e87b4cb91df681e2d7b71cb83765f129fcdf54f/gradio-6.24.0-py3-none-any.whl", hash = "sha256:0a7c97c07ef0facecb86d776c73c0124b3f9803a828e09ea1737ad12219cabb5", size = 30725600, upload-time = "2026-08-12T22:51:36.594Z" },
+    { url = "https://files.pythonhosted.org/packages/4b/e0/278e7c315f9b5c4c34e1c4d5eeb9704cd5b329bae7916ecbed6b2ff2b814/gradio-6.25.0-py3-none-any.whl", hash = "sha256:871f3a43219a8e29540295334935aba885971ba67ebe09fd88433e78b21e17fe", size = 30765526, upload-time = "2026-08-19T20:33:36.415Z" },
 ]
 
 [[package]]
@@ -742,7 +742,7 @@ requires-dist = [
     { name = "skops", specifier = ">=0.14.0" },
     { name = "starlette", specifier = ">=0.49.1" },
     { name = "supabase", specifier = "==2.31.0" },
-    { name = "uvicorn", extras = ["standard"], specifier = "==0.52.3" },
+    { name = "uvicorn", extras = ["standard"], specifier = "==0.52.4" },
 ]
 
 [package.metadata.requires-dev]
@@ -1573,15 +1573,15 @@ wheels = [
 
 [[package]]
 name = "uvicorn"
-version = "0.52.3"
+version = "0.52.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
     { name = "h11" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2e/28/64ca011edf31c715b4fad359c587ea52391aaffa125065695590241ff617/uvicorn-0.52.3.tar.gz", hash = "sha256:18857b9e6579300be55c91c0a1cfd37d9a2cf0cabea33b88275f199eb73b8b58", size = 100621, upload-time = "2026-08-13T16:50:02.899Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f2/0f/3f86e61397dd33bf2ccf28188c40db6a740658aeebbbf6e7dbc101a1f487/uvicorn-0.52.4.tar.gz", hash = "sha256:73acfee47a0b133c5de13d219492d62d8a31e935f4fe6e41a232451a15379f86", size = 100627, upload-time = "2026-08-19T06:27:41.821Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/dc/2b/ebd108734a8204c6b4b93c681c9a38c5273b3ccd5d129fee4ffc1d97772c/uvicorn-0.52.3-py3-none-any.whl", hash = "sha256:116af2710dbf47c80f463cd20ee4884b6662f4c9f227d797ddc7279d2fcc2c7c", size = 79859, upload-time = "2026-08-13T16:50:01.323Z" },
+    { url = "https://files.pythonhosted.org/packages/f1/79/4a20b54ab0491485ccd8c077db2d39187c7f12b3e15485d38a7be37c81b4/uvicorn-0.52.4-py3-none-any.whl", hash = "sha256:f86e41a149d7d05a9969337e3946a9c171c06a5d42680896daaba624aeac8da1", size = 79871, upload-time = "2026-08-19T06:27:40.36Z" },
 ]
 
 [package.optional-dependencies]
