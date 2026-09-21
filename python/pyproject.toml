@@ -10,7 +10,7 @@ dependencies = [
   "supabase==2.31.0",
   "pandas==3.0.5",
   "numpy==2.5.3",
-  "scikit-learn==1.9.0",
+  "scikit-learn==1.9.1",
   "skops>=0.14.0",
   "python-dotenv>=1.2.2",
   "pillow>=12.2.0",
