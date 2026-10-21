@@ -50,7 +50,7 @@
 
 ## 開発環境
 
-- Node.js **22.22.0**（`.nvmrc`。`package.json` の engines は `22.x`）
+- Node.js **22.23.4**（`.nvmrc`。`package.json` の engines は `22.x`）
 - pnpm **10.15.1**（`packageManager` で固定。engines は `>=10.0.0`）
 - VSCode推奨 + Biome拡張
 - Python 3.13 + uv（`python/` を触るときのみ）
