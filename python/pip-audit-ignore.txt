@@ -1,0 +1,33 @@
+# pip-audit で一時的に無視する脆弱性 ID（python-security-audit.yml が読む）。
+#
+# 形式: <脆弱性ID> <期限 YYYY-MM-DD> <理由>
+# 期限を過ぎた行は自動的に無視されなくなり、監査が再び失敗する。
+# 期限を延ばすときは理由を見直すこと。修正できたら行ごと削除する。
+#
+# pillow 12.3.0: 修正は 13.0.0 のみだが gradio 6.30.0 が pillow<13 を要求しており
+# 上げられない。アプリのコードは PIL を使わず、gradio の画像系コンポーネントも未使用。
+# gradio が pillow 13 を許容したら uv lock --upgrade-package pillow して削除する。
+CVE-2026-112390 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112391 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112392 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112393 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112395 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112396 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112397 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112399 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112400 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112401 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112402 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112404 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112405 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112406 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112891 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112892 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112893 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112894 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112895 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112896 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112897 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112899 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112900 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112901 2026-11-30 pillow<13 pinned by gradio 6.30.0
