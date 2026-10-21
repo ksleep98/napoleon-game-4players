@@ -17,7 +17,7 @@ A web-based Napoleon card game implementation built with modern web technologies
 
 ### Prerequisites
 
-- Node.js 22.14.0 or higher
+- Node.js 22.23.4 or higher
 - pnpm (package manager) - fast, efficient
 
 ### Installation

@@ -13,7 +13,7 @@
 ### 1. 環境セットアップ
 
 - Ubuntu latest
-- Node.js 22.14.0
+- Node.js 22.23.4
 - pnpm cache有効
 
 ### 2. 依存関係インストール
