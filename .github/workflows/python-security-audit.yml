@@ -8,6 +8,7 @@ on:
     paths:
       - "python/pyproject.toml"
       - "python/uv.lock"
+      - "python/pip-audit-ignore.txt"
       - ".github/workflows/python-security-audit.yml"
 
 permissions:
@@ -43,7 +44,19 @@ jobs:
         run: |
           # Audit the resolved environment (matches local workflow).
           # --requirement flag spawns a temp venv which fails on some runners.
+          # 期限内の一時除外のみ --ignore-vuln に渡す（形式は pip-audit-ignore.txt 参照）
+          IGNORE_ARGS=()
+          TODAY=$(date -u +%F)
+          while read -r id until _; do
+            if [[ "$until" < "$TODAY" ]]; then
+              echo "::warning::ignore entry expired ($until): $id"
+            else
+              IGNORE_ARGS+=(--ignore-vuln "$id")
+            fi
+          done < <(grep -vE '^[[:space:]]*(#|$)' pip-audit-ignore.txt || true)
+          echo "Ignoring $(( ${#IGNORE_ARGS[@]} / 2 )) vuln(s) from pip-audit-ignore.txt"
           uv run --group dev pip-audit \
+            "${IGNORE_ARGS[@]}" \
             --format json \
             --output audit-result.json || true
           VULN_COUNT=$(jq '[.dependencies[]? | select(.vulns | length > 0)] | length' audit-result.json 2>/dev/null || echo 0)
