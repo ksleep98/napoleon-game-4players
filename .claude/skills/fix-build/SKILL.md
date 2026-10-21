@@ -416,7 +416,7 @@ node -e "console.log(process.env)" | grep NEXT_PUBLIC
    - `SUPABASE_SERVICE_ROLE_KEY`
 
 2. **Node.jsバージョン**:
-   - Node.js 22.22.0以上必須
+   - Node.js 22.23.4以上必須
    - `.nvmrc` で自動設定
 
 3. **型定義の同期**:

@@ -22,7 +22,7 @@ pnpm exec playwright install
 
 ### 必要な環境
 
-- Node.js 22.14.0+
+- Node.js 22.23.4+
 - pnpm 9+
 - Chromium、Firefox、Webkit ブラウザ（自動インストール）
 
