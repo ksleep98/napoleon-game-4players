@@ -49,9 +49,12 @@ MIN_CARD_VALUE = 1
 MAX_CARD_VALUE = 14
 MAX_TRICK_NUMBER = 12
 
-# skops の許可リスト。空 = scikit-learn / 標準ライブラリの既知型しか受け付けない。
-# model.train が保存する payload はこの範囲に収まる (ModelHolder.load 参照)。
-TRUSTED_MODEL_TYPES: list[str] = []
+# skops の許可リスト。ここに無い型を含むファイルは読み込みを拒否する。
+# skops 0.16 から sklearn.tree._tree.Tree (RandomForest の木) が既定の信頼対象を
+# 外れた。木のノード添字が境界チェックされないため、細工されたファイルだと
+# predict() で範囲外メモリを読みうる、というのが理由。読むのは同じコンテナ内で
+# model.train が書いたファイルだけで、外部から受け取る経路は無いので明示的に許可する。
+TRUSTED_MODEL_TYPES: list[str] = ["sklearn.tree._tree.Tree"]
 
 
 class Card(BaseModel):
@@ -107,9 +110,9 @@ class ModelHolder:
             # 安全機構を無効化しているのと同じ (任意コード実行の入口になる)。
             #
             # model.train が保存するのは RandomForestClassifier と素の Python/NumPy
-            # 値だけで、実測でも get_untrusted_types() は [] を返す。したがって
-            # trusted=[] に固定しても現行モデルは読める。将来モデルを外部ストレージ
-            # から取得するようにしても、ここが壁として残る。
+            # 値だけで、skops 0.16 時点で get_untrusted_types() が返すのは
+            # sklearn.tree._tree.Tree のみ。許可リストはそれだけに固定する。
+            # 将来モデルを外部ストレージから取得するなら、Tree の許可を見直すこと。
             payload = sio.load(MODEL_PATH, trusted=TRUSTED_MODEL_TYPES)
             self._payload = payload
             self._mtime = mtime

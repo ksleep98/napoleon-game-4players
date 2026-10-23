@@ -11,10 +11,13 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from pydantic import ValidationError
+from skops import io as sio
 
 import app as app_module
+import model.train as train
 from app import MAX_HAND_SIZE, MAX_TABLE_CARDS, Card, PredictRequest
 from model.train import MODEL_TYPE_CANDIDATE_SCORER
+from tests.factories import make_training_df
 
 VALID_CARD = {"id": "hearts-A", "rank": "A", "suit": "hearts", "value": 14}
 
@@ -156,13 +159,33 @@ def test_predict_rejects_empty_hand(stub_model):
 # --- skops allow-list ------------------------------------------------------
 
 
-def test_trusted_model_types_is_empty():
+def test_trusted_model_types_is_explicit():
     """get_untrusted_types() の結果をそのまま信頼すると安全機構が無効化される。
 
-    model.train が保存するのは scikit-learn / 標準ライブラリの既知型だけなので、
-    許可リストは空のままで読める。
+    許可するのはレビュー済みの型だけ。増やすときはこのテストも意図して更新する。
     """
-    assert app_module.TRUSTED_MODEL_TYPES == []
+    assert app_module.TRUSTED_MODEL_TYPES == ["sklearn.tree._tree.Tree"]
+
+
+def test_trained_model_roundtrips_through_allow_list(monkeypatch, tmp_path):
+    """model.train が実際に保存したファイルを、app の許可リストで読めること。
+
+    skops 0.16 で sklearn.tree._tree.Tree が既定の信頼対象から外れ、Space で
+    学習直後のロードが UntrustedTypesFoundException になった。dump をスタブする
+    test_train だけでは検出できないので、本物の dump → load を一度通す。
+    """
+    df = make_training_df(n_games=8, rows_per_game=16)
+    monkeypatch.setattr(train, "fetch_training_data", lambda: df)
+    path = tmp_path / "card_predictor.skops"
+    real_dump = sio.dump
+    monkeypatch.setattr(train.sio, "dump", lambda obj, _path: real_dump(obj, path))
+
+    assert train.main() == 0
+
+    untrusted = set(sio.get_untrusted_types(file=path))
+    assert untrusted <= set(app_module.TRUSTED_MODEL_TYPES)
+    payload = sio.load(path, trusted=app_module.TRUSTED_MODEL_TYPES)
+    assert payload["model_type"] == MODEL_TYPE_CANDIDATE_SCORER
 
 
 # --- HTTP status mapping ---------------------------------------------------
