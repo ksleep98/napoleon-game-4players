@@ -79,61 +79,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 })
 
-// プレイヤーIDをセッションに設定するヘルパー関数（RLS設定のみ）
-// Phase 4: localStorage依存を完全削除、httpOnlyクッキーのみ使用
-export const setPlayerSession = async (playerId: string): Promise<void> => {
-  // テスト環境でのみRLS関数呼び出しをスキップ
-  if (process.env.NODE_ENV === 'test') {
-    console.log('Test mode: Skipping RLS setup')
-    return
-  }
-
-  // 開発・本番問わずRLS設定を試行（セキュリティ担保のため）
-  try {
-    const { error } = await supabase.rpc('set_config', {
-      setting_name: 'app.player_id',
-      setting_value: playerId,
-      is_local: true,
-    })
-
-    if (error) {
-      // 関数が見つからない場合のハンドリング
-      if (error.code === 'PGRST202') {
-        console.warn(
-          '⚠️  RLS set_config function not available. Please run the RLS policies in Supabase SQL Editor.',
-          '\n   Game will continue but with reduced security in development.'
-        )
-
-        // 開発環境では警告して続行、本番環境では停止
-        if (process.env.NODE_ENV === 'production') {
-          throw new Error('RLS configuration required in production')
-        }
-        return
-      }
-
-      // その他のエラー
-      console.error('RLS setup failed:', {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-      })
-
-      if (process.env.NODE_ENV === 'production') {
-        throw new Error(`RLS setup failed: ${error.message}`)
-      }
-    } else {
-      console.log('✅ RLS player session configured:', playerId)
-    }
-  } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : String(err)
-    console.error('RLS setup error:', errorMessage)
-
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error(`RLS setup failed: ${errorMessage}`)
-    }
-  }
-}
-
 export type Database = {
   public: {
     Tables: {

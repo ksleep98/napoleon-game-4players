@@ -11,7 +11,6 @@ import {
   getSessionAction,
 } from '@/app/actions/cookieSessionActions'
 import { usePlayerSession } from '@/hooks/useSupabase'
-import { setPlayerSession } from '@/lib/supabase/client'
 import {
   setPlayerOffline,
   setPlayerOnline,
@@ -22,11 +21,6 @@ jest.mock('@/app/actions/cookieSessionActions', () => ({
   createSessionAction: jest.fn(),
   getSessionAction: jest.fn(),
   clearSessionAction: jest.fn(),
-}))
-
-// Supabaseクライアントのモック
-jest.mock('@/lib/supabase/client', () => ({
-  setPlayerSession: jest.fn(),
 }))
 
 // Supabaseゲームサービスのモック
@@ -118,7 +112,6 @@ describe('usePlayerSession (Phase 5: httpOnly Cookie Only)', () => {
     it('should save to httpOnly cookie', async () => {
       // クッキー保存成功
       ;(createSessionAction as jest.Mock).mockResolvedValue({ success: true })
-      ;(setPlayerSession as jest.Mock).mockResolvedValue(undefined)
       ;(setPlayerOnline as jest.Mock).mockResolvedValue(undefined)
 
       const { result } = renderHook(() => usePlayerSession())
@@ -134,8 +127,6 @@ describe('usePlayerSession (Phase 5: httpOnly Cookie Only)', () => {
       )
       expect(createSessionAction).toHaveBeenCalledTimes(1)
 
-      // Supabase RLS設定
-      expect(setPlayerSession).toHaveBeenCalledWith('player-123')
       expect(setPlayerOnline).toHaveBeenCalledWith('player-123')
 
       // プレイヤーが認証された
@@ -152,7 +143,6 @@ describe('usePlayerSession (Phase 5: httpOnly Cookie Only)', () => {
         success: false,
         error: 'Cookie save failed',
       })
-      ;(setPlayerSession as jest.Mock).mockResolvedValue(undefined)
 
       const { result } = renderHook(() => usePlayerSession())
 
