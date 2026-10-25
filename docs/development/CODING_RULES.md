@@ -213,6 +213,21 @@ export async function gameAction(gameId: string, playerId: string) {
 }
 ```
 
+## 🗄️ データベース（Supabase）
+
+### 🔑 テーブル作成時は GRANT を同じ SQL に書く
+
+2026-10-30 以降、Supabase は `public` に新しく作ったテーブル・ビューへ Data API
+（supabase-js / PostgREST / Realtime）の権限を自動で付けません。付け忘れると API が
+`permission denied` を返します。既存テーブルは影響を受けませんが、プロジェクトを
+作り直したときは `docs/` の SQL から作るので、ここに書いていないと壊れます。
+
+- `CREATE TABLE` と同じファイルに `GRANT` を書く（例: `docs/deployment/production_database_schema.sql`）
+- 行単位の制御は RLS が担う。GRANT はロールごとの最小限にする
+  - `anon`: ブラウザ・Python（publishable key）が読むテーブルだけ `SELECT`
+  - `authenticated`, `service_role`: `SELECT, INSERT, UPDATE, DELETE`
+- RLS を経由しないビューは `service_role` だけに `SELECT` を付ける
+
 ## 🤖 AI処理
 
 ### 🔄 非同期処理パターン
