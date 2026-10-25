@@ -20,7 +20,6 @@ import {
   setSessionCookie,
 } from '@/lib/cookies/sessionCookies'
 import { playerExists } from '@/lib/game/playerRepository'
-import { setPlayerSession } from '@/lib/supabase/client'
 import { checkRateLimit, validatePlayerId } from '@/lib/supabase/server'
 import { generateSessionToken } from '@/utils/encryption'
 
@@ -106,14 +105,6 @@ export async function createSessionAction(
     // httpOnlyクッキーに保存
     await setSessionCookie(sessionData)
 
-    // Supabase RLSコンテキスト設定（既存システムとの互換性）
-    try {
-      await setPlayerSession(playerId)
-    } catch (rlsError) {
-      // RLS設定失敗は警告のみ（開発環境では続行可能）
-      console.warn('[Session] RLS setup warning:', rlsError)
-    }
-
     return { success: true }
   } catch (error) {
     console.error('[Session] Failed to create session:', error)
@@ -148,13 +139,6 @@ export async function getSessionAction(): Promise<
         success: false,
         error: SESSION_ERRORS.EXPIRED,
       }
-    }
-
-    // RLSコンテキスト再設定（ページリフレッシュ時など）
-    try {
-      await setPlayerSession(session.playerId)
-    } catch (rlsError) {
-      console.warn('[Session] RLS setup warning:', rlsError)
     }
 
     return {

@@ -21,10 +21,6 @@ jest.mock('@/lib/cookies/sessionCookies', () => ({
   setSessionCookie: jest.fn(),
 }))
 
-jest.mock('@/lib/supabase/client', () => ({
-  setPlayerSession: jest.fn(),
-}))
-
 jest.mock('@/utils/encryption', () => ({
   generateSessionToken: jest.fn(),
 }))
@@ -47,7 +43,6 @@ import {
   setSessionCookie,
 } from '@/lib/cookies/sessionCookies'
 import { playerExists } from '@/lib/game/playerRepository'
-import { setPlayerSession } from '@/lib/supabase/client'
 import { checkRateLimit, validatePlayerId } from '@/lib/supabase/server'
 import { generateSessionToken } from '@/utils/encryption'
 
@@ -83,7 +78,6 @@ describe('Cookie Session Actions', () => {
     it('should create session successfully', async () => {
       ;(generateSessionToken as jest.Mock).mockReturnValue('generated-token')
       ;(setSessionCookie as jest.Mock).mockResolvedValue(undefined)
-      ;(setPlayerSession as jest.Mock).mockResolvedValue(undefined)
 
       const result = await createSessionAction('player-1', 'Player One')
 
@@ -96,7 +90,6 @@ describe('Cookie Session Actions', () => {
           sessionToken: 'generated-token',
         })
       )
-      expect(setPlayerSession).toHaveBeenCalledWith('player-1')
     })
 
     it('should return error when playerId is empty', async () => {
@@ -148,7 +141,6 @@ describe('Cookie Session Actions', () => {
       ;(isSessionValid as jest.Mock).mockReturnValue(true)
       ;(generateSessionToken as jest.Mock).mockReturnValue('generated-token')
       ;(setSessionCookie as jest.Mock).mockResolvedValue(undefined)
-      ;(setPlayerSession as jest.Mock).mockResolvedValue(undefined)
 
       const result = await createSessionAction('player-1', 'Renamed')
 
@@ -176,20 +168,6 @@ describe('Cookie Session Actions', () => {
       expect(setSessionCookie).not.toHaveBeenCalled()
     })
 
-    it('should succeed even if RLS setup fails', async () => {
-      ;(generateSessionToken as jest.Mock).mockReturnValue('generated-token')
-      ;(setSessionCookie as jest.Mock).mockResolvedValue(undefined)
-      ;(setPlayerSession as jest.Mock).mockRejectedValue(new Error('RLS error'))
-
-      const result = await createSessionAction('player-1', 'Player One')
-
-      expect(result.success).toBe(true)
-      expect(console.warn).toHaveBeenCalledWith(
-        '[Session] RLS setup warning:',
-        expect.any(Error)
-      )
-    })
-
     it('should handle unexpected errors', async () => {
       ;(generateSessionToken as jest.Mock).mockImplementation(() => {
         throw new Error('Unexpected error')
@@ -207,13 +185,11 @@ describe('Cookie Session Actions', () => {
       const mockSession = createMockSession()
       ;(getSessionCookie as jest.Mock).mockResolvedValue(mockSession)
       ;(isSessionValid as jest.Mock).mockReturnValue(true)
-      ;(setPlayerSession as jest.Mock).mockResolvedValue(undefined)
 
       const result = await getSessionAction()
 
       expect(result.success).toBe(true)
       expect(result.data).toEqual(mockSession)
-      expect(setPlayerSession).toHaveBeenCalledWith('player-1')
     })
 
     it('should return error when session not found', async () => {
@@ -236,22 +212,6 @@ describe('Cookie Session Actions', () => {
       expect(result.success).toBe(false)
       expect(result.error).toBe(SESSION_ERRORS.EXPIRED)
       expect(clearSessionCookie).toHaveBeenCalled()
-    })
-
-    it('should succeed even if RLS setup fails', async () => {
-      const mockSession = createMockSession()
-      ;(getSessionCookie as jest.Mock).mockResolvedValue(mockSession)
-      ;(isSessionValid as jest.Mock).mockReturnValue(true)
-      ;(setPlayerSession as jest.Mock).mockRejectedValue(new Error('RLS error'))
-
-      const result = await getSessionAction()
-
-      expect(result.success).toBe(true)
-      expect(result.data).toEqual(mockSession)
-      expect(console.warn).toHaveBeenCalledWith(
-        '[Session] RLS setup warning:',
-        expect.any(Error)
-      )
     })
   })
 

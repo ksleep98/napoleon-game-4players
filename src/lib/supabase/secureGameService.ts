@@ -17,7 +17,7 @@ import {
 import { CONNECTION_STATES } from '@/lib/constants'
 import { maskGameStateForPlayer } from '@/lib/game/maskGameState'
 import type { GameResult, GameRoom, GameState, Player } from '@/types/game'
-import { setPlayerSession, supabase } from './client'
+import { supabase } from './client'
 
 // 🚀 リクエスト重複排除キャッシュ（50-100ms削減）
 const pendingLoadRequests = new Map<string, Promise<GameState | null>>()
@@ -52,21 +52,9 @@ async function getPlayerId(gameState?: GameState): Promise<string> {
 export async function secureGameStateSave(gameState: GameState): Promise<void> {
   const playerId = await getPlayerId(gameState)
 
-  // プレイヤーセッションを現在のゲーム状態の実際のプレイヤーIDに更新
-  let actualPlayerId = playerId
-  if (gameState.players.length > 0) {
-    actualPlayerId = gameState.players[0].id
-    if (playerId !== actualPlayerId) {
-      console.log(
-        `Updating player session from ${playerId} to ${actualPlayerId}`
-      )
-      try {
-        await setPlayerSession(actualPlayerId)
-      } catch (sessionError) {
-        console.warn('Failed to update player session:', sessionError)
-      }
-    }
-  }
+  // 保存に使うプレイヤーIDはゲーム状態の先頭プレイヤーを優先する
+  const actualPlayerId =
+    gameState.players.length > 0 ? gameState.players[0].id : playerId
 
   // ゲーム状態保存の実行
   try {
