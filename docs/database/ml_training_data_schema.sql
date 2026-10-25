@@ -109,6 +109,20 @@ ORDER BY ai_difficulty;
 -- RLSを有効化
 ALTER TABLE ml_training_data ENABLE ROW LEVEL SECURITY;
 
+-- Data API 向けのテーブル権限
+-- 2026-10-30 以降、Supabase は public に新しく作ったテーブルへ自動で権限を付けない。
+--   anon:          Hugging Face Space の学習データ取得（python/data/fetch_data.py は
+--                  publishable key = anon で読む）
+--   authenticated: 現状 Supabase Auth は未使用。Supabase 推奨の既定に合わせる
+--   service_role:  Server Actions からの記録・結果更新（src/lib/ml/dataCollection.ts）
+GRANT SELECT ON public.ml_training_data TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.ml_training_data TO authenticated, service_role;
+
+-- 統計ビューは所有者権限で実行され RLS を経由しないので、読むのは Server Actions
+-- （src/lib/ml/dataCollection.ts の supabaseAdmin）だけに絞る
+GRANT SELECT ON public.ml_training_stats, public.ml_training_role_stats, public.ml_training_ai_stats
+  TO service_role;
+
 -- 全ユーザーが自分のプレイデータを挿入可能
 CREATE POLICY "Users can insert their own training data"
   ON ml_training_data

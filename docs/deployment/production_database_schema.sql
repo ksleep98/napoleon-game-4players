@@ -48,6 +48,18 @@ CREATE TABLE IF NOT EXISTS game_results (
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- Data API（supabase-js / PostgREST / Realtime）向けのテーブル権限
+-- 2026-10-30 以降、Supabase は public に新しく作ったテーブルへ自動で権限を付けない。
+-- このファイルで作り直した環境でも API から届くよう、作成と同じ場所で明示する。
+-- 行単位の制御は RLS（4. RLS ポリシー設定）が担う。
+--   anon:          ブラウザの players 読み取り・games / game_rooms の Realtime 購読
+--   authenticated: 現状 Supabase Auth は未使用。Supabase 推奨の既定に合わせる
+--   service_role:  Server Actions からの読み書き（RLS をバイパス）
+GRANT SELECT ON public.players, public.games, public.game_rooms, public.game_results TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE
+  ON public.players, public.games, public.game_rooms, public.game_results
+  TO authenticated, service_role;
+
 -- ============================================
 -- 2. インデックス作成
 -- ============================================
