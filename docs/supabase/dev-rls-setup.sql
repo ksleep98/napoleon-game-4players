@@ -1,3 +1,7 @@
+-- ⚠️ 2026-10: このファイルの set_config / is_service_role_authenticated / ポリシー定義は古い。
+--    単独で流すと docs/supabase/rls-hardening-2026-10.sql で直した内容が元に戻る。
+--    流した場合は、直後に必ず rls-hardening-2026-10.sql を流すこと。
+
 -- 開発環境用 RLS セットアップスクリプト
 -- Supabase ダッシュボードの SQL Editor で実行してください
 

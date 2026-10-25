@@ -15,7 +15,7 @@ import {
   setAdjutantAction,
 } from '@/app/actions/gameLogicActions'
 import { ACTION_TYPES } from '@/lib/constants'
-import { setPlayerSession, supabase } from '@/lib/supabase/client'
+import { supabase } from '@/lib/supabase/client'
 import { loadGameState } from '@/lib/supabase/secureGameService'
 import type {
   Card,
@@ -106,14 +106,6 @@ export function useGameActions({
               type: ACTION_TYPES.GAME.SET_GAME_STATE,
               payload: { gameState },
             })
-
-            // プレイヤーセッション設定
-            try {
-              const actualPlayerId = gameState.players[0]?.id || playerId
-              await setPlayerSession(actualPlayerId)
-            } catch (sessionError) {
-              console.warn('Player session setup failed:', sessionError)
-            }
           } else {
             throw new Error(result.error || 'Failed to initialize game')
           }

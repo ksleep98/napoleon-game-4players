@@ -7,7 +7,6 @@ import {
   getSessionAction,
 } from '@/app/actions/cookieSessionActions'
 import { ACTION_TYPES, CONNECTION_STATES } from '@/lib/constants'
-import { setPlayerSession } from '@/lib/supabase/client'
 import {
   setPlayerOffline,
   setPlayerOnline,
@@ -211,9 +210,6 @@ export function usePlayerSession() {
           `Failed to create session: ${cookieResult.error || 'Unknown error'}`
         )
       }
-
-      // Supabase RLS設定
-      await setPlayerSession(id)
 
       dispatch({
         type: ACTION_TYPES.PLAYER_SESSION.INITIALIZE_PLAYER,
