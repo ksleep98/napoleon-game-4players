@@ -42,3 +42,12 @@ CVE-2026-96643 2026-11-30 pillow<13 pinned by gradio 6.30.0
 CVE-2026-96644 2026-11-30 pillow<13 pinned by gradio 6.30.0
 CVE-2026-96778 2026-11-30 pillow<13 pinned by gradio 6.30.0
 GHSA-78g4-xqwv-q3g8 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-114501 2026-11-30 pillow<13 pinned by gradio 6.30.0
+CVE-2026-112398 2026-11-30 pillow<13 pinned by gradio 6.30.0
+
+# filelock 3.32.2: 修正は 4.x（メジャー更新）のみ。公開から日が浅く Dependabot の
+# semver-major cooldown（14 日）内なので、Dependabot の更新 PR を待つ。いずれも
+# ローカル攻撃（同じマシンに罠ファイルを置ける者）が前提で、Space の単一コンテナでは影響が小さい。
+CVE-2026-112907 2026-11-16 filelock 4.x major bump pending Dependabot cooldown
+CVE-2026-112913 2026-11-16 filelock 4.x major bump pending Dependabot cooldown
+CVE-2026-112940 2026-11-16 filelock 4.x major bump pending Dependabot cooldown
