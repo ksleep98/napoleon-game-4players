@@ -16,13 +16,9 @@ import { ADJUTANT_BADGE_TONES, AdjutantCardBadge } from './AdjutantCardBadge'
 
 interface TopHUDProps {
   gameState: GameState
-  currentPlayerId?: string | null
 }
 
-export const TopHUD = memo(function TopHUD({
-  gameState,
-  currentPlayerId,
-}: TopHUDProps) {
+export const TopHUD = memo(function TopHUD({ gameState }: TopHUDProps) {
   const progress = useMemo(() => getGameProgress(gameState), [gameState])
 
   const targetFaceCards =

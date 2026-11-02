@@ -464,7 +464,7 @@ function GamePageContent() {
       >
         <div className="max-w-[1180px] mx-auto space-y-4">
           {/* Top HUD bar */}
-          <TopHUD gameState={gameState} currentPlayerId={currentPlayerId} />
+          <TopHUD gameState={gameState} />
 
           {/* Game table */}
           <GameBoard gameState={gameState} currentPlayerId={currentPlayerId} />
