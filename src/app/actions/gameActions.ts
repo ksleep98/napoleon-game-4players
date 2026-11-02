@@ -1398,7 +1398,7 @@ export async function startGameFromRoomAction(
       )
     }
 
-    if (!playersResult.data || playersResult.data.length !== 4) {
+    if (playersResult.data?.length !== 4) {
       throw new GameActionError(
         `Expected 4 players, found ${playersResult.data?.length || 0}`,
         'PLAYERS_NOT_FOUND'

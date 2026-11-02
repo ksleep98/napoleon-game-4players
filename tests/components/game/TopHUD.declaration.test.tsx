@@ -133,7 +133,7 @@ describe('TopHUD declaration visibility', () => {
       citizenFaceCards: 0,
     })
 
-    render(<TopHUD gameState={gameState} currentPlayerId={CITIZEN_ID} />)
+    render(<TopHUD gameState={gameState} />)
 
     // 宣言枚数そのものが独立した見出し付きチップとして出ている
     const declaredLabel = screen.getByText(DECLARATION_LABELS.DECLARED)
@@ -152,10 +152,7 @@ describe('TopHUD declaration visibility', () => {
     })
 
     render(
-      <TopHUD
-        gameState={{ ...gameState, napoleonDeclaration: undefined }}
-        currentPlayerId={CITIZEN_ID}
-      />
+      <TopHUD gameState={{ ...gameState, napoleonDeclaration: undefined }} />
     )
 
     expect(
@@ -171,9 +168,7 @@ describe('TopHUD declaration visibility', () => {
     })
     const progress = getGameProgress(gameState)
 
-    const { container } = render(
-      <TopHUD gameState={gameState} currentPlayerId={CITIZEN_ID} />
-    )
+    const { container } = render(<TopHUD gameState={gameState} />)
 
     // 前提: ナポレオンは 15 - 8 = 7 枚、連合軍は (20 - 15 + 1) - 2 = 4 枚必要
     expect(progress.napoleonNeedsToWin).toBe(7)
@@ -193,9 +188,7 @@ describe('TopHUD declaration visibility', () => {
       napoleonFaceCards: 5,
       citizenFaceCards: 0,
     })
-    const { container, rerender } = render(
-      <TopHUD gameState={low} currentPlayerId={CITIZEN_ID} />
-    )
+    const { container, rerender } = render(<TopHUD gameState={low} />)
     expect(container).toHaveTextContent(
       remainingPattern(DECLARATION_LABELS.NEEDS, 13 - 5)
     )
@@ -205,7 +198,7 @@ describe('TopHUD declaration visibility', () => {
       napoleonFaceCards: 5,
       citizenFaceCards: 0,
     })
-    rerender(<TopHUD gameState={high} currentPlayerId={CITIZEN_ID} />)
+    rerender(<TopHUD gameState={high} />)
     expect(container).toHaveTextContent(
       remainingPattern(DECLARATION_LABELS.NEEDS, 18 - 5)
     )
@@ -217,9 +210,7 @@ describe('TopHUD declaration visibility', () => {
       napoleonFaceCards: 13,
       citizenFaceCards: 0,
     })
-    const { container } = render(
-      <TopHUD gameState={napoleonDone} currentPlayerId={NAPOLEON_ID} />
-    )
+    const { container } = render(<TopHUD gameState={napoleonDone} />)
 
     expect(container).not.toHaveTextContent(
       remainingPattern(DECLARATION_LABELS.NEEDS, 0)
@@ -236,7 +227,7 @@ describe('TopHUD declaration visibility', () => {
       citizenFaceCards: 3,
     })
 
-    render(<TopHUD gameState={gameState} currentPlayerId={CITIZEN_ID} />)
+    render(<TopHUD gameState={gameState} />)
 
     // ナポレオン行: 獲得 6 枚と「あと 9 枚」が同じ行に並ぶ
     const napoleonLine = findLine(

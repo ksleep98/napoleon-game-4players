@@ -81,7 +81,7 @@ export async function processAITurnAction(
       nextPlayer = gameState.players[gameState.currentPlayerIndex]
     }
 
-    if (!nextPlayer || !nextPlayer.isAI) {
+    if (!nextPlayer?.isAI) {
       console.log(
         `Not AI turn - Phase: ${gameState.phase}, NextPlayer: ${nextPlayer?.name} (isAI: ${nextPlayer?.isAI})`
       )

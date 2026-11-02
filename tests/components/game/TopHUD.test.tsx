@@ -69,7 +69,7 @@ describe('TopHUD adjutant designation card', () => {
     // 前提: 副官の正体はまだ公開されていない
     expect(isAdjutantIdentityPublic(gameState)).toBe(false)
 
-    render(<TopHUD gameState={gameState} currentPlayerId="p2" />)
+    render(<TopHUD gameState={gameState} />)
 
     // 指定カードは公開情報なので常に見える
     expect(screen.getByText(ADJUTANT_CARD_LABEL)).toBeInTheDocument()
@@ -89,7 +89,7 @@ describe('TopHUD adjutant designation card', () => {
       ],
     })
 
-    render(<TopHUD gameState={gameState} currentPlayerId="p3" />)
+    render(<TopHUD gameState={gameState} />)
 
     // 副官の正体（プレイヤー名）は HUD に一切出さない
     for (const player of gameState.players) {
@@ -108,7 +108,6 @@ describe('TopHUD adjutant designation card', () => {
             suit: 'diamonds',
           },
         })}
-        currentPlayerId="p2"
       />
     )
 
@@ -124,7 +123,6 @@ describe('TopHUD adjutant designation card', () => {
           trumpSuit: undefined,
           napoleonDeclaration: undefined,
         })}
-        currentPlayerId="p2"
       />
     )
 
@@ -134,24 +132,14 @@ describe('TopHUD adjutant designation card', () => {
 
 describe('TopHUD solo napoleon badge', () => {
   it('shows the solo badge when soloNapoleon is visible to the viewer', () => {
-    render(
-      <TopHUD
-        gameState={createGameState({ soloNapoleon: true })}
-        currentPlayerId="p1"
-      />
-    )
+    render(<TopHUD gameState={createGameState({ soloNapoleon: true })} />)
 
     expect(screen.getByText(SOLO_NAPOLEON_LABELS.BADGE)).toBeInTheDocument()
   })
 
   it('hides the solo badge when the state is masked for Allied Forces', () => {
     // maskGameStateForPlayer は未公開の閲覧者へ undefined を渡す
-    render(
-      <TopHUD
-        gameState={createGameState({ soloNapoleon: undefined })}
-        currentPlayerId="p2"
-      />
-    )
+    render(<TopHUD gameState={createGameState({ soloNapoleon: undefined })} />)
 
     expect(
       screen.queryByText(SOLO_NAPOLEON_LABELS.BADGE)
@@ -159,12 +147,7 @@ describe('TopHUD solo napoleon badge', () => {
   })
 
   it('hides the solo badge in a normal game with an adjutant', () => {
-    render(
-      <TopHUD
-        gameState={createGameState({ soloNapoleon: false })}
-        currentPlayerId="p1"
-      />
-    )
+    render(<TopHUD gameState={createGameState({ soloNapoleon: false })} />)
 
     expect(
       screen.queryByText(SOLO_NAPOLEON_LABELS.BADGE)
