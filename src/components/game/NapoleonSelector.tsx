@@ -138,10 +138,6 @@ export function NapoleonSelector({
     return SUIT_NAMES[suit]
   }
 
-  const getSuitDisplayForOption = (suit: Suit) => {
-    return `${SUIT_SYMBOLS[suit]} ${SUIT_NAME_PARTS[suit]}`
-  }
-
   const getSuitColor = (suit: Suit) => {
     return SUIT_DISPLAY_COLORS[suit]
   }

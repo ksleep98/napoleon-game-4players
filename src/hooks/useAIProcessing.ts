@@ -35,7 +35,7 @@ export function useAIProcessing({
       try {
         if (gameState.phase === GAME_PHASES.NAPOLEON) {
           const nextPlayer = getNextDeclarationPlayer(gameState)
-          if (!nextPlayer || !nextPlayer.isAI) {
+          if (!nextPlayer?.isAI) {
             return
           }
 

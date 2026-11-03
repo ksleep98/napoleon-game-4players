@@ -36,7 +36,7 @@ export async function processNapoleonPhase(
 
   // 現在の宣言者がAIかチェック
   const currentPlayer = getNextDeclarationPlayer(updatedGameState)
-  if (!currentPlayer || !currentPlayer.isAI) {
+  if (!currentPlayer?.isAI) {
     // 次のプレイヤーがいない場合は副官フェーズへ
     if (!currentPlayer && updatedGameState.napoleonDeclaration) {
       return {
@@ -138,7 +138,7 @@ export async function processCardExchangePhase(
   }
 
   const napoleonPlayer = updatedGameState.players.find((p) => p.isNapoleon)
-  if (!napoleonPlayer || !napoleonPlayer.isAI) {
+  if (!napoleonPlayer?.isAI) {
     return updatedGameState
   }
 
