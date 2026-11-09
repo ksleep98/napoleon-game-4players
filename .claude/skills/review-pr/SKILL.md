@@ -30,7 +30,7 @@ argument-hint: [PR URL or PR number]
   - Lint & Format
   - Type Check
   - Unit Tests
-  - E2E Tests（該当する場合）
+  - CI / e2e-tests（該当する場合）
 - [ ] ビルドが成功しているか
 - [ ] Vercel Preview URLで動作確認可能か
 

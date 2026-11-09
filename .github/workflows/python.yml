@@ -1,0 +1,225 @@
+name: Python
+
+# 旧 python-lint.yml + python-security-audit.yml を統合したワークフロー。
+#
+# - python-lint: PR時のみ実行 (feature ブランチで pass していれば develop/main でも
+#   pass する前提)。必要なら手動再実行可能。schedule では走らせない。
+# - python-security: PR / 週次 schedule / 手動実行。schedule・手動実行で脆弱性が
+#   見つかった場合は Issue を作成し、PR では失敗させる。
+#
+# NOTE: pull_request の paths は両ワークフローの和集合。python-security は
+# audit-changes ジョブで旧来の対象（pyproject.toml / uv.lock /
+# pip-audit-ignore.txt / このワークフロー）に絞り込み、それ以外の PR では skipped になる。
+on:
+  pull_request:
+    paths:
+      - "python/**"
+      # ルール移植のフィクスチャは TS 側の実装から生成される。TS を変えて
+      # `pnpm ml:fixtures` を忘れると test_rule_parity.py が落ちるべきなので、
+      # 移植元のファイルも起動条件に含める。
+      - "src/lib/napoleonCardRules.ts"
+      - "src/lib/ai/gameSimulator.ts"
+      - "scripts/dump-rule-fixtures.ts"
+      - ".github/workflows/python.yml"
+  schedule:
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-lint:
+    runs-on: ubuntu-latest
+    # 週次 schedule は監査のみ。lint/test は PR と手動実行で走らせる。
+    if: github.event_name != 'schedule'
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+
+      # --locked は「uv.lock が pyproject.toml と整合しているか」を検証して落ちる。
+      # --frozen はロックを検証せずそのまま使うため、Dependabot が pyproject.toml
+      # だけ更新して uv.lock を放置した不整合 (#448 / c078e7e) が CI をすり抜けた。
+      # Dependabot の Python PR が lock 未更新だとここで落ちるようになる。
+      - name: Sync dev dependencies (locked)
+        run: uv sync --locked --group dev
+
+      # かつてここに "Verify requirements.txt matches the lockfile" があった。
+      # python/requirements.txt を削除し、Dockerfile がビルド時に uv export で
+      # 導出するようにしたので、検証すべき生成物がリポジトリに存在しない。
+      # 依存の整合性は直前の `uv sync --locked` が担保する。
+
+      - name: Ruff lint
+        run: uv run --group dev ruff check .
+
+      - name: Black format check
+        run: uv run --group dev black --check .
+
+      # これが無いと test_rule_parity.py (TS↔Python のルール移植ズレ検知) も
+      # 特徴量・学習・推論のテストも CI で一切走らない。
+      - name: Pytest
+        run: uv run --group dev pytest -q
+
+  # 旧 python-security-audit.yml の PR 起動条件（依存定義ファイルのみ）を
+  # ジョブ単位で再現する判定ジョブ。workflow レベルの paths は lint 側と和集合に
+  # なっているため、ここで監査対象の変更があったかを絞り込む。
+  audit-changes:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      audit: ${{ steps.detect.outputs.audit }}
+    steps:
+      - name: Detect dependency changes
+        id: detect
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          # 差分が取れない場合は安全側に倒して監査を実行する
+          if ! CHANGED=$(gh pr diff "$PR_NUMBER" --name-only); then
+            echo "::warning::Failed to list changed files; running pip-audit"
+            echo "audit=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          # Mirrors the former python-security-audit.yml pull_request paths.
+          TARGET='^(python/pyproject\.toml|python/uv\.lock|python/pip-audit-ignore\.txt|\.github/workflows/python\.yml)$'
+          if echo "$CHANGED" | grep -qE "$TARGET"; then
+            echo "audit=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "✅ No dependency definition changed — skipping pip-audit"
+            echo "audit=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  python-security:
+    runs-on: ubuntu-latest
+    needs: [audit-changes]
+    # schedule / workflow_dispatch では audit-changes が skipped になるため、
+    # !cancelled() で依存スキップの伝播を止めて常に実行する。
+    # PR では判定ジョブが成功し、かつ対象ファイルが変わったときだけ実行する
+    # （判定ジョブ自体が失敗した場合も安全側に倒して実行する）。
+    if: >-
+      !cancelled() &&
+      (github.event_name != 'pull_request' ||
+       needs.audit-changes.result != 'success' ||
+       needs.audit-changes.outputs.audit == 'true')
+    permissions:
+      contents: read
+      issues: write
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies (frozen, with dev group)
+        run: uv sync --frozen --group dev
+
+      - name: Run pip-audit (against installed env)
+        id: audit
+        continue-on-error: true
+        run: |
+          # Audit the resolved environment (matches local workflow).
+          # --requirement flag spawns a temp venv which fails on some runners.
+          # 期限内の一時除外のみ --ignore-vuln に渡す（形式は pip-audit-ignore.txt 参照）
+          IGNORE_ARGS=()
+          TODAY=$(date -u +%F)
+          while read -r id until _; do
+            if [[ "$until" < "$TODAY" ]]; then
+              echo "::warning::ignore entry expired ($until): $id"
+            else
+              IGNORE_ARGS+=(--ignore-vuln "$id")
+            fi
+          done < <(grep -vE '^[[:space:]]*(#|$)' pip-audit-ignore.txt || true)
+          echo "Ignoring $(( ${#IGNORE_ARGS[@]} / 2 )) vuln(s) from pip-audit-ignore.txt"
+          uv run --group dev pip-audit \
+            "${IGNORE_ARGS[@]}" \
+            --format json \
+            --output audit-result.json || true
+          VULN_COUNT=$(jq '[.dependencies[]? | select(.vulns | length > 0)] | length' audit-result.json 2>/dev/null || echo 0)
+          echo "vulnerabilities=$VULN_COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Create issue if vulnerabilities found
+        if: steps.audit.outputs.vulnerabilities > 0 && github.event_name != 'pull_request'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        with:
+          script: |
+            const fs = require('fs')
+            const result = JSON.parse(fs.readFileSync('python/audit-result.json', 'utf8'))
+            let body = '## Python Security Vulnerabilities Detected\n\n'
+            body += '**Date**: ' + new Date().toISOString().split('T')[0] + '\n\n'
+            body += '## Vulnerabilities\n\n'
+            for (const dep of result.dependencies || []) {
+              if (!dep.vulns || dep.vulns.length === 0) continue
+              for (const v of dep.vulns) {
+                body += '### ' + dep.name + '@' + dep.version + '\n'
+                body += '- ID: ' + v.id + '\n'
+                body += '- Fix: ' + (v.fix_versions?.join(', ') || 'n/a') + '\n'
+                body += '- Description: ' + (v.description || '') + '\n\n'
+              }
+            }
+            body += '## Action Required\n\n'
+            body += '1. Review vulnerabilities above\n'
+            body += '2. Update affected packages in `python/pyproject.toml`\n'
+            body += '3. Run `cd python && uv lock` (uv.lock is the only dependency source; the Docker build derives requirements from it)\n'
+            body += '4. Verify with `uv run --group dev pip-audit`\n'
+            body += '5. Create PR with fixes\n\n'
+            body += '## Reference\n\n'
+            body += '- [Supply Chain Security Guide](./docs/security/SUPPLY_CHAIN_SECURITY.md)\n'
+            body += '- [Python Security Checklist](./docs/ml/PYTHON_SECURITY_CHECKLIST.md)\n'
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Python Security Audit: Vulnerabilities Found (' + new Date().toISOString().split('T')[0] + ')',
+              body,
+              labels: ['security', 'dependencies', 'python']
+            })
+
+      - name: Fail PR if vulnerabilities found
+        if: steps.audit.outputs.vulnerabilities > 0 && github.event_name == 'pull_request'
+        run: |
+          echo "Found ${{ steps.audit.outputs.vulnerabilities }} vulnerable package(s)."
+          exit 1
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Python Security Audit Summary"
+            echo ""
+            echo "- Vulnerable packages: ${{ steps.audit.outputs.vulnerabilities }}"
+          } >> "$GITHUB_STEP_SUMMARY"

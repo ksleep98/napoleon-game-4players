@@ -17,7 +17,7 @@ graph LR
     D -->|Manual merge| E[main branch]
 ```
 
-### 2. main ブランチリリース (auto-release.yml)
+### 2. main ブランチリリース (release.yml の create-release ジョブ)
 
 **トリガー**: mainブランチへのpush時（リリースPRマージ後）
 **機能**: 自動タグ作成・GitHubリリース・リリースノート生成
@@ -65,11 +65,11 @@ graph LR
 - **Release Checklist**: リリース前確認項目
 - **Technical Details**: 変更統計情報
 
-### auto-release.yml
+### release.yml（create-release ジョブ）
 
 #### 実行タイミング
 
-- mainブランチにコミットがpushされた時（通常はリリースPRのマージ後）
+- mainブランチにコミットがpushされた時（通常はリリースPRのマージ後）、同じワークフローの `build-and-test` ジョブが成功した後
 
 #### 実行内容
 
@@ -174,7 +174,7 @@ echo "- [ ] All CI checks pass" >> release_notes.md
 
 #### バージョン形式変更
 
-`auto-release.yml` の以下セクションを編集:
+`release.yml`（`create-release` ジョブ）の以下セクションを編集:
 
 ```bash
 # Generate semantic version based on date
@@ -185,7 +185,7 @@ version_tag="v$current_date"
 
 #### コミット分類ルール変更
 
-`auto-release.yml` の以下セクションでカスタマイズ:
+`release.yml`（`create-release` ジョブ）の以下セクションでカスタマイズ:
 
 ```bash
 if [[ $commit_msg == feat:* ]]; then

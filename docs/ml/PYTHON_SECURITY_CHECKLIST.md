@@ -135,10 +135,10 @@
 
 ### ✅ GitHub Actions設定
 
-- [ ] `python-security-audit.yml` を作成
+- [ ] `python.yml` に `python-security` ジョブを作成（旧 `python-security-audit.yml`）
 
   ```yaml
-  name: Python Security Audit
+  name: Python
 
   on:
     schedule:
@@ -169,7 +169,7 @@
 
 - [ ] 手動実行でテスト
   ```
-  GitHub → Actions → Python Security Audit → Run workflow
+  GitHub → Actions → Python → Run workflow（lint と監査の両ジョブが走る）
   ```
 
 ---

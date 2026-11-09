@@ -212,12 +212,12 @@ SENTRY_DSN=[YOUR_SENTRY_DSN]
 
 ## 4. GitHub Actions for Production
 
-### 4.1 Production Deploy Workflow
+### 4.1 Release Workflow (build-and-test)
 
-`.github/workflows/production-deploy.yml`:
+`.github/workflows/release.yml`（`build-and-test` ジョブ。以下は概略）:
 
 ```yaml
-name: Production Deploy
+name: Release
 
 on:
   push:
@@ -227,7 +227,7 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  deploy:
+  build-and-test:
     runs-on: ubuntu-latest
 
     steps:
@@ -258,17 +258,15 @@ jobs:
       - name: Build
         run: pnpm build
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PROD_SUPABASE_SERVICE_ROLE_KEY }}
           NEXT_PUBLIC_APP_ENV: production
-
-      - name: E2E Tests (Production URL)
-        if: github.event_name == 'pull_request'
-        run: pnpm test:e2e:production
-        env:
-          PLAYWRIGHT_BASE_URL: https://napoleon-game-production.vercel.app
 ```
+
+> 本番 URL に対する E2E ステップは `release.yml` には存在しません（実装されていません）。
+> 同じワークフローには、push 時のみ `build-and-test` 成功後に動く
+> `deploy-notification` / `create-release`（タグ・GitHub Release 作成）ジョブもあります。
 
 ## 5. E2E Tests for Production
 
