@@ -2,6 +2,10 @@
 
 GitHub ActionsでmainブランチへのPR作成・管理を行うためのPersonal Access Token設定方法。
 
+> ⚠️ **このガイドは廃止済みです（2026-11）。** どの workflow も `PAT_TOKEN` を参照しておらず、
+> リリース PR の作成は `secrets.GITHUB_TOKEN` で動いています。リポジトリ Secret の
+> `PAT_TOKEN` は未使用のため削除しました。以下は経緯の記録として残しています。
+
 ## 🚫 問題の概要
 
 GitHub Actionsの標準`GITHUB_TOKEN`では以下の制限があります：
