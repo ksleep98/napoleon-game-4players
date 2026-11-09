@@ -1,0 +1,110 @@
+name: Dependabot Auto Merge
+
+# Dependabot の patch / minor 更新を自動でマージする。マージしてよいかは
+# .github/scripts/dependabot-auto-merge.sh が判定する（major・github_actions 除外、
+# lockfile の差分を含む全パッケージが公開から 7 日以上）。
+#
+# GitHub の auto-merge（予約）は使わず、判定した直後に --match-head-commit 付きで
+# 直接マージする。予約方式だと、予約後に PR の内容が変わっても再判定されないため。
+# マージは「全チェックが green（必須以外も含む）かつ CLEAN」のときだけ。
+#
+# トリガーは schedule のみ。
+# - pull_request_target は 2026-12-02 から public リポジトリで既定ブロックになる
+#   （https://github.blog/changelog/2026-11-02-pull_request_target-blocked-by-default-december-2）
+# - GITHUB_TOKEN によるマージは後続 workflow を起動しない（GitHub の仕様）ため、
+#   develop への push でも拾えない
+
+on:
+  schedule:
+    - cron: "*/20 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependabot-auto-merge
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+
+      - name: Merge one eligible PR, or request a rebase
+        # 1回に動かすのは1本だけ。マージすると残りは BEHIND になるので、
+        # 次の実行で古い順に1本ずつ rebase → CI → マージと進める。
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          REBASE_TIMEOUT_HOURS: "6"
+        run: |
+          prs=$(gh pr list --author 'app/dependabot' --base develop --state open --limit 100 \
+            --json number,createdAt --jq 'sort_by(.createdAt) | .[].number')
+
+          # 応答待ち・チェック待ちをあきらめる境界（これより古ければ次の PR へ進む）
+          threshold=$(date -u -d "-${REBASE_TIMEOUT_HOURS} hours" +%Y-%m-%dT%H:%M:%SZ)
+
+          busy=""
+          behind=()
+          for n in $prs; do
+            result=$(.github/scripts/dependabot-auto-merge.sh "$n" | tail -n1) || {
+              echo "::warning::#$n: evaluation failed"
+              continue
+            }
+            echo "#$n: $result"
+            read -r decision head_oid merge_state checks committed_at <<<"$result"
+            [ "$decision" = "ELIGIBLE" ] || continue
+
+            if [ "$checks" = "pass" ] && [ "$merge_state" = "CLEAN" ]; then
+              # 判定したコミットから head が動いていたらマージしない
+              if gh pr merge "$n" --squash --match-head-commit "$head_oid"; then
+                echo "Merged #$n"
+                exit 0
+              fi
+              echo "::warning::#$n: merge failed; trying the next PR."
+              continue
+            fi
+            case "$checks/$merge_state" in
+              pending/*)
+                if [[ "$committed_at" > "$threshold" ]]; then
+                  busy="$n"
+                else
+                  echo "::warning::#$n: checks pending since $committed_at; skipping."
+                fi
+                ;;
+              pass/BEHIND) behind+=("$n") ;;
+            esac
+          done
+
+          if [ -n "$busy" ]; then
+            echo "#$busy is running checks; waiting."
+            exit 0
+          fi
+
+          # BEHIND の PR に古い順で rebase を依頼する。依頼済みで応答待ちなら待つが、
+          # REBASE_TIMEOUT_HOURS を過ぎても応答が無ければ次の PR に進む。
+          for n in "${behind[@]}"; do
+            last_commit=$(gh pr view "$n" --json commits --jq '.commits[-1].committedDate')
+            requested=$(gh pr view "$n" --json comments --jq \
+              "[.comments[] | select(.body == \"@dependabot rebase\" and .createdAt > \"$last_commit\") | .createdAt] | max // empty")
+            if [ -z "$requested" ]; then
+              gh pr comment "$n" --body "@dependabot rebase"
+              echo "Requested rebase for #$n"
+              exit 0
+            fi
+            if [[ "$requested" > "$threshold" ]]; then
+              echo "#$n: rebase requested at $requested; waiting for Dependabot."
+              exit 0
+            fi
+            echo "::warning::#$n: no response to rebase request since $requested; trying the next PR."
+          done
+          echo "Nothing to do."

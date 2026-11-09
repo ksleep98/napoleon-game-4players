@@ -278,11 +278,21 @@ GitHubリポジトリの設定をTerraformで管理し、VCS-driven workflowで�
 
 **`BEHIND` になった PR の扱い:**
 
-- Dependabot PR → `@dependabot rebase` をコメントし、CI 再実行を待ってからマージ
+- Dependabot PR（npm / Python の patch・minor）→ **自動**。
+  `.github/workflows/dependabot-auto-merge.yml` が 20 分おきに、古い順で1本ずつ
+  「判定 → 全チェック green かつ CLEAN ならマージ / BEHIND なら `@dependabot rebase`」
+  を進める。GitHub の auto-merge（予約）は使わず、判定したコミットに
+  `--match-head-commit` で固定して直接マージする（リポジトリの `allow_auto_merge` は false のまま）
+- 判定は `.github/scripts/dependabot-auto-merge.sh`。コミットメッセージの依存に加え
+  **lockfile の差分で追加された全パッケージ（推移的依存を含む）が公開から 7 日以上**で
+  あることを npm / PyPI で確認する。Dependabot の cooldown は**セキュリティ更新と
+  推移的依存には効かない**ため、これが公開直後の版を取り込まない歯止め
+- **手動対応のまま**: major 更新、`github_actions` の更新（タグの付け替えを公開日で
+  検知できない）、いずれかのチェックが赤い PR、変更パッケージが 80 を超える PR
 - 自分の PR → develop を取り込んで push（ただし
   [ブランチクリーンアップ](#ブランチクリーンアップ手動実行のみ)の事故歴に注意）
-- **auto-merge はリポジトリ設定で無効**なので `gh pr merge --auto` は使えません。
-  複数 PR を捌くときは1本ずつ直列に処理します
+- `GITHUB_TOKEN` によるマージは後続 workflow を起動しないため、
+  `auto-release-pr.yml`（develop への push で発火）は bot のマージでは動かない
 
 #### 運用フロー
 
