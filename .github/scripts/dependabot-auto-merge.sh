@@ -16,10 +16,16 @@
 #
 # Dependabot の cooldown はセキュリティ更新には適用されず、推移的依存の更新にも
 # 効かない。公開直後の版を自動で取り込まないための歯止めがこの公開日チェック。
+#
+# 例外: ブラウザ対応状況のデータを配るだけの npm パッケージ（DATA_PACKAGES）は
+# DATA_MIN_AGE_DAYS 日で可とする。ほぼ毎日新版が出るため、Dependabot が PR を作り直す
+# たびに最新版が入り、7 日を満たす瞬間が来ない（#636 で発生）。公開直後の版だけは避ける。
 set -euo pipefail
 
 MIN_AGE_DAYS="${MIN_AGE_DAYS:-7}"
 MAX_PACKAGES="${MAX_PACKAGES:-80}"
+DATA_MIN_AGE_DAYS="${DATA_MIN_AGE_DAYS:-1}"
+DATA_PACKAGES=" caniuse-lite electron-to-chromium baseline-browser-mapping "
 MAJOR_MARKER='<!-- dependabot-auto-merge:major -->'
 pr="$1"
 
@@ -178,13 +184,17 @@ while read -r name ver; do
   fi
   age_days=$(((now - $(jq -rn --arg d "$pub" '$d | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601')) / 86400))
   echo "  ${name}@${ver}: ${age_days}d" >&2
-  if [ "$age_days" -lt "$MIN_AGE_DAYS" ]; then
+  min_age="$MIN_AGE_DAYS"
+  if [ "$ecosystem" = npm_and_yarn ] && [[ "$DATA_PACKAGES" == *" ${name} "* ]]; then
+    min_age="$DATA_MIN_AGE_DAYS"
+  fi
+  if [ "$age_days" -lt "$min_age" ]; then
     young+=("${name}@${ver}(${age_days}d)")
   fi
 done <<<"$deps"
 
 if [ "${#young[@]}" -gt 0 ]; then
-  hold "published less than ${MIN_AGE_DAYS} days ago: ${young[*]}"
+  hold "published too recently: ${young[*]}"
 fi
 
 # 必須以外のチェック（Dependency Review・python-security 等）も含め、全て見る

@@ -2,7 +2,7 @@ name: Dependabot Auto Merge
 
 # Dependabot の patch / minor 更新を自動でマージする。マージしてよいかは
 # .github/scripts/dependabot-auto-merge.sh が判定する（major・github_actions 除外、
-# lockfile の差分を含む全パッケージが公開から 7 日以上）。
+# lockfile の差分を含む全パッケージが公開から 7 日以上。ブラウザ対応データの一部は 1 日）。
 #
 # GitHub の auto-merge（予約）は使わず、判定した直後に --match-head-commit 付きで
 # 直接マージする。予約方式だと、予約後に PR の内容が変わっても再判定されないため。
