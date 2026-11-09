@@ -278,19 +278,20 @@ GitHubリポジトリの設定をTerraformで管理し、VCS-driven workflowで�
 
 **`BEHIND` になった PR の扱い:**
 
-- Dependabot PR → **自動**。`.github/workflows/dependabot-auto-merge.yml` が
-  patch / minor 更新に auto-merge（squash）を予約し、20 分おきの schedule で
-  `BEHIND` の PR に1本ずつ `@dependabot rebase` を依頼する。`ci-pipeline` が通れば
-  GitHub がマージする。**major 更新と `ci-pipeline` が赤い PR は手動対応**
-- 予約の条件は `.github/scripts/dependabot-auto-merge.sh` が判定する。**更新対象
-  すべての公開から 7 日以上**経っていることをレジストリ（npm / PyPI / GitHub
-  Releases）で確認できたものだけ。Dependabot の cooldown は**セキュリティ更新には
-  効かず**、CI の `--frozen-lockfile` は `.npmrc` の `minimumReleaseAge` を見ない
-  ため、この公開日チェックが自動マージの唯一の歯止め。7 日未満は保留し schedule で再判定
+- Dependabot PR（npm / Python の patch・minor）→ **自動**。
+  `.github/workflows/dependabot-auto-merge.yml` が 20 分おきに、古い順で1本ずつ
+  「判定 → 全チェック green かつ CLEAN ならマージ / BEHIND なら `@dependabot rebase`」
+  を進める。GitHub の auto-merge（予約）は使わず、判定したコミットに
+  `--match-head-commit` で固定して直接マージする（リポジトリの `allow_auto_merge` は false のまま）
+- 判定は `.github/scripts/dependabot-auto-merge.sh`。コミットメッセージの依存に加え
+  **lockfile の差分で追加された全パッケージ（推移的依存を含む）が公開から 7 日以上**で
+  あることを npm / PyPI で確認する。Dependabot の cooldown は**セキュリティ更新と
+  推移的依存には効かない**ため、これが公開直後の版を取り込まない歯止め
+- **手動対応のまま**: major 更新、`github_actions` の更新（タグの付け替えを公開日で
+  検知できない）、いずれかのチェックが赤い PR、変更パッケージが 80 を超える PR
 - 自分の PR → develop を取り込んで push（ただし
   [ブランチクリーンアップ](#ブランチクリーンアップ手動実行のみ)の事故歴に注意）
-- auto-merge はリポジトリ設定（`allow_auto_merge = true`）で有効。ただし
-  `GITHUB_TOKEN` で予約したマージは後続 workflow を起動しないため、
+- `GITHUB_TOKEN` によるマージは後続 workflow を起動しないため、
   `auto-release-pr.yml`（develop への push で発火）は bot のマージでは動かない
 
 #### 運用フロー

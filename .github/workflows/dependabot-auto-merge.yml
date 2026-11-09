@@ -1,16 +1,18 @@
 name: Dependabot Auto Merge
 
-# Dependabot の patch / minor 更新に auto-merge を予約する。予約の可否は
-# .github/scripts/dependabot-auto-merge.sh が判定する（major 除外・公開から 7 日以上）。
-# マージ可否の最終判断は develop の Ruleset（必須チェック ci-pipeline・strict）に任せる。
+# Dependabot の patch / minor 更新を自動でマージする。マージしてよいかは
+# .github/scripts/dependabot-auto-merge.sh が判定する（major・github_actions 除外、
+# lockfile の差分を含む全パッケージが公開から 7 日以上）。
+#
+# GitHub の auto-merge（予約）は使わず、判定した直後に --match-head-commit 付きで
+# 直接マージする。予約方式だと、予約後に PR の内容が変わっても再判定されないため。
+# マージは「全チェックが green（必須以外も含む）かつ CLEAN」のときだけ。
 #
 # トリガーは schedule のみ。
 # - pull_request_target は 2026-12-02 から public リポジトリで既定ブロックになる
-#   （https://github.blog/changelog/2026-11-02-pull_request_target-blocked-by-default-december-2）。
-#   例外を許可するより、PR イベントを使わない方が攻撃面も小さい
-# - GITHUB_TOKEN で予約した auto-merge によるマージは後続 workflow を起動しない
-#   （GitHub の仕様）ため、develop への push でも拾えない
-# 新しい PR は最長 20 分（+ schedule の遅延）で判定される。
+#   （https://github.blog/changelog/2026-11-02-pull_request_target-blocked-by-default-december-2）
+# - GITHUB_TOKEN によるマージは後続 workflow を起動しない（GitHub の仕様）ため、
+#   develop への push でも拾えない
 
 on:
   schedule:
@@ -20,11 +22,13 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: dependabot-auto-merge
+  cancel-in-progress: false
+
 jobs:
   sweep:
     runs-on: ubuntu-latest
-    concurrency:
-      group: dependabot-auto-merge-sweep
     permissions:
       contents: write
       pull-requests: write
@@ -35,52 +39,61 @@ jobs:
           persist-credentials: false
           sparse-checkout: .github/scripts
 
-      - name: Enable auto-merge for eligible PRs
-        # 未予約の PR を判定する（公開から日が浅く保留にしたものの再判定を含む）
+      - name: Merge one eligible PR, or request a rebase
+        # 1回に動かすのは1本だけ。マージすると残りは BEHIND になるので、
+        # 次の実行で古い順に1本ずつ rebase → CI → マージと進める。
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
+          REBASE_TIMEOUT_HOURS: "6"
         run: |
-          for n in $(gh pr list --author 'app/dependabot' --base develop --state open \
-            --json number,autoMergeRequest --jq '.[] | select(.autoMergeRequest == null) | .number'); do
-            .github/scripts/dependabot-auto-merge.sh "$n" || echo "::warning::#$n: evaluation failed"
-          done
+          prs=$(gh pr list --author 'app/dependabot' --base develop --state open --limit 100 \
+            --json number,createdAt --jq 'sort_by(.createdAt) | .[].number')
 
-      - name: Request rebase for the oldest BEHIND PR
-        # auto-merge 予約済みで BEHIND の PR を1本だけ rebase させる。全部を一度に
-        # rebase すると、1本マージされた時点で残りが再び BEHIND になり CI が無駄になる。
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          prs=$(gh pr list --author 'app/dependabot' --base develop --state open \
-            --json number,mergeStateStatus,autoMergeRequest,createdAt \
-            --jq 'map(select(.autoMergeRequest != null)) | sort_by(.createdAt)')
+          busy=""
+          behind=()
+          for n in $prs; do
+            result=$(.github/scripts/dependabot-auto-merge.sh "$n" | tail -n1) || {
+              echo "::warning::#$n: evaluation failed"
+              continue
+            }
+            echo "#$n: $result"
+            read -r decision head_oid merge_state checks <<<"$result"
+            [ "$decision" = "ELIGIBLE" ] || continue
 
-          # CI 実行中（BLOCKED で checks が pending）の PR があれば、その結果を待つ
-          for n in $(jq -r '.[] | select(.mergeStateStatus == "BLOCKED") | .number' <<<"$prs"); do
-            # gh pr checks は pending があると非ゼロで終了するので、終了コードではなく出力で判定する
-            pending=$(gh pr checks "$n" --required --json bucket --jq '[.[] | select(.bucket == "pending")] | length' 2>/dev/null) || true
-            if [ "${pending:-0}" != "0" ]; then
-              echo "#$n is running required checks; waiting."
+            if [ "$checks" = "pass" ] && [ "$merge_state" = "CLEAN" ]; then
+              # 判定したコミットから head が動いていたらマージしない
+              gh pr merge "$n" --squash --match-head-commit "$head_oid"
+              echo "Merged #$n"
               exit 0
             fi
+            case "$checks/$merge_state" in
+              pending/*) busy="$n" ;;
+              pass/BEHIND) behind+=("$n") ;;
+            esac
           done
 
-          n=$(jq -r 'map(select(.mergeStateStatus == "BEHIND")) | .[0].number // empty' <<<"$prs")
-          if [ -z "$n" ]; then
-            echo "No BEHIND Dependabot PR with auto-merge enabled."
+          if [ -n "$busy" ]; then
+            echo "#$busy is running checks; waiting."
             exit 0
           fi
 
-          # 前回の依頼に Dependabot がまだ応えていなければ、重ねて依頼しない
-          last_commit=$(gh pr view "$n" --json commits --jq '.commits[-1].committedDate')
-          already=$(gh pr view "$n" --json comments \
-            --jq "[.comments[] | select(.body == \"@dependabot rebase\" and .createdAt > \"$last_commit\")] | length")
-          if [ "$already" != "0" ]; then
-            echo "#$n: rebase already requested; waiting for Dependabot."
-            exit 0
-          fi
-
-          gh pr comment "$n" --body "@dependabot rebase"
-          echo "Requested rebase for #$n"
+          # BEHIND の PR に古い順で rebase を依頼する。依頼済みで応答待ちなら待つが、
+          # REBASE_TIMEOUT_HOURS を過ぎても応答が無ければ次の PR に進む。
+          threshold=$(date -u -d "-${REBASE_TIMEOUT_HOURS} hours" +%Y-%m-%dT%H:%M:%SZ)
+          for n in "${behind[@]}"; do
+            last_commit=$(gh pr view "$n" --json commits --jq '.commits[-1].committedDate')
+            requested=$(gh pr view "$n" --json comments --jq \
+              "[.comments[] | select(.body == \"@dependabot rebase\" and .createdAt > \"$last_commit\") | .createdAt] | max // empty")
+            if [ -z "$requested" ]; then
+              gh pr comment "$n" --body "@dependabot rebase"
+              echo "Requested rebase for #$n"
+              exit 0
+            fi
+            if [[ "$requested" > "$threshold" ]]; then
+              echo "#$n: rebase requested at $requested; waiting for Dependabot."
+              exit 0
+            fi
+            echo "::warning::#$n: no response to rebase request since $requested; trying the next PR."
+          done
+          echo "Nothing to do."
