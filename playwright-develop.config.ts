@@ -33,8 +33,16 @@ export default defineConfig({
     // 外部環境での安定性向上
     ignoreHTTPSErrors: true,
 
-    // Vercel認証状態を読み込み（存在する場合）
-    storageState: process.env.CI ? 'vercel-auth-state.json' : undefined,
+    // develop 環境は Vercel の Deployment Protection 下にある。
+    // Protection Bypass for Automation のキーをヘッダーで送って通過する
+    // （set-bypass-cookie で、以降のナビゲーションも Cookie で通す）。
+    extraHTTPHeaders: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      ? {
+          'x-vercel-protection-bypass':
+            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+          'x-vercel-set-bypass-cookie': 'true',
+        }
+      : undefined,
   },
 
   timeout: 120 * 1000, // 120秒（外部環境用に延長）
@@ -68,6 +76,4 @@ export default defineConfig({
   // 外部環境を使用するためwebServerは無効
   webServer: undefined,
 
-  // グローバル設定
-  globalSetup: './tests/global-setup-develop.ts',
 })
