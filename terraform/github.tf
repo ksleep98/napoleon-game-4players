@@ -59,9 +59,10 @@ resource "github_repository_ruleset" "develop" {
       allowed_merge_methods             = ["squash"]  # feature -> develop: スカッシュマージのみ
     }
 
-    # Status Checks必須 + 最新のdevelopブランチでCIが通過していることを要求
+    # Status Checks必須（develop への追従は求めない。lockfile が衝突する Dependabot PR は
+    # Dependabot 自身が rebase するので、依存更新どうしの組み合わせも CI を通る）
     required_status_checks {
-      strict_required_status_checks_policy = true  # Require branches to be up to date before merging
+      strict_required_status_checks_policy = false # develop への追従は必須にしない（Dependabot の自動マージを BEHIND で止めないため）
 
       required_check {
         context        = "ci-pipeline"
