@@ -447,7 +447,10 @@ CI では2か所に分かれています。**PR の `e2e-tests` ジョブは Pla
   一致するときだけ**実行し、そのデプロイ自体の URL を試験する
 - develop 環境は Vercel の Deployment Protection 下にある。**Protection Bypass for
   Automation** のキーを secret `VERCEL_AUTOMATION_BYPASS_SECRET` に置き、
-  `playwright-develop.config.ts` が `x-vercel-protection-bypass` ヘッダーで送る
+  `tests/global-setup-develop.ts` が一度だけ Vercel の Cookie に交換して使う。
+  キーをヘッダーで全リクエストに付けると別オリジン（Supabase）にも送られ、
+  トレースにも平文で残るため。**トレースは取らない**（`trace: 'off'`。
+  アーティファクトは公開リポジトリで誰でも落とせる）
   （キーは Vercel の `napoleon-game-dev` → Settings → Deployment Protection で再発行できる）
 - E2E が通ったときだけリリース PR を作成・更新する（旧 `auto-release-pr.yml` は削除）
 

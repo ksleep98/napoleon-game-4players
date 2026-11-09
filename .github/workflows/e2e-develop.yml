@@ -58,6 +58,8 @@ jobs:
           GH_REPO: ${{ github.repository }}
           EVENT_NAME: ${{ github.event_name }}
           DEPLOY_SHA: ${{ github.event.deployment.sha }}
+          DEPLOY_CREATOR: ${{ github.event.deployment.creator.login }}
+          STATUS_CREATOR: ${{ github.event.deployment_status.creator.login }}
           DEPLOY_URL: ${{ github.event.deployment_status.environment_url }}
           INPUT_URL: ${{ github.event.inputs.target_url }}
           INPUT_CREATE_PR: ${{ github.event.inputs.create_pr }}
@@ -66,7 +68,7 @@ jobs:
           # 試験先には Vercel の回避キーをヘッダーで送るので、このプロジェクトの
           # develop エイリアスか、自チームのデプロイ URL 以外には向けない
           allowed() {
-            [[ "$1" =~ ^https://(napoleon-game-dev\.vercel\.app|[a-z0-9-]+-kks-projects-204e9670\.vercel\.app)/?$ ]]
+            [[ "$1" =~ ^https://(napoleon-game-dev\.vercel\.app|napoleon-game-[a-z0-9]+-kks-projects-204e9670\.vercel\.app)/?$ ]]
           }
 
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
@@ -83,6 +85,13 @@ jobs:
             else
               echo "create_pr=false" >> "$GITHUB_OUTPUT"
             fi
+            exit 0
+          fi
+
+          # Vercel 以外が作った deployment / status では動かさない
+          if [ "$DEPLOY_CREATOR" != "vercel[bot]" ] || [ "$STATUS_CREATOR" != "vercel[bot]" ]; then
+            echo "Deployment was not created by vercel[bot]; skip."
+            echo "run=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -109,7 +118,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write
     env:
       TARGET_URL: ${{ needs.resolve.outputs.url }}
 
@@ -258,7 +266,7 @@ jobs:
           name: develop-e2e-results
           path: |
             test-results/
-            playwright-report/
+            !test-results/**/trace.zip
             e2e_summary.md
           retention-days: 14
 

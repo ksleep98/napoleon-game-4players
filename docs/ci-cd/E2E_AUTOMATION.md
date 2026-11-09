@@ -44,8 +44,9 @@ graph TD
 
 - `playwright-develop.config.ts` - develop環境用設定
 - develop 環境の Deployment Protection は、secret `VERCEL_AUTOMATION_BYPASS_SECRET`
-  （Vercel の Protection Bypass for Automation）を `x-vercel-protection-bypass` ヘッダーで送って通過する
-  （旧 `tests/global-setup-develop.ts` の GitHub ログイン方式は 2026-11-09 に廃止）
+  （Vercel の Protection Bypass for Automation）で通過する。`tests/global-setup-develop.ts` が
+  キーを一度だけ Cookie に交換し、テストはその Cookie で動く（旧 GitHub ログイン方式は 2026-11-09 に廃止）
+- トレースは取らない（`trace: 'off'`）。Cookie を平文で含み、公開アーティファクトに上がるため
 
 ### NPMスクリプト
 

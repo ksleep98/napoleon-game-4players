@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { BYPASS_STATE_PATH } from './tests/global-setup-develop'
 
 /**
  * Develop環境専用のPlaywright設定
@@ -10,6 +11,7 @@ export default defineConfig({
   forbidOnly: true,
   retries: 3, // develop環境では3回リトライ（ネットワーク不安定性を考慮）
   workers: 1, // CI環境では1ワーカー
+  globalSetup: './tests/global-setup-develop.ts',
   reporter: [
     ['line'],
     ['html', { open: 'never', outputFolder: 'playwright-report-develop' }],
@@ -22,7 +24,8 @@ export default defineConfig({
       process.env.PLAYWRIGHT_BASE_URL || 'https://napoleon-game-dev.vercel.app',
 
     // 外部環境用の設定
-    trace: 'retain-on-failure',
+    // トレースはリクエストの Cookie を平文で含み、公開アーティファクトに上がるので取らない
+    trace: 'off',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
 
@@ -34,15 +37,8 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
 
     // develop 環境は Vercel の Deployment Protection 下にある。
-    // Protection Bypass for Automation のキーをヘッダーで送って通過する
-    // （set-bypass-cookie で、以降のナビゲーションも Cookie で通す）。
-    extraHTTPHeaders: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
-      ? {
-          'x-vercel-protection-bypass':
-            process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
-          'x-vercel-set-bypass-cookie': 'true',
-        }
-      : undefined,
+    // globalSetup で回避キーを Cookie に交換し、その Cookie だけを使う
+    storageState: BYPASS_STATE_PATH,
   },
 
   timeout: 120 * 1000, // 120秒（外部環境用に延長）
