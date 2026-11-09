@@ -85,7 +85,7 @@ mainブランチへのPR作成には**Personal Access Token**が必要です。
 
 - 📋 **設定手順**: [GitHub PAT設定ガイド](./GITHUB_PAT_SETUP.md)
 - ⚙️ **必要権限**: `repo`, `workflow`
-- 🔒 **Secrets設定**: `PAT_TOKEN` as repository secret
+- 🔒 **Secrets設定**: 不要（`secrets.GITHUB_TOKEN` で動作。`PAT_TOKEN` は未使用のため削除済み）
 
 **権限エラー解決**:
 

@@ -5,8 +5,13 @@
 ### ワークフロー設定
 
 - ✅ `.github/workflows/ci.yml` - メインCI/CDパイプライン
-- ✅ `main` と `develop` ブランチでトリガー
-- ✅ Push/PR時の自動品質チェック
+  （必須チェック `ci-pipeline` に加え、`e2e-tests`（build + smoke）・
+  `dependency-review` ジョブを同居）
+- ✅ `ci.yml` は develop 向け PR でのみトリガー（push・main 向け PR では起動しない）
+- ✅ `.github/workflows/python.yml` - Python の lint/test（`python-lint`）と
+  pip-audit（`python-security`、週次 schedule でも実行）
+- ✅ `.github/workflows/release.yml` - main への push / main 向け PR で
+  `build-and-test`、push 時のみタグ・GitHub Release 作成（`create-release`）
 
 ## CI/CD パイプライン内容
 

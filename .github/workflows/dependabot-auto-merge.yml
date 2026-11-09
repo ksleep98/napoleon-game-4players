@@ -1,0 +1,168 @@
+name: Dependabot Auto Merge
+
+# Dependabot の patch / minor 更新を自動でマージする。マージしてよいかは
+# .github/scripts/dependabot-auto-merge.sh が判定する（major・github_actions 除外、
+# lockfile の差分を含む全パッケージが公開から 7 日以上。ブラウザ対応データの一部は 1 日）。
+#
+# GitHub の auto-merge（予約）は使わず、判定した直後に --match-head-commit 付きで
+# 直接マージする。予約方式だと、予約後に PR の内容が変わっても再判定されないため。
+# マージは「全チェックが green（必須以外も含む）かつ CLEAN」のときだけ。
+#
+# トリガー:
+# - workflow_run: Dependabot PR のチェック（CI / Python / CodeQL）が終わった時点で判定する。
+#   主経路。このリポジトリでは schedule が数時間遅れることがあり、当てにできない
+#   （週次 00:00 の schedule が 03:57〜05:53 に起動していた）
+# - retry-later ジョブ: 公開日待ちで保留にした PR があるとき、1 時間待ってから
+#   この workflow を workflow_dispatch で起動し直す（GITHUB_TOKEN でも dispatch は起動する）。
+#   保留中は待機ジョブが常に1つ居る形になる（public リポジトリなので runner は無料）
+# - schedule: 最後の保険。2026-11-09 に 20 分間隔で入れたが約 8 時間1回も起動しなかった
+#   （週次の schedule も 2〜6 時間遅れる）ため、当てにしない
+# 使わないもの:
+# - pull_request_target は 2026-12-02 から public リポジトリで既定ブロックになる
+#   （https://github.blog/changelog/2026-11-02-pull_request_target-blocked-by-default-december-2）
+# - GITHUB_TOKEN によるマージは後続 workflow を起動しない（GitHub の仕様）ため、
+#   develop への push でも拾えない
+#
+# workflow_run は base（develop）の定義で動くが、この workflow は PR のコードを
+# checkout も実行もしない（判定スクリプトは develop のもの、PR は API でデータとして読むだけ）。
+
+on:
+  workflow_run:
+    workflows: ["CI", "Python", "CodeQL"]
+    types: [completed]
+  schedule:
+    # 毎時 0 分前後は GitHub の schedule が混み、遅延・スキップされやすいのでずらす
+    - cron: "7,27,47 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sweep:
+    # workflow_run は Dependabot が起こしたチェック（PR 作成・rebase）のときだけ
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.actor.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    # 待機ジョブ（retry-later）がこのグループを塞がないよう、ジョブ単位で直列化する
+    concurrency:
+      group: dependabot-auto-merge
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      retry: ${{ steps.sweep.outputs.retry }}
+    steps:
+      - name: Checkout scripts
+        uses: actions/checkout@v7.0.1
+        with:
+          # どのトリガーでも develop のスクリプトを使う（PR 側のコードは取らない）
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+
+      - name: Merge eligible PRs, or request a rebase
+        id: sweep
+        # 古い順に判定し、条件を満たすものを続けてマージする。lockfile が衝突した PR は
+        # DIRTY になり、Dependabot が rebase → CI → 次の実行でマージ、と進む。
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          REBASE_TIMEOUT_HOURS: "6"
+        run: |
+          prs=$(gh pr list --author 'app/dependabot' --base develop --state open --limit 100 \
+            --json number,createdAt --jq 'sort_by(.createdAt) | .[].number')
+
+          # 応答待ち・チェック待ちをあきらめる境界（これより古ければ次の PR へ進む）
+          threshold=$(date -u -d "-${REBASE_TIMEOUT_HOURS} hours" +%Y-%m-%dT%H:%M:%SZ)
+
+          busy=""
+          merged=""
+          behind=()
+          for n in $prs; do
+            result=$(.github/scripts/dependabot-auto-merge.sh "$n" | tail -n1) || {
+              echo "::warning::#$n: evaluation failed"
+              continue
+            }
+            echo "#$n: $result"
+            # 公開日待ちの保留は時間が経てば解ける。後で起動し直す
+            if [[ "$result" == "HOLD published too recently:"* ]]; then
+              echo "retry=true" >> "$GITHUB_OUTPUT"
+            fi
+            read -r decision head_oid merge_state checks committed_at <<<"$result"
+            [ "$decision" = "ELIGIBLE" ] || continue
+
+            if [ "$checks" = "pass" ] && [ "$merge_state" = "CLEAN" ]; then
+              # 判定したコミットから head が動いていたらマージしない
+              if gh pr merge "$n" --squash --match-head-commit "$head_oid"; then
+                echo "Merged #$n"
+                merged="$n"
+                continue
+              fi
+              echo "::warning::#$n: merge failed; trying the next PR."
+              continue
+            fi
+            case "$checks/$merge_state" in
+              pending/*)
+                if [[ "$committed_at" > "$threshold" ]]; then
+                  busy="$n"
+                else
+                  echo "::warning::#$n: checks pending since $committed_at; skipping."
+                fi
+                ;;
+              pass/BEHIND) behind+=("$n") ;;
+            esac
+          done
+
+          # strict を外しているので、1回の実行で条件を満たす PR を続けてマージする。
+          # マージした回は BEHIND の rebase 依頼をしない（次の実行で状態を見直す）
+          if [ -n "$merged" ]; then
+            exit 0
+          fi
+
+          if [ -n "$busy" ]; then
+            echo "#$busy is running checks; waiting."
+            exit 0
+          fi
+
+          # BEHIND の PR に古い順で rebase を依頼する。依頼済みで応答待ちなら待つが、
+          # REBASE_TIMEOUT_HOURS を過ぎても応答が無ければ次の PR に進む。
+          for n in "${behind[@]}"; do
+            last_commit=$(gh pr view "$n" --json commits --jq '.commits[-1].committedDate')
+            requested=$(gh pr view "$n" --json comments --jq \
+              "[.comments[] | select(.body == \"@dependabot rebase\" and .createdAt > \"$last_commit\") | .createdAt] | max // empty")
+            if [ -z "$requested" ]; then
+              gh pr comment "$n" --body "@dependabot rebase"
+              echo "Requested rebase for #$n"
+              exit 0
+            fi
+            if [[ "$requested" > "$threshold" ]]; then
+              echo "#$n: rebase requested at $requested; waiting for Dependabot."
+              exit 0
+            fi
+            echo "::warning::#$n: no response to rebase request since $requested; trying the next PR."
+          done
+          echo "Nothing to do."
+
+  retry-later:
+    needs: sweep
+    if: needs.sweep.outputs.retry == 'true'
+    runs-on: ubuntu-latest
+    # 待機は常に最新の1つだけ（新しい判定が走ったら古い待機は不要）
+    concurrency:
+      group: dependabot-auto-merge-retry
+      cancel-in-progress: true
+    timeout-minutes: 75
+    permissions:
+      actions: write
+    steps:
+      - name: Wait, then run this workflow again
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          sleep 3600
+          gh workflow run dependabot-auto-merge.yml --ref "$DEFAULT_BRANCH"

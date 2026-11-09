@@ -1,20 +1,115 @@
-name: Auto Release
+name: Release
+
+# 旧 production-deploy.yml + auto-release.yml を統合したワークフロー。
+#
+# - build-and-test: main への push と main 向け PR（リリース PR）の両方で実行
+# - deploy-notification: main への push 時のみ、build-and-test 成功後に実行
+# - create-release: main への push 時のみ、build-and-test 成功後に
+#   タグ作成 → GitHub Release 作成 → マージ済みリリース PR へ完了コメント
+#   （旧 auto-release.yml は build-and-test と無関係に並走していたが、
+#   ビルド・テストが通ったコミットにだけタグを打つよう依存させた）
 
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
 
-permissions:
-  contents: write
-  pull-requests: write
+# タグ作成・GitHub Release 作成を途中で打ち切らないよう、キャンセルはしない（直列化のみ）
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  create-release:
-    runs-on: ubuntu-slim
+  build-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: "22"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6.1.1
+        with:
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v6.1.0
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm type-check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Format check
+        run: pnpm format:check && pnpm format:other:check
+
+      - name: Unit tests
+        run: pnpm test:ci
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://mock.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: mock_anon_key
+          SUPABASE_SERVICE_ROLE_KEY: mock_service_role_key
+          NODE_ENV: test
+
+      - name: Build for production
+        run: pnpm build
+        # ビルドが通るかの確認だけなので、本番の値は渡さない。本番ビルドは Vercel が
+        # Dashboard の環境変数で行う。main 向け PR でもこの job は動くため、本番の
+        # service role key を渡すと PR の依存・ビルドスクリプトから読み出せてしまう。
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://mock.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: mock_anon_key
+          SUPABASE_SERVICE_ROLE_KEY: mock_service_role_key
+          NEXT_PUBLIC_APP_ENV: production
+          NODE_ENV: production
+
+  deploy-notification:
+    runs-on: ubuntu-latest
+    needs: [build-and-test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions: {}
+
+    steps:
+      - name: Production deployment success
+        run: |
+          echo "🚀 Production deployment completed successfully!"
+          echo "🔗 Production URL: https://napoleon-game.vercel.app"
+          echo "✅ All tests passed"
+
+  create-release:
+    runs-on: ubuntu-slim
+    needs: [build-and-test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 

@@ -26,26 +26,13 @@ Release PR (develop → main) が作成されると、GitHub ActionsがVercel CL
 6. **Create** をクリック
 7. 表示されたTokenをコピー
 
-### 2. GitHub Secretsの設定
+### 2. GitHub Secrets（不要）
 
-以下のコマンドでSecretsを設定（既に設定済みの場合はスキップ）:
-
-```bash
-# Vercel Token
-gh secret set VERCEL_TOKEN --repo ksleep98/napoleon-game-4players
-# コピーしたTokenを貼り付けてEnterキーを押す
-
-# Organization ID (既に設定済み)
-echo "team_d6zobA7XarMx00GQB0D6TexU" | gh secret set VERCEL_ORG_ID
-
-# Project ID (napoleon-game-dev - 既に設定済み)
-echo "prj_GSp6xU2t6160ftNzYSiOsTSn6gcH" | gh secret set VERCEL_PROJECT_ID
-
-# 本番Supabase環境変数 (既に設定済み)
-# PROD_NEXT_PUBLIC_SUPABASE_URL
-# PROD_NEXT_PUBLIC_SUPABASE_ANON_KEY
-# PROD_SUPABASE_SERVICE_ROLE_KEY
-```
+> **2026-11 時点で GitHub Actions からの Vercel デプロイは行っていません。**
+> デプロイは Vercel の Git 連携が行い、環境変数は Vercel Dashboard で管理します。
+> かつて設定していた `VERCEL_TOKEN` / `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID` と
+> 本番 Supabase 用の `PROD_*` Secrets は、どの workflow からも参照されていないため削除しました。
+> CI のビルド確認はダミー値で行います（`.github/workflows/ci.yml` / `release.yml`）。
 
 ### 3. Vercel プロジェクトの環境変数設定
 

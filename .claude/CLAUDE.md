@@ -270,19 +270,36 @@ GitHubリポジトリの設定をTerraformで管理し、VCS-driven workflowで�
 **重要な設計決定:**
 
 - ✅ CI必須チェック: **develop のみ**有効（`ci-pipeline`）。main には設定していない
-- ⚠️ **Strict Status Checks: 有効**（`strict_required_status_checks_policy = true`、
-  `terraform/github.tf`）。**develop が進むと他の PR は `BEHIND` になり、
-  追随するまでマージできません。**
+- **Strict Status Checks: 無効**（`strict_required_status_checks_policy = false`、
+  `terraform/github.tf`）。develop が進んでも、他の PR は `ci-pipeline` が通って
+  いればそのままマージできる。github-actions[bot] の `@dependabot rebase` に
+  Dependabot が反応せず、strict のままでは自動マージが `BEHIND` で止まったため外した
+  （2026-11-09）。lockfile が衝突する PR は Dependabot が自分で rebase する
 - ✅ Bypass Actors: 空（管理者バイパス無し。`gh pr merge --admin` も
   "Required status check ci-pipeline is expected" で失敗する）
 
-**`BEHIND` になった PR の扱い:**
+**PR のマージの扱い:**
 
-- Dependabot PR → `@dependabot rebase` をコメントし、CI 再実行を待ってからマージ
-- 自分の PR → develop を取り込んで push（ただし
+- Dependabot PR（npm / Python の patch・minor）→ **自動**。
+  `.github/workflows/dependabot-auto-merge.yml` が Dependabot PR のチェック完了時（`workflow_run`）と 公開日待ちで保留した PR があるときの 1 時間後の再起動（`retry-later` ジョブ。schedule は
+  このリポジトリではほぼ起動しないため当てにしない）に、古い順で
+  「判定 → 全チェック green かつ CLEAN ならマージ」を進める。GitHub の auto-merge（予約）は使わず、判定したコミットに
+  `--match-head-commit` で固定して直接マージする（リポジトリの `allow_auto_merge` は false のまま）
+- 判定は `.github/scripts/dependabot-auto-merge.sh`。コミットメッセージの依存に加え
+  **lockfile の差分で追加された全パッケージ（推移的依存を含む）が公開から 7 日以上**で
+  あることを npm / PyPI で確認する。Dependabot の cooldown は**セキュリティ更新と
+  推移的依存には効かない**ため、これが公開直後の版を取り込まない歯止め。
+  例外として、ブラウザ対応データだけの `caniuse-lite` / `electron-to-chromium` /
+  `baseline-browser-mapping` は 1 日以上で可（ほぼ毎日新版が出て、7 日を満たす瞬間が
+  来ないため。#636）
+- **手動対応のまま**: major 更新、`github_actions` の更新（タグの付け替えを公開日で
+  検知できない）、いずれかのチェックが赤い PR、変更パッケージが 80 を超える PR
+- 自分の PR → `ci-pipeline` が通ればそのままマージ可。develop との衝突や、develop 側の
+  変更との組み合わせが気になるときは develop を取り込んで push（ただし
   [ブランチクリーンアップ](#ブランチクリーンアップ手動実行のみ)の事故歴に注意）
-- **auto-merge はリポジトリ設定で無効**なので `gh pr merge --auto` は使えません。
-  複数 PR を捌くときは1本ずつ直列に処理します
+- `GITHUB_TOKEN` によるマージは後続 workflow（push 起動のもの）を起動しない。
+  リリース PR は Vercel のデプロイ完了（`deployment_status`）から動く `e2e-develop.yml` が
+  作るので、bot のマージでも作られる
 
 #### 運用フロー
 
@@ -419,15 +436,31 @@ pnpm run develop:unprotect
 
 ### E2E テスト
 
-CI では2つのワークフローに分かれています。**PR の "E2E Tests" は Playwright を
+CI では2か所に分かれています。**PR の `e2e-tests` ジョブは Playwright を
 動かしていません**（名前に反するので注意）。
 
-| ワークフロー                            | 発火                           | 実際にやること                                                                          |
+| ワークフロー / ジョブ                   | 発火                           | 実際にやること                                                                          |
 | --------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------- |
-| `e2e.yml` — "E2E Tests"                 | PR / push                      | `pnpm build` + `pnpm smoke`（Next.js 起動とトップページ 200 の確認）のみ                |
+| `ci.yml` の `e2e-tests` ジョブ          | develop 向け PR                | `pnpm build` + `pnpm smoke`（Next.js 起動とトップページ 200 の確認）のみ                |
 | `e2e-develop.yml` — "E2E Develop Tests" | develop の Vercel デプロイ完了 | 実デプロイ先に対して Playwright を実行（`SKIP_E2E_TESTS: "false"`）→ リリース PR を作成 |
 
-リリース PR（タイトルに `🚀 Release` を含む）では `e2e.yml` はスキップされます。
+`e2e-develop.yml` の仕組み（2026-11-09 に動くよう修正。それ以前は条件不一致で一度も動いていなかった）:
+
+- Vercel の deployment は `environment: "Preview"`・`ref`/`sha` がコミット SHA で届く
+  （ブランチ名は来ない）。`resolve` ジョブが **デプロイされた SHA が develop の先頭と
+  一致するときだけ**実行し、そのデプロイ自体の URL を試験する
+- develop 環境は Vercel の Deployment Protection 下にある。**Protection Bypass for
+  Automation** のキーを secret `VERCEL_AUTOMATION_BYPASS_SECRET` に置き、
+  `tests/global-setup-develop.ts` が一度だけ Vercel の Cookie に交換して使う。
+  キーをヘッダーで全リクエストに付けると別オリジン（Supabase）にも送られ、
+  トレースにも平文で残るため。**トレースは取らない**（`trace: 'off'`。
+  アーティファクトは公開リポジトリで誰でも落とせる）
+  （キーは Vercel の `napoleon-game-dev` → Settings → Deployment Protection で再発行できる）
+- E2E が通ったときだけリリース PR を作成・更新する（旧 `auto-release-pr.yml` は削除）
+
+docs・設定ファイルだけの PR（旧 `e2e.yml` の paths-ignore 相当。判定は `ci.yml` の
+`changes` ジョブ）では `e2e-tests` はスキップされます。リリース PR は main 向けなので
+`ci.yml` 自体が起動しません。
 
 `SKIP_E2E_TESTS` 環境変数でローカル実行を制御できます（未設定時は `false` = 実行する）:
 

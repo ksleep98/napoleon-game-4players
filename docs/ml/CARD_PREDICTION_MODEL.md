@@ -138,7 +138,7 @@ Supabase の NULL は pandas 上 `float('nan')` になる。裏スート（`COUN
   `getPlayableCards` は固定シード（mulberry32, seed=20260801）の **500 ケース**。
 - `python/tests/test_rule_parity.py` が全件突き合わせる。失敗時は
   「TS を変えたなら `pnpm ml:fixtures` で再生成」と表示する。
-- `.github/workflows/python-lint.yml` に `pytest` ステップを追加した。
+- `.github/workflows/python-lint.yml`（現 `python.yml` の `python-lint` ジョブ）に `pytest` ステップを追加した。
   **これが無いと Python のテストは CI で一切走っていなかった**（ruff/black のみ）。
   移植元の `src/lib/napoleonCardRules.ts` / `src/lib/ai/gameSimulator.ts` /
   `scripts/dump-rule-fixtures.ts` も同ワークフローの起動パスに追加してある。

@@ -113,10 +113,10 @@ SUPABASE_SERVICE_ROLE_KEY=xxx
 **本番ビルドの場合**:
 
 ```yaml
-# GitHub Actionsで環境変数を設定
+# GitHub Actions のビルド確認ではダミー値を渡す（本番の値は Vercel が持つ）
 env:
-  NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_URL }}
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+  NEXT_PUBLIC_SUPABASE_URL: https://mock.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: mock_anon_key
 ```
 
 ### 4. Biomeリンティングエラー
@@ -391,9 +391,9 @@ node -e "console.log(process.env)" | grep NEXT_PUBLIC
 - name: Build for production
   run: pnpm build
   env:
-    NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_URL }}
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.PROD_NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-    SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PROD_SUPABASE_SERVICE_ROLE_KEY }}
+    NEXT_PUBLIC_SUPABASE_URL: https://mock.supabase.co
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: mock_anon_key
+    SUPABASE_SERVICE_ROLE_KEY: mock_service_role_key
     NEXT_PUBLIC_APP_ENV: production
     NODE_ENV: production
     # デバッグ用

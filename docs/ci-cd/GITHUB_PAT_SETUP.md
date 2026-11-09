@@ -2,6 +2,10 @@
 
 GitHub ActionsでmainブランチへのPR作成・管理を行うためのPersonal Access Token設定方法。
 
+> ⚠️ **このガイドは廃止済みです（2026-11）。** どの workflow も `PAT_TOKEN` を参照しておらず、
+> リリース PR の作成は `secrets.GITHUB_TOKEN` で動いています。リポジトリ Secret の
+> `PAT_TOKEN` は未使用のため削除しました。以下は経緯の記録として残しています。
+
 ## 🚫 問題の概要
 
 GitHub Actionsの標準`GITHUB_TOKEN`では以下の制限があります：
@@ -54,24 +58,15 @@ Secret: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 以下のワークフローが正常動作することを確認：
 
 - ✅ **Auto Release PR** - develop → main PR自動作成
-- ✅ **Auto Release** - mainへのpush時にRelease作成
+- ✅ **Release**（`release.yml`）- mainへのpush時にRelease作成
 - ✅ **PR Description** - PR説明自動生成
 
 ## 🔧 ワークフロー設定詳細
 
-### auto-release-pr.yml
-
-```yaml
-env:
-  GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
-```
-
-### auto-release.yml
-
-```yaml
-env:
-  GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
-```
+> ⚠️ **現在のワークフローは `PAT_TOKEN` を参照していません。**
+> `e2e-develop.yml` / `release.yml` を含め、すべて `secrets.GITHUB_TOKEN` のみを
+> 使っています（`GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}`）。PAT を使わせたい場合は
+> 各ワークフローの `GH_TOKEN` を書き換える必要があります。
 
 ## 🛡️ セキュリティ考慮事項
 
@@ -179,7 +174,7 @@ GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
    - リリースノート自動生成
 
 2. **Release PRをmerge**
-   - Auto Release ワークフロー実行
+   - Release ワークフロー（`release.yml`）実行
    - GitHubリリース自動作成
    - バージョンタグ自動生成
 

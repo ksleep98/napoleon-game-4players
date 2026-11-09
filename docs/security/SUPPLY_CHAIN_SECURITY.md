@@ -88,7 +88,7 @@ ignore-scripts=true
 
 ### 4. Dependency Review Action
 
-**設定ファイル**: `.github/workflows/dependency-review.yml`
+**設定ファイル**: `.github/workflows/ci.yml` の `dependency-review` ジョブ
 
 **効果**:
 
@@ -486,10 +486,10 @@ updates:
 
 #### 5. GitHub Actions: Python Security Audit
 
-**.github/workflows/python-security-audit.yml**:
+**.github/workflows/python.yml**（`python-security` ジョブ。以下は概略）:
 
 ```yaml
-name: Python Security Audit
+name: Python
 
 on:
   schedule:
@@ -566,7 +566,7 @@ uv へ切り替えても（#523）推移的依存は止まらないため、フ�
 - [ ] CI の `uv sync --locked` が通る（lock と pyproject の整合性検証）
 - [ ] ローカルで `uv run --group dev pip-audit` 実行済み
 - [ ] Dependabot（uv エコシステム）で自動監視設定済み
-- [ ] GitHub Actions で週次監査設定済み（`python-security-audit.yml`）
+- [ ] GitHub Actions で週次監査設定済み（`python.yml` の `python-security` ジョブ）
 - [ ] クールダウン機能設定済み（`.github/dependabot.yml` の `cooldown`）
 
 ---

@@ -1,4 +1,4 @@
-# pip-audit で一時的に無視する脆弱性 ID（python-security-audit.yml が読む）。
+# pip-audit で一時的に無視する脆弱性 ID（python.yml の python-security ジョブが読む）。
 #
 # 形式: <脆弱性ID> <期限 YYYY-MM-DD> <理由>
 # 期限を過ぎた行は自動的に無視されなくなり、監査が再び失敗する。

@@ -4,27 +4,31 @@ Git Flow戦略に基づく、developブランチからmainブランチへの自�
 
 ## 🔄 ワークフロー概要
 
-### 1. develop → main 自動PR作成 (auto-release-pr.yml)
+### 1. develop → main 自動PR作成 (e2e-develop.yml の create-release-pr ジョブ)
 
-**トリガー**: developブランチへのpush時
+> 2026-11-09 に旧 `auto-release-pr.yml`（develop への push で発火）を削除し、
+> **develop のデプロイに対する E2E が通ったときだけ**リリース PR を作る形に一本化した。
+> 以下の「auto-release-pr.yml」の節は、同じ処理を e2e-develop.yml に移したものとして読むこと。
+
+**トリガー**: develop の Vercel デプロイ完了 → E2E 成功
 **機能**: mainブランチへのリリースPRを自動作成・更新
 
 ```mermaid
 graph LR
     A[Feature PR] -->|Merge| B[develop branch]
-    B -->|Push trigger| C[Auto Release PR]
-    C --> D[main branch PR]
+    B -->|Vercel deploy| C[E2E Develop Tests]
+    C -->|pass| D[main branch PR]
     D -->|Manual merge| E[main branch]
 ```
 
-### 2. main ブランチリリース (auto-release.yml)
+### 2. main ブランチリリース (release.yml の create-release ジョブ)
 
 **トリガー**: mainブランチへのpush時（リリースPRマージ後）
 **機能**: 自動タグ作成・GitHubリリース・リリースノート生成
 
 ## 📋 機能詳細
 
-### auto-release-pr.yml
+### e2e-develop.yml の create-release-pr（旧 auto-release-pr.yml）
 
 #### 実行タイミング
 
@@ -65,11 +69,11 @@ graph LR
 - **Release Checklist**: リリース前確認項目
 - **Technical Details**: 変更統計情報
 
-### auto-release.yml
+### release.yml（create-release ジョブ）
 
 #### 実行タイミング
 
-- mainブランチにコミットがpushされた時（通常はリリースPRのマージ後）
+- mainブランチにコミットがpushされた時（通常はリリースPRのマージ後）、同じワークフローの `build-and-test` ジョブが成功した後
 
 #### 実行内容
 
@@ -163,7 +167,7 @@ permissions:
 
 #### リリースPRテンプレート変更
 
-`auto-release-pr.yml` の以下セクションを編集:
+`e2e-develop.yml` の create-release-pr ジョブの以下セクションを編集:
 
 ```bash
 # Add quality check reminder
@@ -174,7 +178,7 @@ echo "- [ ] All CI checks pass" >> release_notes.md
 
 #### バージョン形式変更
 
-`auto-release.yml` の以下セクションを編集:
+`release.yml`（`create-release` ジョブ）の以下セクションを編集:
 
 ```bash
 # Generate semantic version based on date
@@ -185,7 +189,7 @@ version_tag="v$current_date"
 
 #### コミット分類ルール変更
 
-`auto-release.yml` の以下セクションでカスタマイズ:
+`release.yml`（`create-release` ジョブ）の以下セクションでカスタマイズ:
 
 ```bash
 if [[ $commit_msg == feat:* ]]; then
