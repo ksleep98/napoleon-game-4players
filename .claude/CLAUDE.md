@@ -282,6 +282,11 @@ GitHubリポジトリの設定をTerraformで管理し、VCS-driven workflowで�
   patch / minor 更新に auto-merge（squash）を予約し、20 分おきの schedule で
   `BEHIND` の PR に1本ずつ `@dependabot rebase` を依頼する。`ci-pipeline` が通れば
   GitHub がマージする。**major 更新と `ci-pipeline` が赤い PR は手動対応**
+- 予約の条件は `.github/scripts/dependabot-auto-merge.sh` が判定する。**更新対象
+  すべての公開から 7 日以上**経っていることをレジストリ（npm / PyPI / GitHub
+  Releases）で確認できたものだけ。Dependabot の cooldown は**セキュリティ更新には
+  効かず**、CI の `--frozen-lockfile` は `.npmrc` の `minimumReleaseAge` を見ない
+  ため、この公開日チェックが自動マージの唯一の歯止め。7 日未満は保留し schedule で再判定
 - 自分の PR → develop を取り込んで push（ただし
   [ブランチクリーンアップ](#ブランチクリーンアップ手動実行のみ)の事故歴に注意）
 - auto-merge はリポジトリ設定（`allow_auto_merge = true`）で有効。ただし

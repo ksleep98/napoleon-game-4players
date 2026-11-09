@@ -1,12 +1,12 @@
 name: Dependabot Auto Merge
 
-# Dependabot の patch / minor 更新に auto-merge を予約する。マージ可否の判断は
-# develop の Ruleset（必須チェック ci-pipeline・strict）に任せ、ここでは予約と
-# BEHIND の解消だけを行う。major 更新は予約せず、手動レビューに残す。
+# Dependabot の patch / minor 更新に auto-merge を予約する。予約の可否は
+# .github/scripts/dependabot-auto-merge.sh が判定する（major 除外・公開から 7 日以上）。
+# マージ可否の最終判断は develop の Ruleset（必須チェック ci-pipeline・strict）に任せる。
 #
 # 注意: GITHUB_TOKEN で予約した auto-merge によるマージは、後続の workflow を
 # 起動しない（GitHub の仕様）。そのため develop への push ではなく schedule で
-# BEHIND の PR を拾う。
+# 保留中の PR の再判定と BEHIND の解消を行う。
 
 on:
   pull_request_target:
@@ -18,59 +18,65 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: dependabot-auto-merge-${{ github.event.pull_request.number || 'sweep' }}
-  cancel-in-progress: false
-
 jobs:
   enable-auto-merge:
-    # pull_request_target は base の権限で動くため、PR のコードは checkout しない。
-    # PR 作成者だけでなく、このイベントを起こした actor も Dependabot に限定する
-    # （第三者が Dependabot ブランチに push した場合に予約させない）。
+    # pull_request_target は base の権限で動く。checkout するのは base の
+    # スクリプトだけで、PR のコードは取得も実行もしない。PR 作成者だけでなく
+    # イベントを起こした actor も Dependabot に限定する。
     if: >-
       github.event_name == 'pull_request_target' &&
       github.event.pull_request.user.login == 'dependabot[bot]' &&
       github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
+    concurrency:
+      group: dependabot-auto-merge-${{ github.event.pull_request.number }}
     permissions:
       contents: write
       pull-requests: write
     steps:
-      - name: Fetch Dependabot metadata
-        id: metadata
-        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+      - name: Checkout base scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts
 
-      - name: Enable auto-merge (patch / minor)
-        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
+      - name: Enable auto-merge if eligible
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
-        run: |
-          echo "update-type: ${UPDATE_TYPE:-unknown}"
-          gh pr merge --auto --squash "$PR_URL"
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: .github/scripts/dependabot-auto-merge.sh "$PR_NUMBER"
 
-      - name: Leave major updates for manual review
-        if: >-
-          steps.metadata.outputs.update-type == 'version-update:semver-major' &&
-          github.event.action == 'opened'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-        run: |
-          gh pr comment "$PR_URL" --body "major 更新のため auto-merge は予約していません。変更内容を確認してから手動でマージしてください。"
-
-  rebase-behind:
-    # auto-merge 予約済みで BEHIND の PR を1本だけ rebase させる。全部を一度に
-    # rebase すると、1本マージされた時点で残りが再び BEHIND になり CI が無駄になる。
+  sweep:
     if: github.event_name != 'pull_request_target'
     runs-on: ubuntu-latest
+    concurrency:
+      group: dependabot-auto-merge-sweep
     permissions:
+      contents: write
       pull-requests: write
     steps:
+      - name: Checkout scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+
+      - name: Re-evaluate held PRs
+        # 公開から日が浅く保留にした PR を再判定する
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          for n in $(gh pr list --author 'app/dependabot' --base develop --state open \
+            --json number,autoMergeRequest --jq '.[] | select(.autoMergeRequest == null) | .number'); do
+            .github/scripts/dependabot-auto-merge.sh "$n" || echo "::warning::#$n: evaluation failed"
+          done
+
       - name: Request rebase for the oldest BEHIND PR
+        # auto-merge 予約済みで BEHIND の PR を1本だけ rebase させる。全部を一度に
+        # rebase すると、1本マージされた時点で残りが再び BEHIND になり CI が無駄になる。
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
