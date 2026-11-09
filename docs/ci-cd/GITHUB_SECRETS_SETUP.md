@@ -4,6 +4,12 @@
 
 E2E自動化ワークフローを動作させるため、以下のGitHub Secretsを設定する必要があります。
 
+> ⚠️ **2026-11-09 に方式を変更しました。** 現在必要なのは
+> `VERCEL_AUTOMATION_BYPASS_SECRET`（Vercel の `napoleon-game-dev` → Settings →
+> Deployment Protection → Protection Bypass for Automation で発行したキー）だけです。
+> 以下の `E2E_GITHUB_USERNAME` / `E2E_GITHUB_PASSWORD`（GitHub のパスワードを secret に
+> 置く方式）は廃止済みで、経緯の記録として残しています。
+
 ## 🔐 必要なSecrets
 
 ### GitHub OAuth認証用

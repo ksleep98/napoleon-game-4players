@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { BYPASS_STATE_PATH } from './tests/global-setup-develop'
 
 /**
  * Develop環境専用のPlaywright設定
@@ -10,6 +11,7 @@ export default defineConfig({
   forbidOnly: true,
   retries: 3, // develop環境では3回リトライ（ネットワーク不安定性を考慮）
   workers: 1, // CI環境では1ワーカー
+  globalSetup: './tests/global-setup-develop.ts',
   reporter: [
     ['line'],
     ['html', { open: 'never', outputFolder: 'playwright-report-develop' }],
@@ -22,7 +24,8 @@ export default defineConfig({
       process.env.PLAYWRIGHT_BASE_URL || 'https://napoleon-game-dev.vercel.app',
 
     // 外部環境用の設定
-    trace: 'retain-on-failure',
+    // トレースはリクエストの Cookie を平文で含み、公開アーティファクトに上がるので取らない
+    trace: 'off',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
 
@@ -33,8 +36,9 @@ export default defineConfig({
     // 外部環境での安定性向上
     ignoreHTTPSErrors: true,
 
-    // Vercel認証状態を読み込み（存在する場合）
-    storageState: process.env.CI ? 'vercel-auth-state.json' : undefined,
+    // develop 環境は Vercel の Deployment Protection 下にある。
+    // globalSetup で回避キーを Cookie に交換し、その Cookie だけを使う
+    storageState: BYPASS_STATE_PATH,
   },
 
   timeout: 120 * 1000, // 120秒（外部環境用に延長）
@@ -67,7 +71,4 @@ export default defineConfig({
 
   // 外部環境を使用するためwebServerは無効
   webServer: undefined,
-
-  // グローバル設定
-  globalSetup: './tests/global-setup-develop.ts',
 })

@@ -30,28 +30,104 @@ env:
 # group so the PR UI only shows the final outcome instead of 2-3 skipped
 # checks per feature-branch deploy.
 concurrency:
-  group: e2e-develop-${{ github.event.deployment.environment || github.event_name }}-${{ github.event.deployment.ref || github.ref }}
+  group: e2e-develop-${{ github.event.deployment.sha || github.event_name }}
   cancel-in-progress: true
 
 jobs:
-  e2e-develop:
-    runs-on: ubuntu-latest
-    # デプロイが成功し、かつdevelopブランチの場合のみ実行
+  # 実行するか・どの URL を試験するかを決める。
+  # Vercel の deployment は environment が "Preview"、ref がコミット SHA で届く
+  # （ブランチ名は来ない）ので、デプロイされたコミットが develop の先頭と一致する
+  # ときだけ実行する。feature ブランチのプレビューもここで弾かれる。
+  resolve:
     if: >
+      github.event_name == 'workflow_dispatch' ||
       (github.event.deployment_status.state == 'success' &&
-       github.event.deployment.environment == 'Preview – napoleon-game-4players' &&
-       github.event.deployment.ref == 'develop') ||
-      github.event_name == 'workflow_dispatch'
+       github.event.deployment.environment == 'Preview')
+    runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+      url: ${{ steps.decide.outputs.url }}
+      create_pr: ${{ steps.decide.outputs.create_pr }}
+    steps:
+      - name: Decide target
+        id: decide
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          DEPLOY_SHA: ${{ github.event.deployment.sha }}
+          DEPLOY_CREATOR: ${{ github.event.deployment.creator.login }}
+          STATUS_CREATOR: ${{ github.event.deployment_status.creator.login }}
+          DEPLOY_URL: ${{ github.event.deployment_status.environment_url }}
+          INPUT_URL: ${{ github.event.inputs.target_url }}
+          INPUT_CREATE_PR: ${{ github.event.inputs.create_pr }}
+          REF: ${{ github.ref }}
+        run: |
+          # 試験先には Vercel の回避キーをヘッダーで送るので、このプロジェクトの
+          # develop エイリアスか、自チームのデプロイ URL 以外には向けない
+          allowed() {
+            [[ "$1" =~ ^https://(napoleon-game-dev\.vercel\.app|napoleon-game-[a-z0-9]+-kks-projects-204e9670\.vercel\.app)/?$ ]]
+          }
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            url="${INPUT_URL:-$DEVELOP_URL}"
+            if ! allowed "$url"; then
+              echo "::error::target_url is not an allowed Vercel URL for this project"
+              exit 1
+            fi
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "url=${url}" >> "$GITHUB_OUTPUT"
+            # リリース PR は develop から手動実行したときだけ
+            if [ "$INPUT_CREATE_PR" != "false" ] && [ "$REF" = "refs/heads/develop" ]; then
+              echo "create_pr=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "create_pr=false" >> "$GITHUB_OUTPUT"
+            fi
+            exit 0
+          fi
+
+          # Vercel 以外が作った deployment / status では動かさない
+          if [ "$DEPLOY_CREATOR" != "vercel[bot]" ] || [ "$STATUS_CREATOR" != "vercel[bot]" ]; then
+            echo "Deployment was not created by vercel[bot]; skip."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          develop_sha=$(gh api "repos/${GH_REPO}/branches/develop" --jq '.commit.sha')
+          if [ "$DEPLOY_SHA" != "$develop_sha" ]; then
+            echo "Deployment ${DEPLOY_SHA} is not develop HEAD (${develop_sha}); skip."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # そのデプロイ自体の URL を試験する（エイリアスはまだ前のデプロイを指していることがある）
+          url="${DEPLOY_URL:-$DEVELOP_URL}"
+          if ! allowed "$url"; then
+            echo "::warning::Deployment URL is not an allowed Vercel URL for this project; skip."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "run=true" >> "$GITHUB_OUTPUT"
+          echo "url=${url}" >> "$GITHUB_OUTPUT"
+          echo "create_pr=true" >> "$GITHUB_OUTPUT"
+
+  e2e-develop:
+    needs: resolve
+    if: needs.resolve.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      TARGET_URL: ${{ needs.resolve.outputs.url }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: develop
-          fetch-depth: 0
+          # デプロイされたコミットのテスト・設定で試験する（手動実行では実行した ref）
+          ref: ${{ github.event.deployment.sha || github.sha }}
+          persist-credentials: false
 
       - name: Setup pnpm
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
@@ -87,8 +163,9 @@ jobs:
         run: pnpm exec playwright install-deps chromium
 
       - name: Wait for deployment to be ready
+        env:
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: |
-          TARGET_URL="${{ github.event.inputs.target_url || env.DEVELOP_URL }}"
           echo "🕐 Waiting for deployment to be ready at: $TARGET_URL"
 
           max_attempts=30
@@ -98,7 +175,9 @@ jobs:
             echo "Attempt $attempt/$max_attempts..."
 
             # Check deployment status (HTTP 401 is acceptable for protected environments)
-            status_code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$TARGET_URL" || echo "000")
+            status_code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+              -H "x-vercel-protection-bypass: ${VERCEL_AUTOMATION_BYPASS_SECRET}" \
+              "$TARGET_URL" || echo "000")
 
             if [ "$status_code" = "200" ] || [ "$status_code" = "401" ]; then
               echo "✅ Deployment is ready! (HTTP $status_code)"
@@ -118,7 +197,7 @@ jobs:
       - name: Run E2E tests against develop environment
         env:
           # Develop環境のURL
-          PLAYWRIGHT_BASE_URL: ${{ github.event.inputs.target_url || env.DEVELOP_URL }}
+          PLAYWRIGHT_BASE_URL: ${{ env.TARGET_URL }}
           # webServerを無効化（develop環境URLを使用）
           PLAYWRIGHT_SKIP_WEBSERVER: "1"
           # E2Eテストを有効化
@@ -128,12 +207,8 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: "https://mock.supabase.co"
           NEXT_PUBLIC_SUPABASE_ANON_KEY: "mock_anon_key"
           SUPABASE_SERVICE_ROLE_KEY: "mock_service_role_key"
-          # GitHub OAuth認証用（GitHub Secretsから設定）
-          GITHUB_USERNAME: ${{ secrets.E2E_GITHUB_USERNAME }}
-          GITHUB_PASSWORD: ${{ secrets.E2E_GITHUB_PASSWORD }}
-          # 後方互換性のためVERCEL_AUTH_*も保持
-          VERCEL_AUTH_USERNAME: ${{ secrets.E2E_GITHUB_USERNAME }}
-          VERCEL_AUTH_PASSWORD: ${{ secrets.E2E_GITHUB_PASSWORD }}
+          # Vercel Deployment Protection の回避キー（playwright-develop.config.ts がヘッダーで送る）
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: |
           echo "🌐 Testing against develop environment: $PLAYWRIGHT_BASE_URL"
           echo "🧪 Running E2E tests..."
@@ -156,7 +231,7 @@ jobs:
             echo "## ✅ Test Summary" >> e2e_summary.md
             echo "" >> e2e_summary.md
             echo "- **Environment**: Develop" >> e2e_summary.md
-            echo "- **URL**: ${{ github.event.inputs.target_url || env.DEVELOP_URL }}" >> e2e_summary.md
+            echo "- **URL**: ${TARGET_URL}" >> e2e_summary.md
             echo "- **Browser**: Chromium" >> e2e_summary.md
             echo "- **Date**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> e2e_summary.md
             echo "" >> e2e_summary.md
@@ -191,17 +266,16 @@ jobs:
           name: develop-e2e-results
           path: |
             test-results/
-            playwright-report/
+            !test-results/**/trace.zip
             e2e_summary.md
           retention-days: 14
 
   create-release-pr:
-    needs: e2e-develop
+    needs: [resolve, e2e-develop]
     runs-on: ubuntu-latest
     if: >
       needs.e2e-develop.result == 'success' &&
-      (github.event.inputs.create_pr != 'false' || github.event.inputs.create_pr == null) &&
-      github.ref == 'refs/heads/develop'
+      needs.resolve.outputs.create_pr == 'true'
 
     # PR の作成・更新は pull-requests: write で足りる（push はしない）
     permissions:
@@ -221,9 +295,7 @@ jobs:
           name: develop-e2e-results
           path: ./e2e-results
 
-      # auto-release-pr.yml と同等の処理を取り込んだもの（両ファイルとも現存する。
-      # ただし本ジョブは deployment_status の environment/ref 条件が現在の Vercel の
-      # 送信内容と一致せず実質動いていないため、リリース PR は auto-release-pr.yml が作っている）:
+      # リリース PR を作る唯一の経路（旧 auto-release-pr.yml の処理を取り込んだもの）:
       # - checkout は develop のみをローカルブランチにするため、main..develop が
       #   解決できるよう main をローカルに取得する
       # - main と develop に差分が無ければ PR 作成をスキップする
@@ -280,7 +352,7 @@ jobs:
           echo "This PR contains tested changes from the develop branch, ready to be merged to main." >> pr_body.md
           echo "" >> pr_body.md
 
-          # auto-release-pr.yml と同じリリース前チェックリスト
+          # 旧 auto-release-pr.yml と同じリリース前チェックリスト
           echo "### ✅ Pre-deployment Checklist" >> pr_body.md
           echo "" >> pr_body.md
           echo "- [ ] All CI checks passing" >> pr_body.md
@@ -308,7 +380,7 @@ jobs:
           done
           echo "" >> pr_body.md
 
-          # auto-release-pr.yml と同じ全コミット一覧と変更ファイル数
+          # 旧 auto-release-pr.yml と同じ全コミット一覧と変更ファイル数
           # （上の Recent Changes は直近 10 件のみ）。PR 本文の上限（65536 文字）を
           # 超えないよう、一覧は先頭 200 件で打ち切る
           echo "### 📝 Changes Summary" >> pr_body.md

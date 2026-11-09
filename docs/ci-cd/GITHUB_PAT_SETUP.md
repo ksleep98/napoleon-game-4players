@@ -64,7 +64,7 @@ Secret: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ## 🔧 ワークフロー設定詳細
 
 > ⚠️ **現在のワークフローは `PAT_TOKEN` を参照していません。**
-> `auto-release-pr.yml` / `release.yml` を含め、すべて `secrets.GITHUB_TOKEN` のみを
+> `e2e-develop.yml` / `release.yml` を含め、すべて `secrets.GITHUB_TOKEN` のみを
 > 使っています（`GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}`）。PAT を使わせたい場合は
 > 各ワークフローの `GH_TOKEN` を書き換える必要があります。
 

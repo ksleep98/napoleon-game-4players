@@ -4,16 +4,20 @@ Git Flow戦略に基づく、developブランチからmainブランチへの自�
 
 ## 🔄 ワークフロー概要
 
-### 1. develop → main 自動PR作成 (auto-release-pr.yml)
+### 1. develop → main 自動PR作成 (e2e-develop.yml の create-release-pr ジョブ)
 
-**トリガー**: developブランチへのpush時
+> 2026-11-09 に旧 `auto-release-pr.yml`（develop への push で発火）を削除し、
+> **develop のデプロイに対する E2E が通ったときだけ**リリース PR を作る形に一本化した。
+> 以下の「auto-release-pr.yml」の節は、同じ処理を e2e-develop.yml に移したものとして読むこと。
+
+**トリガー**: develop の Vercel デプロイ完了 → E2E 成功
 **機能**: mainブランチへのリリースPRを自動作成・更新
 
 ```mermaid
 graph LR
     A[Feature PR] -->|Merge| B[develop branch]
-    B -->|Push trigger| C[Auto Release PR]
-    C --> D[main branch PR]
+    B -->|Vercel deploy| C[E2E Develop Tests]
+    C -->|pass| D[main branch PR]
     D -->|Manual merge| E[main branch]
 ```
 
@@ -24,7 +28,7 @@ graph LR
 
 ## 📋 機能詳細
 
-### auto-release-pr.yml
+### e2e-develop.yml の create-release-pr（旧 auto-release-pr.yml）
 
 #### 実行タイミング
 
@@ -163,7 +167,7 @@ permissions:
 
 #### リリースPRテンプレート変更
 
-`auto-release-pr.yml` の以下セクションを編集:
+`e2e-develop.yml` の create-release-pr ジョブの以下セクションを編集:
 
 ```bash
 # Add quality check reminder

@@ -293,9 +293,9 @@ GitHubリポジトリの設定をTerraformで管理し、VCS-driven workflowで�
 - 自分の PR → `ci-pipeline` が通ればそのままマージ可。develop との衝突や、develop 側の
   変更との組み合わせが気になるときは develop を取り込んで push（ただし
   [ブランチクリーンアップ](#ブランチクリーンアップ手動実行のみ)の事故歴に注意）
-- `GITHUB_TOKEN` によるマージは後続 workflow を起動しないため、
-  `auto-release-pr.yml`（develop への push で発火。現在リリース PR を作っている唯一の経路で、
-  `e2e-develop.yml` 側の作成ジョブは条件不一致で動いていない）は bot のマージでは動かない
+- `GITHUB_TOKEN` によるマージは後続 workflow（push 起動のもの）を起動しない。
+  リリース PR は Vercel のデプロイ完了（`deployment_status`）から動く `e2e-develop.yml` が
+  作るので、bot のマージでも作られる
 
 #### 運用フロー
 
@@ -440,11 +440,19 @@ CI では2か所に分かれています。**PR の `e2e-tests` ジョブは Pla
 | `ci.yml` の `e2e-tests` ジョブ          | develop 向け PR                | `pnpm build` + `pnpm smoke`（Next.js 起動とトップページ 200 の確認）のみ                |
 | `e2e-develop.yml` — "E2E Develop Tests" | develop の Vercel デプロイ完了 | 実デプロイ先に対して Playwright を実行（`SKIP_E2E_TESTS: "false"`）→ リリース PR を作成 |
 
-> ⚠️ **`e2e-develop.yml` は現在実質動いていません。** ジョブ条件が
-> `environment == 'Preview – napoleon-game-4players'` / `ref == 'develop'` を見ているが、
-> Vercel の deployment は `environment: "Preview"`・`ref` がコミット SHA で届くため一致せず、
-> 直近 200 件の run はすべて skipped（2026-11-09 時点）。
-> **リリース PR は `auto-release-pr.yml`（develop への push で発火）が作成しています。**
+`e2e-develop.yml` の仕組み（2026-11-09 に動くよう修正。それ以前は条件不一致で一度も動いていなかった）:
+
+- Vercel の deployment は `environment: "Preview"`・`ref`/`sha` がコミット SHA で届く
+  （ブランチ名は来ない）。`resolve` ジョブが **デプロイされた SHA が develop の先頭と
+  一致するときだけ**実行し、そのデプロイ自体の URL を試験する
+- develop 環境は Vercel の Deployment Protection 下にある。**Protection Bypass for
+  Automation** のキーを secret `VERCEL_AUTOMATION_BYPASS_SECRET` に置き、
+  `tests/global-setup-develop.ts` が一度だけ Vercel の Cookie に交換して使う。
+  キーをヘッダーで全リクエストに付けると別オリジン（Supabase）にも送られ、
+  トレースにも平文で残るため。**トレースは取らない**（`trace: 'off'`。
+  アーティファクトは公開リポジトリで誰でも落とせる）
+  （キーは Vercel の `napoleon-game-dev` → Settings → Deployment Protection で再発行できる）
+- E2E が通ったときだけリリース PR を作成・更新する（旧 `auto-release-pr.yml` は削除）
 
 docs・設定ファイルだけの PR（旧 `e2e.yml` の paths-ignore 相当。判定は `ci.yml` の
 `changes` ジョブ）では `e2e-tests` はスキップされます。リリース PR は main 向けなので
