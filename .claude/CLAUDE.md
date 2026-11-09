@@ -287,7 +287,10 @@ GitHubリポジトリの設定をTerraformで管理し、VCS-driven workflowで�
 - 判定は `.github/scripts/dependabot-auto-merge.sh`。コミットメッセージの依存に加え
   **lockfile の差分で追加された全パッケージ（推移的依存を含む）が公開から 7 日以上**で
   あることを npm / PyPI で確認する。Dependabot の cooldown は**セキュリティ更新と
-  推移的依存には効かない**ため、これが公開直後の版を取り込まない歯止め
+  推移的依存には効かない**ため、これが公開直後の版を取り込まない歯止め。
+  例外として、ブラウザ対応データだけの `caniuse-lite` / `electron-to-chromium` /
+  `baseline-browser-mapping` は 1 日以上で可（ほぼ毎日新版が出て、7 日を満たす瞬間が
+  来ないため。#636）
 - **手動対応のまま**: major 更新、`github_actions` の更新（タグの付け替えを公開日で
   検知できない）、いずれかのチェックが赤い PR、変更パッケージが 80 を超える PR
 - 自分の PR → `ci-pipeline` が通ればそのままマージ可。develop との衝突や、develop 側の
