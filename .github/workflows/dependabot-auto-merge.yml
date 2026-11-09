@@ -4,13 +4,15 @@ name: Dependabot Auto Merge
 # .github/scripts/dependabot-auto-merge.sh が判定する（major 除外・公開から 7 日以上）。
 # マージ可否の最終判断は develop の Ruleset（必須チェック ci-pipeline・strict）に任せる。
 #
-# 注意: GITHUB_TOKEN で予約した auto-merge によるマージは、後続の workflow を
-# 起動しない（GitHub の仕様）。そのため develop への push ではなく schedule で
-# 保留中の PR の再判定と BEHIND の解消を行う。
+# トリガーは schedule のみ。
+# - pull_request_target は 2026-12-02 から public リポジトリで既定ブロックになる
+#   （https://github.blog/changelog/2026-11-02-pull_request_target-blocked-by-default-december-2）。
+#   例外を許可するより、PR イベントを使わない方が攻撃面も小さい
+# - GITHUB_TOKEN で予約した auto-merge によるマージは後続 workflow を起動しない
+#   （GitHub の仕様）ため、develop への push でも拾えない
+# 新しい PR は最長 20 分（+ schedule の遅延）で判定される。
 
 on:
-  pull_request_target:
-    types: [opened, reopened, synchronize]
   schedule:
     - cron: "*/20 * * * *"
   workflow_dispatch:
@@ -19,37 +21,7 @@ permissions:
   contents: read
 
 jobs:
-  enable-auto-merge:
-    # pull_request_target は base の権限で動く。checkout するのは base の
-    # スクリプトだけで、PR のコードは取得も実行もしない。PR 作成者だけでなく
-    # イベントを起こした actor も Dependabot に限定する。
-    if: >-
-      github.event_name == 'pull_request_target' &&
-      github.event.pull_request.user.login == 'dependabot[bot]' &&
-      github.actor == 'dependabot[bot]'
-    runs-on: ubuntu-latest
-    concurrency:
-      group: dependabot-auto-merge-${{ github.event.pull_request.number }}
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - name: Checkout base scripts
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
-          persist-credentials: false
-          sparse-checkout: .github/scripts
-
-      - name: Enable auto-merge if eligible
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: .github/scripts/dependabot-auto-merge.sh "$PR_NUMBER"
-
   sweep:
-    if: github.event_name != 'pull_request_target'
     runs-on: ubuntu-latest
     concurrency:
       group: dependabot-auto-merge-sweep
@@ -63,8 +35,8 @@ jobs:
           persist-credentials: false
           sparse-checkout: .github/scripts
 
-      - name: Re-evaluate held PRs
-        # 公開から日が浅く保留にした PR を再判定する
+      - name: Enable auto-merge for eligible PRs
+        # 未予約の PR を判定する（公開から日が浅く保留にしたものの再判定を含む）
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
