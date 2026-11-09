@@ -43,7 +43,9 @@ graph TD
 ### Playwright設定
 
 - `playwright-develop.config.ts` - develop環境用設定
-- `tests/global-setup-develop.ts` - develop環境セットアップ
+- develop 環境の Deployment Protection は、secret `VERCEL_AUTOMATION_BYPASS_SECRET`
+  （Vercel の Protection Bypass for Automation）を `x-vercel-protection-bypass` ヘッダーで送って通過する
+  （旧 `tests/global-setup-develop.ts` の GitHub ログイン方式は 2026-11-09 に廃止）
 
 ### NPMスクリプト
 
@@ -58,17 +60,16 @@ graph TD
 
 ### 環境変数
 
-| 変数名                      | 説明                                 | デフォルト値   |
-| --------------------------- | ------------------------------------ | -------------- |
-| `PLAYWRIGHT_BASE_URL`       | テスト対象URL                        | develop環境URL |
-| `SKIP_E2E_TESTS`            | E2Eテストスキップフラグ              | `false`        |
-| `PLAYWRIGHT_SKIP_WEBSERVER` | ローカルサーバー起動スキップ         | `true`         |
-| `GITHUB_USERNAME`           | GitHub OAuth認証用ユーザー名         | -              |
-| `GITHUB_PASSWORD`           | GitHub OAuth認証用パスワード         | -              |
-| `VERCEL_AUTH_USERNAME`      | Vercel認証用ユーザー名（後方互換性） | -              |
-| `VERCEL_AUTH_PASSWORD`      | Vercel認証用パスワード（後方互換性） | -              |
+| 変数名                            | 説明                                    | デフォルト値   |
+| --------------------------------- | --------------------------------------- | -------------- |
+| `PLAYWRIGHT_BASE_URL`             | テスト対象URL                           | develop環境URL |
+| `SKIP_E2E_TESTS`                  | E2Eテストスキップフラグ                 | `false`        |
+| `PLAYWRIGHT_SKIP_WEBSERVER`       | ローカルサーバー起動スキップ            | `true`         |
+| `VERCEL_AUTOMATION_BYPASS_SECRET` | Vercel Deployment Protection の回避キー | -              |
 
-**注意**: GitHub Secretsでは`E2E_GITHUB_USERNAME`・`E2E_GITHUB_PASSWORD`として設定してください（`GITHUB_`プレフィックスは使用不可）。
+**注意**: GitHub Secrets に `VERCEL_AUTOMATION_BYPASS_SECRET` として設定する。
+キーは Vercel の `napoleon-game-dev` → Settings → Deployment Protection →
+Protection Bypass for Automation で発行・再発行できる。
 
 ### Vercel環境URL
 

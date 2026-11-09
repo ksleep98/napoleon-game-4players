@@ -63,9 +63,20 @@ jobs:
           INPUT_CREATE_PR: ${{ github.event.inputs.create_pr }}
           REF: ${{ github.ref }}
         run: |
+          # 試験先には Vercel の回避キーをヘッダーで送るので、このプロジェクトの
+          # develop エイリアスか、自チームのデプロイ URL 以外には向けない
+          allowed() {
+            [[ "$1" =~ ^https://(napoleon-game-dev\.vercel\.app|[a-z0-9-]+-kks-projects-204e9670\.vercel\.app)/?$ ]]
+          }
+
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            url="${INPUT_URL:-$DEVELOP_URL}"
+            if ! allowed "$url"; then
+              echo "::error::target_url is not an allowed Vercel URL for this project"
+              exit 1
+            fi
             echo "run=true" >> "$GITHUB_OUTPUT"
-            echo "url=${INPUT_URL:-$DEVELOP_URL}" >> "$GITHUB_OUTPUT"
+            echo "url=${url}" >> "$GITHUB_OUTPUT"
             # リリース PR は develop から手動実行したときだけ
             if [ "$INPUT_CREATE_PR" != "false" ] && [ "$REF" = "refs/heads/develop" ]; then
               echo "create_pr=true" >> "$GITHUB_OUTPUT"
@@ -81,9 +92,15 @@ jobs:
             echo "run=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          echo "run=true" >> "$GITHUB_OUTPUT"
           # そのデプロイ自体の URL を試験する（エイリアスはまだ前のデプロイを指していることがある）
-          echo "url=${DEPLOY_URL:-$DEVELOP_URL}" >> "$GITHUB_OUTPUT"
+          url="${DEPLOY_URL:-$DEVELOP_URL}"
+          if ! allowed "$url"; then
+            echo "::warning::Deployment URL is not an allowed Vercel URL for this project; skip."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "run=true" >> "$GITHUB_OUTPUT"
+          echo "url=${url}" >> "$GITHUB_OUTPUT"
           echo "create_pr=true" >> "$GITHUB_OUTPUT"
 
   e2e-develop:
