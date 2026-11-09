@@ -203,8 +203,9 @@ jobs:
       (github.event.inputs.create_pr != 'false' || github.event.inputs.create_pr == null) &&
       github.ref == 'refs/heads/develop'
 
+    # PR の作成・更新は pull-requests: write で足りる（push はしない）
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
 
     steps:
@@ -220,7 +221,29 @@ jobs:
           name: develop-e2e-results
           path: ./e2e-results
 
+      # auto-release-pr.yml と同等の処理を取り込んだもの（両ファイルとも現存する。
+      # ただし本ジョブは deployment_status の environment/ref 条件が現在の Vercel の
+      # 送信内容と一致せず実質動いていないため、リリース PR は auto-release-pr.yml が作っている）:
+      # - checkout は develop のみをローカルブランチにするため、main..develop が
+      #   解決できるよう main をローカルに取得する
+      # - main と develop に差分が無ければ PR 作成をスキップする
+      #   （gh pr create が "No commits between main and develop" で失敗するため）
+      - name: Check for changes between main and develop
+        id: check_changes
+        run: |
+          git fetch origin main:main
+
+          changes_count=$(git rev-list --count main..develop)
+          if [ "$changes_count" -eq 0 ]; then
+            echo "No changes between main and develop branches. Skipping release PR creation."
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "Found $changes_count changes between main and develop"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Check if release PR already exists
+        if: steps.check_changes.outputs.has_changes == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         id: check_pr
@@ -234,6 +257,7 @@ jobs:
           fi
 
       - name: Create or update release PR
+        if: steps.check_changes.outputs.has_changes == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -256,6 +280,15 @@ jobs:
           echo "This PR contains tested changes from the develop branch, ready to be merged to main." >> pr_body.md
           echo "" >> pr_body.md
 
+          # auto-release-pr.yml と同じリリース前チェックリスト
+          echo "### ✅ Pre-deployment Checklist" >> pr_body.md
+          echo "" >> pr_body.md
+          echo "- [ ] All CI checks passing" >> pr_body.md
+          echo "- [ ] Tests passing" >> pr_body.md
+          echo "- [ ] No breaking changes" >> pr_body.md
+          echo "- [ ] Ready for production" >> pr_body.md
+          echo "" >> pr_body.md
+
           # Add recent commits
           echo "### 📋 Recent Changes" >> pr_body.md
           echo "" >> pr_body.md
@@ -273,6 +306,30 @@ jobs:
               echo "- 🔧 $commit_msg (\`$commit_hash\`)" >> pr_body.md
             fi
           done
+          echo "" >> pr_body.md
+
+          # auto-release-pr.yml と同じ全コミット一覧と変更ファイル数
+          # （上の Recent Changes は直近 10 件のみ）。PR 本文の上限（65536 文字）を
+          # 超えないよう、一覧は先頭 200 件で打ち切る
+          echo "### 📝 Changes Summary" >> pr_body.md
+          echo "" >> pr_body.md
+          echo "**Total commits**: $(git rev-list --count main..develop)" >> pr_body.md
+          echo "" >> pr_body.md
+          echo "<details>" >> pr_body.md
+          echo "<summary>📋 Commit List</summary>" >> pr_body.md
+          echo "" >> pr_body.md
+          max_commits=200
+          commit_lines=$(git log --oneline --no-merges main..develop | wc -l | tr -d ' ')
+          git log --oneline --no-merges main..develop | head -n "$max_commits" | while read -r line; do
+            echo "- $line" >> pr_body.md
+          done
+          if [ "$commit_lines" -gt "$max_commits" ]; then
+            echo "- …and $((commit_lines - max_commits)) more" >> pr_body.md
+          fi
+          echo "" >> pr_body.md
+          echo "</details>" >> pr_body.md
+          echo "" >> pr_body.md
+          echo "**Total files changed**: $(git diff --name-only main..develop | wc -l | tr -d ' ')" >> pr_body.md
           echo "" >> pr_body.md
 
           # Add E2E test results
@@ -314,17 +371,25 @@ jobs:
               --head develop \
               --title "🚀 Release: Deploy to Production ($(date +%Y-%m-%d))" \
               --body "$(cat pr_body.md)" \
-              --label "release,auto-generated")
+              --label "release")
+            # NOTE: 以前は "release,auto-generated" を付けていたが、auto-generated
+            # ラベルはリポジトリに存在せず gh pr create が失敗するため release のみにした
 
             echo "✅ Created new release PR: $PR_URL"
           fi
 
       - name: Notify on success
         if: success()
+        env:
+          HAS_CHANGES: ${{ steps.check_changes.outputs.has_changes }}
         run: |
           echo "🎉 E2E tests passed on develop environment!"
-          echo "📋 Release PR has been created/updated for main branch"
-          echo "🚀 Ready for production deployment"
+          if [ "$HAS_CHANGES" = "true" ]; then
+            echo "📋 Release PR has been created/updated for main branch"
+            echo "🚀 Ready for production deployment"
+          else
+            echo "⏭️ No changes between main and develop; release PR was not created/updated"
+          fi
 
       - name: Notify on failure
         if: failure()

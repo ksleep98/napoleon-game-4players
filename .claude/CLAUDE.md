@@ -294,7 +294,8 @@ GitHubリポジトリの設定をTerraformで管理し、VCS-driven workflowで�
   変更との組み合わせが気になるときは develop を取り込んで push（ただし
   [ブランチクリーンアップ](#ブランチクリーンアップ手動実行のみ)の事故歴に注意）
 - `GITHUB_TOKEN` によるマージは後続 workflow を起動しないため、
-  `auto-release-pr.yml`（develop への push で発火）は bot のマージでは動かない
+  `auto-release-pr.yml`（develop への push で発火。現在リリース PR を作っている唯一の経路で、
+  `e2e-develop.yml` 側の作成ジョブは条件不一致で動いていない）は bot のマージでは動かない
 
 #### 運用フロー
 
@@ -431,15 +432,23 @@ pnpm run develop:unprotect
 
 ### E2E テスト
 
-CI では2つのワークフローに分かれています。**PR の "E2E Tests" は Playwright を
+CI では2か所に分かれています。**PR の `e2e-tests` ジョブは Playwright を
 動かしていません**（名前に反するので注意）。
 
-| ワークフロー                            | 発火                           | 実際にやること                                                                          |
+| ワークフロー / ジョブ                   | 発火                           | 実際にやること                                                                          |
 | --------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------- |
-| `e2e.yml` — "E2E Tests"                 | PR / push                      | `pnpm build` + `pnpm smoke`（Next.js 起動とトップページ 200 の確認）のみ                |
+| `ci.yml` の `e2e-tests` ジョブ          | develop 向け PR                | `pnpm build` + `pnpm smoke`（Next.js 起動とトップページ 200 の確認）のみ                |
 | `e2e-develop.yml` — "E2E Develop Tests" | develop の Vercel デプロイ完了 | 実デプロイ先に対して Playwright を実行（`SKIP_E2E_TESTS: "false"`）→ リリース PR を作成 |
 
-リリース PR（タイトルに `🚀 Release` を含む）では `e2e.yml` はスキップされます。
+> ⚠️ **`e2e-develop.yml` は現在実質動いていません。** ジョブ条件が
+> `environment == 'Preview – napoleon-game-4players'` / `ref == 'develop'` を見ているが、
+> Vercel の deployment は `environment: "Preview"`・`ref` がコミット SHA で届くため一致せず、
+> 直近 200 件の run はすべて skipped（2026-11-09 時点）。
+> **リリース PR は `auto-release-pr.yml`（develop への push で発火）が作成しています。**
+
+docs・設定ファイルだけの PR（旧 `e2e.yml` の paths-ignore 相当。判定は `ci.yml` の
+`changes` ジョブ）では `e2e-tests` はスキップされます。リリース PR は main 向けなので
+`ci.yml` 自体が起動しません。
 
 `SKIP_E2E_TESTS` 環境変数でローカル実行を制御できます（未設定時は `false` = 実行する）:
 

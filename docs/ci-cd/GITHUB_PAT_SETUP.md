@@ -54,24 +54,15 @@ Secret: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 以下のワークフローが正常動作することを確認：
 
 - ✅ **Auto Release PR** - develop → main PR自動作成
-- ✅ **Auto Release** - mainへのpush時にRelease作成
+- ✅ **Release**（`release.yml`）- mainへのpush時にRelease作成
 - ✅ **PR Description** - PR説明自動生成
 
 ## 🔧 ワークフロー設定詳細
 
-### auto-release-pr.yml
-
-```yaml
-env:
-  GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
-```
-
-### auto-release.yml
-
-```yaml
-env:
-  GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
-```
+> ⚠️ **現在のワークフローは `PAT_TOKEN` を参照していません。**
+> `auto-release-pr.yml` / `release.yml` を含め、すべて `secrets.GITHUB_TOKEN` のみを
+> 使っています（`GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}`）。PAT を使わせたい場合は
+> 各ワークフローの `GH_TOKEN` を書き換える必要があります。
 
 ## 🛡️ セキュリティ考慮事項
 
@@ -179,7 +170,7 @@ GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
    - リリースノート自動生成
 
 2. **Release PRをmerge**
-   - Auto Release ワークフロー実行
+   - Release ワークフロー（`release.yml`）実行
    - GitHubリリース自動作成
    - バージョンタグ自動生成
 
