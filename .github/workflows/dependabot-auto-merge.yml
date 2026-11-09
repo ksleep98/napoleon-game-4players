@@ -8,13 +8,24 @@ name: Dependabot Auto Merge
 # 直接マージする。予約方式だと、予約後に PR の内容が変わっても再判定されないため。
 # マージは「全チェックが green（必須以外も含む）かつ CLEAN」のときだけ。
 #
-# トリガーは schedule のみ。
+# トリガー:
+# - workflow_run: Dependabot PR のチェック（CI / Python / CodeQL）が終わった時点で判定する。
+#   主経路。このリポジトリでは schedule が数時間遅れることがあり、当てにできない
+#   （週次 00:00 の schedule が 03:57〜05:53 に起動していた）
+# - schedule: 公開日待ちで保留にした PR の再判定用の保険
+# 使わないもの:
 # - pull_request_target は 2026-12-02 から public リポジトリで既定ブロックになる
 #   （https://github.blog/changelog/2026-11-02-pull_request_target-blocked-by-default-december-2）
 # - GITHUB_TOKEN によるマージは後続 workflow を起動しない（GitHub の仕様）ため、
 #   develop への push でも拾えない
+#
+# workflow_run は base（develop）の定義で動くが、この workflow は PR のコードを
+# checkout も実行もしない（判定スクリプトは develop のもの、PR は API でデータとして読むだけ）。
 
 on:
+  workflow_run:
+    workflows: ["CI", "Python", "CodeQL"]
+    types: [completed]
   schedule:
     # 毎時 0 分前後は GitHub の schedule が混み、遅延・スキップされやすいのでずらす
     - cron: "7,27,47 * * * *"
@@ -29,6 +40,10 @@ concurrency:
 
 jobs:
   sweep:
+    # workflow_run は Dependabot が起こしたチェック（PR 作成・rebase）のときだけ
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.actor.login == 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -37,6 +52,8 @@ jobs:
       - name: Checkout scripts
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # どのトリガーでも develop のスクリプトを使う（PR 側のコードは取らない）
+          ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
           sparse-checkout: .github/scripts
 
