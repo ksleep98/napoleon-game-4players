@@ -18,7 +18,7 @@ resource "github_repository" "napoleon_game" {
   allow_merge_commit     = true   # develop -> main: 通常マージ
   allow_squash_merge     = true   # feature -> develop: スカッシュマージ
   allow_rebase_merge     = false  # リベースマージ無効
-  allow_auto_merge       = false  # 自動マージ無効（手動マージのみ）
+  allow_auto_merge       = true   # Dependabot の patch/minor 用（.github/workflows/dependabot-auto-merge.yml）
   delete_branch_on_merge = true   # マージ後ブランチ自動削除
 
   # Security

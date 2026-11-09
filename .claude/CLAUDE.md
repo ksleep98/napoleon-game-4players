@@ -278,11 +278,15 @@ GitHubリポジトリの設定をTerraformで管理し、VCS-driven workflowで�
 
 **`BEHIND` になった PR の扱い:**
 
-- Dependabot PR → `@dependabot rebase` をコメントし、CI 再実行を待ってからマージ
+- Dependabot PR → **自動**。`.github/workflows/dependabot-auto-merge.yml` が
+  patch / minor 更新に auto-merge（squash）を予約し、20 分おきの schedule で
+  `BEHIND` の PR に1本ずつ `@dependabot rebase` を依頼する。`ci-pipeline` が通れば
+  GitHub がマージする。**major 更新と `ci-pipeline` が赤い PR は手動対応**
 - 自分の PR → develop を取り込んで push（ただし
   [ブランチクリーンアップ](#ブランチクリーンアップ手動実行のみ)の事故歴に注意）
-- **auto-merge はリポジトリ設定で無効**なので `gh pr merge --auto` は使えません。
-  複数 PR を捌くときは1本ずつ直列に処理します
+- auto-merge はリポジトリ設定（`allow_auto_merge = true`）で有効。ただし
+  `GITHUB_TOKEN` で予約したマージは後続 workflow を起動しないため、
+  `auto-release-pr.yml`（develop への push で発火）は bot のマージでは動かない
 
 #### 運用フロー
 

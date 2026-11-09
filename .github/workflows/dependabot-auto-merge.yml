@@ -1,0 +1,108 @@
+name: Dependabot Auto Merge
+
+# Dependabot の patch / minor 更新に auto-merge を予約する。マージ可否の判断は
+# develop の Ruleset（必須チェック ci-pipeline・strict）に任せ、ここでは予約と
+# BEHIND の解消だけを行う。major 更新は予約せず、手動レビューに残す。
+#
+# 注意: GITHUB_TOKEN で予約した auto-merge によるマージは、後続の workflow を
+# 起動しない（GitHub の仕様）。そのため develop への push ではなく schedule で
+# BEHIND の PR を拾う。
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+  schedule:
+    - cron: "*/20 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependabot-auto-merge-${{ github.event.pull_request.number || 'sweep' }}
+  cancel-in-progress: false
+
+jobs:
+  enable-auto-merge:
+    # pull_request_target は base の権限で動くため、PR のコードは checkout しない。
+    # PR 作成者だけでなく、このイベントを起こした actor も Dependabot に限定する
+    # （第三者が Dependabot ブランチに push した場合に予約させない）。
+    if: >-
+      github.event_name == 'pull_request_target' &&
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge (patch / minor)
+        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+        run: |
+          echo "update-type: ${UPDATE_TYPE:-unknown}"
+          gh pr merge --auto --squash "$PR_URL"
+
+      - name: Leave major updates for manual review
+        if: >-
+          steps.metadata.outputs.update-type == 'version-update:semver-major' &&
+          github.event.action == 'opened'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          gh pr comment "$PR_URL" --body "major 更新のため auto-merge は予約していません。変更内容を確認してから手動でマージしてください。"
+
+  rebase-behind:
+    # auto-merge 予約済みで BEHIND の PR を1本だけ rebase させる。全部を一度に
+    # rebase すると、1本マージされた時点で残りが再び BEHIND になり CI が無駄になる。
+    if: github.event_name != 'pull_request_target'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Request rebase for the oldest BEHIND PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          prs=$(gh pr list --author 'app/dependabot' --base develop --state open \
+            --json number,mergeStateStatus,autoMergeRequest,createdAt \
+            --jq 'map(select(.autoMergeRequest != null)) | sort_by(.createdAt)')
+
+          # CI 実行中（BLOCKED で checks が pending）の PR があれば、その結果を待つ
+          for n in $(jq -r '.[] | select(.mergeStateStatus == "BLOCKED") | .number' <<<"$prs"); do
+            # gh pr checks は pending があると非ゼロで終了するので、終了コードではなく出力で判定する
+            pending=$(gh pr checks "$n" --required --json bucket --jq '[.[] | select(.bucket == "pending")] | length' 2>/dev/null) || true
+            if [ "${pending:-0}" != "0" ]; then
+              echo "#$n is running required checks; waiting."
+              exit 0
+            fi
+          done
+
+          n=$(jq -r 'map(select(.mergeStateStatus == "BEHIND")) | .[0].number // empty' <<<"$prs")
+          if [ -z "$n" ]; then
+            echo "No BEHIND Dependabot PR with auto-merge enabled."
+            exit 0
+          fi
+
+          # 前回の依頼に Dependabot がまだ応えていなければ、重ねて依頼しない
+          last_commit=$(gh pr view "$n" --json commits --jq '.commits[-1].committedDate')
+          already=$(gh pr view "$n" --json comments \
+            --jq "[.comments[] | select(.body == \"@dependabot rebase\" and .createdAt > \"$last_commit\")] | length")
+          if [ "$already" != "0" ]; then
+            echo "#$n: rebase already requested; waiting for Dependabot."
+            exit 0
+          fi
+
+          gh pr comment "$n" --body "@dependabot rebase"
+          echo "Requested rebase for #$n"
