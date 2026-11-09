@@ -16,7 +16,8 @@ name: Dependabot Auto Merge
 
 on:
   schedule:
-    - cron: "*/20 * * * *"
+    # 毎時 0 分前後は GitHub の schedule が混み、遅延・スキップされやすいのでずらす
+    - cron: "7,27,47 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -39,9 +40,9 @@ jobs:
           persist-credentials: false
           sparse-checkout: .github/scripts
 
-      - name: Merge one eligible PR, or request a rebase
-        # 1回に動かすのは1本だけ。マージすると残りは BEHIND になるので、
-        # 次の実行で古い順に1本ずつ rebase → CI → マージと進める。
+      - name: Merge eligible PRs, or request a rebase
+        # 古い順に判定し、条件を満たすものを続けてマージする。lockfile が衝突した PR は
+        # DIRTY になり、Dependabot が rebase → CI → 次の実行でマージ、と進む。
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
@@ -54,6 +55,7 @@ jobs:
           threshold=$(date -u -d "-${REBASE_TIMEOUT_HOURS} hours" +%Y-%m-%dT%H:%M:%SZ)
 
           busy=""
+          merged=""
           behind=()
           for n in $prs; do
             result=$(.github/scripts/dependabot-auto-merge.sh "$n" | tail -n1) || {
@@ -68,7 +70,8 @@ jobs:
               # 判定したコミットから head が動いていたらマージしない
               if gh pr merge "$n" --squash --match-head-commit "$head_oid"; then
                 echo "Merged #$n"
-                exit 0
+                merged="$n"
+                continue
               fi
               echo "::warning::#$n: merge failed; trying the next PR."
               continue
@@ -84,6 +87,12 @@ jobs:
               pass/BEHIND) behind+=("$n") ;;
             esac
           done
+
+          # strict を外しているので、1回の実行で条件を満たす PR を続けてマージする。
+          # マージした回は BEHIND の rebase 依頼をしない（次の実行で状態を見直す）
+          if [ -n "$merged" ]; then
+            exit 0
+          fi
 
           if [ -n "$busy" ]; then
             echo "#$busy is running checks; waiting."

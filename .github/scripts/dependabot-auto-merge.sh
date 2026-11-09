@@ -43,7 +43,6 @@ fi
 
 head_oid=$(jq -r '.headRefOid' <<<"$info")
 committed_at=$(jq -r '.commits[0].committedDate' <<<"$info")
-merge_state=$(jq -r '.mergeStateStatus' <<<"$info")
 ecosystem=$(jq -r '.headRefName | split("/")[1]' <<<"$info")
 
 case "$ecosystem" in
@@ -195,5 +194,13 @@ case ",${buckets}," in
   *,pending,* | ,,) checks=pending ;;
   *) checks=pass ;;
 esac
+
+# 直前に別の PR がマージされると mergeStateStatus は UNKNOWN になる（GitHub が非同期に
+# 再計算する）。判定の直前に取り直し、UNKNOWN の間は少し待つ。
+for _ in 1 2 3 4 5 6; do
+  merge_state=$(gh pr view "$pr" --json mergeStateStatus --jq '.mergeStateStatus')
+  [ "$merge_state" != "UNKNOWN" ] && break
+  sleep 5
+done
 
 echo "ELIGIBLE ${head_oid} ${merge_state} ${checks} ${committed_at}"
