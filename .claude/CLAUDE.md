@@ -281,7 +281,8 @@ GitHubリポジトリの設定をTerraformで管理し、VCS-driven workflowで�
 **PR のマージの扱い:**
 
 - Dependabot PR（npm / Python の patch・minor）→ **自動**。
-  `.github/workflows/dependabot-auto-merge.yml` が Dependabot PR のチェック完了時（`workflow_run`）と schedule（毎時 7・27・47 分。このリポジトリでは数時間遅れることがある）に、古い順で
+  `.github/workflows/dependabot-auto-merge.yml` が Dependabot PR のチェック完了時（`workflow_run`）と 公開日待ちで保留した PR があるときの 1 時間後の再起動（`retry-later` ジョブ。schedule は
+  このリポジトリではほぼ起動しないため当てにしない）に、古い順で
   「判定 → 全チェック green かつ CLEAN ならマージ」を進める。GitHub の auto-merge（予約）は使わず、判定したコミットに
   `--match-head-commit` で固定して直接マージする（リポジトリの `allow_auto_merge` は false のまま）
 - 判定は `.github/scripts/dependabot-auto-merge.sh`。コミットメッセージの依存に加え
