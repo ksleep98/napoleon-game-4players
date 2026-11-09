@@ -75,5 +75,4 @@ export default defineConfig({
 
   // 外部環境を使用するためwebServerは無効
   webServer: undefined,
-
 })

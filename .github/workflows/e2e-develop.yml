@@ -100,8 +100,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: develop
-          fetch-depth: 0
+          # デプロイされたコミットのテスト・設定で試験する（手動実行では実行した ref）
+          ref: ${{ github.event.deployment.sha || github.sha }}
+          persist-credentials: false
 
       - name: Setup pnpm
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
