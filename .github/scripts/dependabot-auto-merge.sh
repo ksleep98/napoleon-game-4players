@@ -4,7 +4,7 @@
 #
 # Usage: dependabot-auto-merge.sh <PR number>
 # Output (stdout):
-#   ELIGIBLE <headRefOid> <mergeStateStatus> <checks: pass|pending|fail>
+#   ELIGIBLE <headRefOid> <mergeStateStatus> <checks: pass|pending|fail> <committedDate>
 #   HOLD <理由>
 #
 # ELIGIBLE の条件（すべて満たすこと）:
@@ -42,6 +42,7 @@ if [ "$(jq -r '(.commits | length) == 1 and (.commits[0].authors | all(.login ==
 fi
 
 head_oid=$(jq -r '.headRefOid' <<<"$info")
+committed_at=$(jq -r '.commits[0].committedDate' <<<"$info")
 merge_state=$(jq -r '.mergeStateStatus' <<<"$info")
 ecosystem=$(jq -r '.headRefName | split("/")[1]' <<<"$info")
 
@@ -74,23 +75,70 @@ major 更新を含むため自動マージの対象外です。変更内容を�
   hold "contains a semver-major update"
 fi
 
-# lockfile の差分で追加されたパッケージ（推移的依存を含む）。PR のファイルは
-# checkout せず、diff をテキストとして読むだけ。
+# lockfile で新たに入るパッケージ（推移的依存を含む）。PR のファイルは checkout せず、
+# データとして取得して読むだけ。
+repo="${GH_REPO:-$(gh repo view --json nameWithOwner --jq .nameWithOwner)}"
 diff=$(gh pr diff "$pr")
+
+# pnpm-lock.yaml: 追加された packages / snapshots の "  name@version:" 行（peer 接尾辞は除く）
 locked=$(awk '
-  function unq(s) { gsub(/^"|"$/, "", s); return s }
-  /^diff --git / { file = $4; name = ""; next }
-  # pnpm-lock.yaml: packages / snapshots の "  name@version:" 行（peer 接尾辞は除く）
+  /^diff --git / { file = $4; next }
   file ~ /pnpm-lock\.yaml$/ && /^\+  [^ ]/ {
     key = substr($0, 4); sub(/:( .*)?$/, "", key); gsub(/\047/, "", key); sub(/\(.*$/, "", key)
     at = index(substr(key, 2), "@")
     if (at > 0) print substr(key, 1, at), substr(key, at + 2)
-    next
   }
-  # uv.lock: [[package]] の name 行（文脈行）に続く追加された version 行
-  file ~ /uv\.lock$/ && /^[ +]name = / { name = unq($3); next }
-  file ~ /uv\.lock$/ && /^\+version = / && name != "" { print name, unq($3); name = ""; next }
-' <<<"$diff" | sort -u)
+' <<<"$diff")
+
+# uv.lock: diff の文脈行では版と配布ファイルの対応が取れない（依存リストが長いと
+# 別 hunk になる）ため、PR の親と head の uv.lock 全体を取得して構造で比較する。
+# 新しい (name, version) は公開日を確認し、版が同じなのに配布ファイルが変わったもの・
+# PyPI 以外の source は検証できないので UNVERIFIED とする。
+uv_locks=$(gh pr diff "$pr" --name-only | grep -E '(^|/)uv\.lock$' || true)
+if [ -n "$uv_locks" ]; then
+  parent=$(gh api "repos/${repo}/commits/${head_oid}" --jq '.parents[0].sha')
+  work=$(mktemp -d)
+  trap 'rm -rf "$work"' EXIT
+  for path in $uv_locks; do
+    gh api -H 'Accept: application/vnd.github.raw' "repos/${repo}/contents/${path}?ref=${parent}" >"$work/base.lock"
+    gh api -H 'Accept: application/vnd.github.raw' "repos/${repo}/contents/${path}?ref=${head_oid}" >"$work/head.lock"
+    locked+=$'\n'$(python3 -I - "$work/base.lock" "$work/head.lock" <<'PY'
+import sys
+import tomllib
+
+PYPI = {"registry": "https://pypi.org/simple"}
+
+
+def load(path):
+    with open(path, "rb") as f:
+        lock = tomllib.load(f)
+    packages = {}
+    for pkg in lock.get("package", []):
+        files = [pkg.get("sdist", {}).get("url", "")]
+        files += [w.get("url", "") for w in pkg.get("wheels", [])]
+        packages[(pkg["name"], pkg.get("version", ""))] = (pkg.get("source", {}), sorted(files))
+    return packages
+
+
+base, head = load(sys.argv[1]), load(sys.argv[2])
+for (name, version), (source, files) in sorted(head.items()):
+    if source.get("editable") == "." or source.get("virtual") == ".":
+        continue  # このリポジトリ自身
+    if source != PYPI:
+        print("UNVERIFIED", f"source-of-{name}")
+    elif (name, version) not in base:
+        print(name, version)
+    elif base[(name, version)][1] != files:
+        print("UNVERIFIED", f"files-of-{name}")
+PY
+)
+  done
+fi
+locked=$(sed '/^$/d' <<<"$locked" | sort -u)
+
+if grep -q '^UNVERIFIED ' <<<"$locked"; then
+  hold "lockfile changes that cannot be age-checked: $(grep '^UNVERIFIED ' <<<"$locked" | awk '{ print $2 }' | tr '\n' ' ')"
+fi
 
 deps=$( (
   awk '{ print $1, $2 }' <<<"$meta"
@@ -148,4 +196,4 @@ case ",${buckets}," in
   *) checks=pass ;;
 esac
 
-echo "ELIGIBLE ${head_oid} ${merge_state} ${checks}"
+echo "ELIGIBLE ${head_oid} ${merge_state} ${checks} ${committed_at}"
