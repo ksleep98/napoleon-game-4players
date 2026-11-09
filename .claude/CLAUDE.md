@@ -270,18 +270,19 @@ GitHubリポジトリの設定をTerraformで管理し、VCS-driven workflowで�
 **重要な設計決定:**
 
 - ✅ CI必須チェック: **develop のみ**有効（`ci-pipeline`）。main には設定していない
-- ⚠️ **Strict Status Checks: 有効**（`strict_required_status_checks_policy = true`、
-  `terraform/github.tf`）。**develop が進むと他の PR は `BEHIND` になり、
-  追随するまでマージできません。**
+- **Strict Status Checks: 無効**（`strict_required_status_checks_policy = false`、
+  `terraform/github.tf`）。develop が進んでも、他の PR は `ci-pipeline` が通って
+  いればそのままマージできる。github-actions[bot] の `@dependabot rebase` に
+  Dependabot が反応せず、strict のままでは自動マージが `BEHIND` で止まったため外した
+  （2026-11-09）。lockfile が衝突する PR は Dependabot が自分で rebase する
 - ✅ Bypass Actors: 空（管理者バイパス無し。`gh pr merge --admin` も
   "Required status check ci-pipeline is expected" で失敗する）
 
-**`BEHIND` になった PR の扱い:**
+**PR のマージの扱い:**
 
 - Dependabot PR（npm / Python の patch・minor）→ **自動**。
   `.github/workflows/dependabot-auto-merge.yml` が 20 分おきに、古い順で1本ずつ
-  「判定 → 全チェック green かつ CLEAN ならマージ / BEHIND なら `@dependabot rebase`」
-  を進める。GitHub の auto-merge（予約）は使わず、判定したコミットに
+  「判定 → 全チェック green かつ CLEAN ならマージ」を進める。GitHub の auto-merge（予約）は使わず、判定したコミットに
   `--match-head-commit` で固定して直接マージする（リポジトリの `allow_auto_merge` は false のまま）
 - 判定は `.github/scripts/dependabot-auto-merge.sh`。コミットメッセージの依存に加え
   **lockfile の差分で追加された全パッケージ（推移的依存を含む）が公開から 7 日以上**で
@@ -289,7 +290,8 @@ GitHubリポジトリの設定をTerraformで管理し、VCS-driven workflowで�
   推移的依存には効かない**ため、これが公開直後の版を取り込まない歯止め
 - **手動対応のまま**: major 更新、`github_actions` の更新（タグの付け替えを公開日で
   検知できない）、いずれかのチェックが赤い PR、変更パッケージが 80 を超える PR
-- 自分の PR → develop を取り込んで push（ただし
+- 自分の PR → `ci-pipeline` が通ればそのままマージ可。develop との衝突や、develop 側の
+  変更との組み合わせが気になるときは develop を取り込んで push（ただし
   [ブランチクリーンアップ](#ブランチクリーンアップ手動実行のみ)の事故歴に注意）
 - `GITHUB_TOKEN` によるマージは後続 workflow を起動しないため、
   `auto-release-pr.yml`（develop への push で発火）は bot のマージでは動かない
