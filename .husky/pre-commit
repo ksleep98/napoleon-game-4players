@@ -20,6 +20,21 @@ fi
 echo "📝 Running automatic fixes on staged files..."
 npx lint-staged
 
+# Workflow を変えたら actions.lock と食い違っていないか確認する。
+# 食い違うと GitHub がその workflow を parse エラーで起動しなくなり、PR では
+# チェック自体が出ないので気づけない（#666 で python.yml / security-audit.yml が停止）
+if git diff --cached --name-only | grep -qE '^\.github/workflows/.+\.ya?ml$'; then
+  if gh actions-lock --help >/dev/null 2>&1; then
+    echo "🔒 Verifying .github/workflows/actions.lock..."
+    if ! gh actions-lock --no-fix; then
+      echo "❌ actions.lock is out of date. Run 'gh actions-lock' and stage the lockfile."
+      exit 1
+    fi
+  else
+    echo "⚠️  gh actions-lock is not installed; skipping lockfile check (gh extension install github/gh-actions-lock)"
+  fi
+fi
+
 # Additional comprehensive checks
 echo "🔍 Running comprehensive quality checks..."
 
