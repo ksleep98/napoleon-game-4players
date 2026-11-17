@@ -12,6 +12,9 @@ name: Python
 # pip-audit-ignore.txt / このワークフロー）に絞り込み、それ以外の PR では skipped になる。
 on:
   pull_request:
+    # リリース PR（develop → main）は対象外。e2e-develop.yml の create-release-pr が
+    # python/ に差分があるときだけ workflow_dispatch で起動する（release.yml と同じ理由）
+    branches: [develop]
     paths:
       - "python/**"
       # ルール移植のフィクスチャは TS 側の実装から生成される。TS を変えて
@@ -173,7 +176,8 @@ jobs:
           echo "vulnerabilities=$VULN_COUNT" >> "$GITHUB_OUTPUT"
 
       - name: Create issue if vulnerabilities found
-        if: steps.audit.outputs.vulnerabilities > 0 && github.event_name != 'pull_request'
+        # Issue は週次の schedule でだけ作る（リリース PR 更新ごとの dispatch で重複させない）
+        if: steps.audit.outputs.vulnerabilities > 0 && github.event_name == 'schedule'
         uses: actions/github-script@v9.0.0
         with:
           script: |
@@ -210,7 +214,7 @@ jobs:
             })
 
       - name: Fail PR if vulnerabilities found
-        if: steps.audit.outputs.vulnerabilities > 0 && github.event_name == 'pull_request'
+        if: steps.audit.outputs.vulnerabilities > 0 && github.event_name != 'schedule'
         run: |
           echo "Found ${{ steps.audit.outputs.vulnerabilities }} vulnerable package(s)."
           exit 1
