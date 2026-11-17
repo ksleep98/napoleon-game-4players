@@ -90,6 +90,44 @@ jobs:
           NEXT_PUBLIC_APP_ENV: production
           NODE_ENV: production
 
+  # workflow_dispatch の run は PR のチェック欄に出ないため、リリース PR から結果が
+  # 見えるよう commit status を付ける。依存のコードを実行するジョブに statuses: write を
+  # 渡さないよう、チェックアウトしない別ジョブに分けている
+  status-pending:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-slim
+    permissions:
+      statuses: write
+    steps:
+      - name: Mark pending
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh api "repos/$GH_REPO/statuses/$SHA" -f state=pending \
+            -f context="release / build-and-test" -f target_url="$RUN_URL" -f description="Running" >/dev/null
+
+  status-report:
+    needs: [status-pending, build-and-test]
+    if: always() && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-slim
+    permissions:
+      statuses: write
+    steps:
+      - name: Report result
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          OK: ${{ needs.build-and-test.result == 'success' }}
+        run: |
+          if [ "$OK" = "true" ]; then state=success; desc="Passed"; else state=failure; desc="Failed"; fi
+          gh api "repos/$GH_REPO/statuses/$SHA" -f state="$state" \
+            -f context="release / build-and-test" -f target_url="$RUN_URL" -f description="$desc" >/dev/null
+
   deploy-notification:
     runs-on: ubuntu-latest
     needs: [build-and-test]
