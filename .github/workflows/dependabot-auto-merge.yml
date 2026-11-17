@@ -81,6 +81,7 @@ jobs:
           busy=""
           merged=""
           behind=()
+          failing=()
           for n in $prs; do
             result=$(.github/scripts/dependabot-auto-merge.sh "$n" | tail -n1) || {
               echo "::warning::#$n: evaluation failed"
@@ -113,6 +114,7 @@ jobs:
                 fi
                 ;;
               pass/BEHIND) behind+=("$n") ;;
+              fail/*) failing+=("$n") ;;
             esac
           done
 
@@ -125,6 +127,25 @@ jobs:
           if [ -n "$busy" ]; then
             echo "#$busy is running checks; waiting."
             exit 0
+          fi
+
+          # チェックが赤い PR は、develop 側の修正（脆弱性対応など）で直っている可能性がある。
+          # strict を外しているので BEHIND にならず、放っておくと古い赤のまま止まる（#661）。
+          # develop がその PR の最後のコミットより後に進んでいて、そのコミット以降に
+          # rebase を依頼していなければ 1 回だけ依頼する。rebase 後も赤なら、develop が
+          # 再び進むまで依頼しない。依頼は 1 回の実行で 1 本まで（CI を一度に回しすぎない）。
+          if [ "${#failing[@]}" -gt 0 ]; then
+            develop_at=$(gh api "repos/${GH_REPO}/commits/develop" --jq '.commit.committer.date')
+            for n in "${failing[@]}"; do
+              last_commit=$(gh pr view "$n" --json commits --jq '.commits[-1].committedDate')
+              [[ "$develop_at" > "$last_commit" ]] || continue
+              requested=$(gh pr view "$n" --json comments --jq \
+                "[.comments[] | select(.body == \"@dependabot rebase\" and .createdAt > \"$last_commit\")] | length")
+              [ "$requested" = "0" ] || continue
+              gh pr comment "$n" --body "@dependabot rebase"
+              echo "#$n: checks failing and develop has moved on; requested rebase."
+              break
+            done
           fi
 
           # BEHIND の PR に古い順で rebase を依頼する。依頼済みで応答待ちなら待つが、
