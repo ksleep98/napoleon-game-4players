@@ -7,11 +7,13 @@ on:
 
 permissions:
   contents: read
-  issues: write
 
 jobs:
   security-audit:
     runs-on: ubuntu-latest
+    outputs:
+      ok: ${{ steps.audit.outputs.ok }}
+      vulnerabilities: ${{ steps.audit.outputs.vulnerabilities }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7.0.1
@@ -31,9 +33,18 @@ jobs:
         id: audit
         continue-on-error: true
         run: |
-          pnpm audit --audit-level=moderate --json > audit-result.json
-          VULN_COUNT=$(cat audit-result.json | jq '.metadata.vulnerabilities | to_entries | map(select(.value > 0)) | length')
-          echo "vulnerabilities=$VULN_COUNT" >> $GITHUB_OUTPUT
+          # pnpm audit は脆弱性があると非 0 で終わる。|| true が無いとここでステップが
+          # 止まって件数が出力されず、検出しても Issue が作られなかった
+          pnpm audit --audit-level=moderate --json > audit-result.json || true
+          # 結果を読めたときだけ ok。読めないまま 0 件扱いで Issue を閉じないため
+          if jq -e '.metadata.vulnerabilities | type == "object"' audit-result.json >/dev/null 2>&1; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+            # --audit-level と揃えて moderate 以上だけ数える
+            VULN_COUNT=$(jq '[.metadata.vulnerabilities | (.moderate // 0), (.high // 0), (.critical // 0)] | add' audit-result.json)
+          else
+            VULN_COUNT=0
+          fi
+          echo "vulnerabilities=$VULN_COUNT" >> "$GITHUB_OUTPUT"
 
       - name: Check Outdated Packages
         id: outdated
@@ -43,47 +54,13 @@ jobs:
           OUTDATED_COUNT=$(cat outdated.json | jq '. | length')
           echo "outdated=$OUTDATED_COUNT" >> $GITHUB_OUTPUT
 
-      - name: Create Issue if Vulnerabilities Found
-        if: steps.audit.outputs.vulnerabilities > 0
-        uses: actions/github-script@v9.0.0
+      - name: Upload audit result
+        if: steps.audit.outputs.ok == 'true'
+        uses: actions/upload-artifact@v7.0.2
         with:
-          script: |
-            const fs = require('fs');
-            const auditResult = JSON.parse(fs.readFileSync('audit-result.json', 'utf8'));
-
-            let advisories = '';
-            if (auditResult.advisories) {
-              for (const [id, advisory] of Object.entries(auditResult.advisories)) {
-                advisories += '\n### ' + advisory.title + '\n';
-                advisories += '- Package: ' + advisory.module_name + '\n';
-                advisories += '- Severity: ' + advisory.severity + '\n';
-                advisories += '- Vulnerable: ' + advisory.vulnerable_versions + '\n';
-                advisories += '- Patched: ' + advisory.patched_versions + '\n';
-                advisories += '- CVE: ' + advisory.cves.join(', ') + '\n';
-                advisories += '- Info: ' + advisory.url + '\n';
-              }
-            }
-
-            const issueBody = '## Security Vulnerabilities Detected\n\n' +
-              'Weekly security audit found vulnerabilities.\n\n' +
-              '**Date**: ' + new Date().toISOString().split('T')[0] + '\n\n' +
-              '## Vulnerabilities\n' + advisories + '\n\n' +
-              '## Action Required\n\n' +
-              '1. Review vulnerabilities above\n' +
-              '2. Update packages: pnpm update package-name --latest\n' +
-              '3. Or use overrides in package.json\n' +
-              '4. Run tests: pnpm test\n' +
-              '5. Create PR with fixes\n\n' +
-              '## Reference\n\n' +
-              '- [Supply Chain Security Guide](./docs/security/SUPPLY_CHAIN_SECURITY.md)\n';
-
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: 'Security Audit: Vulnerabilities Found (' + new Date().toISOString().split('T')[0] + ')',
-              body: issueBody,
-              labels: ['security', 'dependencies']
-            });
+          name: pnpm-audit-result
+          path: audit-result.json
+          retention-days: 7
 
       - name: Summary
         run: |
@@ -91,3 +68,45 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- Vulnerabilities: ${{ steps.audit.outputs.vulnerabilities }}" >> $GITHUB_STEP_SUMMARY
           echo "- Outdated Packages: ${{ steps.outdated.outputs.outdated }}" >> $GITHUB_STEP_SUMMARY
+
+  # 監査結果を Issue に反映する（検出時は作成・更新、0 件なら閉じる）。
+  # pnpm install で依存のコードを実行するジョブに issues: write を渡さないよう分けている
+  audit-issue:
+    needs: [security-audit]
+    if: >-
+      !cancelled() &&
+      needs.security-audit.outputs.ok == 'true'
+    runs-on: ubuntu-slim
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout scripts
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+
+      - name: Download audit result
+        if: needs.security-audit.outputs.vulnerabilities != '0'
+        uses: actions/download-artifact@v8.0.2
+        with:
+          name: pnpm-audit-result
+
+      - name: Sync issue
+        uses: actions/github-script@v9.0.0
+        env:
+          VULNS: ${{ needs.security-audit.outputs.vulnerabilities }}
+        with:
+          script: |
+            const sync = require('./.github/scripts/sync-audit-issue.js')
+            await sync({
+              github,
+              context,
+              kind: 'npm',
+              resultPath: 'audit-result.json',
+              vulnerabilities: Number(process.env.VULNS),
+              // このワークフローは schedule と手動実行のみなので、どちらでも作成・更新してよい
+              isScheduled: true,
+            })
