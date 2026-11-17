@@ -227,3 +227,41 @@ jobs:
             echo ""
             echo "- Vulnerable packages: ${{ steps.audit.outputs.vulnerabilities }}"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # workflow_dispatch の run は PR のチェック欄に出ないため、リリース PR から結果が
+  # 見えるよう commit status を付ける。依存のコードを実行するジョブに statuses: write を
+  # 渡さないよう、チェックアウトしない別ジョブに分けている
+  status-pending:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-slim
+    permissions:
+      statuses: write
+    steps:
+      - name: Mark pending
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh api "repos/$GH_REPO/statuses/$SHA" -f state=pending \
+            -f context="python / lint + security" -f target_url="$RUN_URL" -f description="Running" >/dev/null
+
+  status-report:
+    needs: [status-pending, python-lint, python-security]
+    if: always() && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-slim
+    permissions:
+      statuses: write
+    steps:
+      - name: Report result
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          OK: ${{ needs.python-lint.result == 'success' && contains(fromJSON('["success","skipped"]'), needs.python-security.result) }}
+        run: |
+          if [ "$OK" = "true" ]; then state=success; desc="Passed"; else state=failure; desc="Failed"; fi
+          gh api "repos/$GH_REPO/statuses/$SHA" -f state="$state" \
+            -f context="python / lint + security" -f target_url="$RUN_URL" -f description="$desc" >/dev/null
