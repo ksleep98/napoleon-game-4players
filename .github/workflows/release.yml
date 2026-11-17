@@ -2,7 +2,7 @@ name: Release
 
 # 旧 production-deploy.yml + auto-release.yml を統合したワークフロー。
 #
-# - build-and-test: main への push と main 向け PR（リリース PR）の両方で実行
+# - build-and-test: main への push と、リリース PR の更新時（workflow_dispatch）に実行
 # - deploy-notification: main への push 時のみ、build-and-test 成功後に実行
 # - create-release: main への push 時のみ、build-and-test 成功後に
 #   タグ作成 → GitHub Release 作成 → マージ済みリリース PR へ完了コメント
@@ -12,9 +12,13 @@ name: Release
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened]
+  # リリース PR（develop → main）向けの確認。e2e-develop.yml の create-release-pr が
+  # PR を作成・更新した直後に develop を ref にして起動する。同じコミットへの
+  # チェックなので PR 画面にも表示される。
+  # pull_request で起動しないのは、Dependabot 自動マージ（GITHUB_TOKEN）で develop が
+  # 進むとリリース PR の synchronize が github-actions[bot] 起点になり、
+  # "workflows awaiting approval" で止まるため（GITHUB_TOKEN の dispatch は止まらない）
+  workflow_dispatch:
 
 # タグ作成・GitHub Release 作成を途中で打ち切らないよう、キャンセルはしない（直列化のみ）
 concurrency:
@@ -85,6 +89,44 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: mock_service_role_key
           NEXT_PUBLIC_APP_ENV: production
           NODE_ENV: production
+
+  # workflow_dispatch の run は PR のチェック欄に出ないため、リリース PR から結果が
+  # 見えるよう commit status を付ける。依存のコードを実行するジョブに statuses: write を
+  # 渡さないよう、チェックアウトしない別ジョブに分けている
+  status-pending:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-slim
+    permissions:
+      statuses: write
+    steps:
+      - name: Mark pending
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh api "repos/$GH_REPO/statuses/$SHA" -f state=pending \
+            -f context="release / build-and-test" -f target_url="$RUN_URL" -f description="Running" >/dev/null
+
+  status-report:
+    needs: [status-pending, build-and-test]
+    if: always() && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-slim
+    permissions:
+      statuses: write
+    steps:
+      - name: Report result
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          OK: ${{ needs.build-and-test.result == 'success' }}
+        run: |
+          if [ "$OK" = "true" ]; then state=success; desc="Passed"; else state=failure; desc="Failed"; fi
+          gh api "repos/$GH_REPO/statuses/$SHA" -f state="$state" \
+            -f context="release / build-and-test" -f target_url="$RUN_URL" -f description="$desc" >/dev/null
 
   deploy-notification:
     runs-on: ubuntu-latest

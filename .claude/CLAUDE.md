@@ -293,7 +293,10 @@ GitHubリポジトリの設定をTerraformで管理し、VCS-driven workflowで�
   `baseline-browser-mapping` は 1 日以上で可（ほぼ毎日新版が出て、7 日を満たす瞬間が
   来ないため。#636）
 - **手動対応のまま**: major 更新、`github_actions` の更新（タグの付け替えを公開日で
-  検知できない）、いずれかのチェックが赤い PR、変更パッケージが 80 を超える PR
+  検知できない）、いずれかのチェックが赤い PR、変更パッケージが 80 を超える PR。
+  ただし赤い PR は、develop がその PR の最後のコミットより後に進んでいれば 1 回だけ
+  `@dependabot rebase` を自動で依頼する（develop 側の修正で直る場合があるため。#661）。
+  rebase 後も赤ければ手動対応
 - 自分の PR → `ci-pipeline` が通ればそのままマージ可。develop との衝突や、develop 側の
   変更との組み合わせが気になるときは develop を取り込んで push（ただし
   [ブランチクリーンアップ](#ブランチクリーンアップ手動実行のみ)の事故歴に注意）
@@ -457,6 +460,11 @@ CI では2か所に分かれています。**PR の `e2e-tests` ジョブは Pla
   アーティファクトは公開リポジトリで誰でも落とせる）
   （キーは Vercel の `napoleon-game-dev` → Settings → Deployment Protection で再発行できる）
 - E2E が通ったときだけリリース PR を作成・更新する（旧 `auto-release-pr.yml` は削除）
+- リリース PR を作成・更新した直後に `release.yml`（型・lint・テスト・ビルド）を、
+  python/ 等に差分があれば `python.yml` も `workflow_dispatch` で develop に対して起動する。
+  同じコミットへのチェックなので PR 画面に出る。リリース PR では `pull_request` で
+  起動しない: Dependabot 自動マージ（GITHUB_TOKEN）で develop が進むと synchronize が
+  github-actions[bot] 起点になり "workflows awaiting approval" で止まるため
 
 docs・設定ファイルだけの PR（旧 `e2e.yml` の paths-ignore 相当。判定は `ci.yml` の
 `changes` ジョブ）では `e2e-tests` はスキップされます。リリース PR は main 向けなので

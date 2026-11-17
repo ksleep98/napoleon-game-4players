@@ -277,8 +277,10 @@ jobs:
       needs.e2e-develop.result == 'success' &&
       needs.resolve.outputs.create_pr == 'true'
 
-    # PR の作成・更新は pull-requests: write で足りる（push はしない）
+    # PR の作成・更新は pull-requests: write で足りる（push はしない）。
+    # actions: write はリリース PR 向けのチェック（release.yml / python.yml）の起動用
     permissions:
+      actions: write
       contents: read
       pull-requests: write
 
@@ -448,6 +450,22 @@ jobs:
             # ラベルはリポジトリに存在せず gh pr create が失敗するため release のみにした
 
             echo "✅ Created new release PR: $PR_URL"
+          fi
+
+      # リリース PR 向けのチェックを develop の先頭に対して起動する。pull_request では
+      # 起動しない（bot のマージ起点だと承認待ちで止まる。release.yml の on: を参照）
+      - name: Run release checks for the release PR
+        if: steps.check_changes.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run release.yml --ref develop
+          echo "✅ Dispatched release.yml on develop"
+
+          # python.yml の pull_request の paths と同じ条件
+          if git diff --name-only main..develop | grep -qE '^(python/|src/lib/napoleonCardRules\.ts$|src/lib/ai/gameSimulator\.ts$|scripts/dump-rule-fixtures\.ts$|\.github/workflows/python\.yml$)'; then
+            gh workflow run python.yml --ref develop
+            echo "✅ Dispatched python.yml on develop"
           fi
 
       - name: Notify on success
