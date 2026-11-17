@@ -87,7 +87,14 @@ function buildBody(kind, findings, today, runUrl) {
   )
 }
 
-module.exports = async ({ github, context, kind, resultPath, vulnerabilities, isScheduled }) => {
+module.exports = async ({
+  github,
+  context,
+  kind,
+  resultPath,
+  vulnerabilities,
+  isScheduled,
+}) => {
   const k = KINDS[kind]
   if (!k) throw new Error(`unknown kind: ${kind}`)
   const { owner, repo } = context.repo
@@ -123,24 +130,34 @@ module.exports = async ({ github, context, kind, resultPath, vulnerabilities, is
       })
       console.log(`Closed #${issue.number}`)
     }
-    if (open.length === 0) console.log('No vulnerabilities and no open audit issue.')
+    if (open.length === 0)
+      console.log('No vulnerabilities and no open audit issue.')
     return
   }
 
   // 作成・更新は週次の schedule だけ（リリース PR 更新ごとの dispatch でコメントを重ねない）
   if (!isScheduled) {
-    console.log('Vulnerabilities found; issue updates are limited to the weekly schedule.')
+    console.log(
+      'Vulnerabilities found; issue updates are limited to the weekly schedule.'
+    )
     return
   }
 
   const result = JSON.parse(fs.readFileSync(resultPath, 'utf8'))
-  const findings = kind === 'python' ? pythonFindings(result) : npmFindings(result)
+  const findings =
+    kind === 'python' ? pythonFindings(result) : npmFindings(result)
   const body = buildBody(kind, findings, today, runUrl)
   const title = `${k.title} (${today})`
 
   if (open.length > 0) {
     const [latest] = open
-    await github.rest.issues.update({ owner, repo, issue_number: latest.number, title, body })
+    await github.rest.issues.update({
+      owner,
+      repo,
+      issue_number: latest.number,
+      title,
+      body,
+    })
     await github.rest.issues.createComment({
       owner,
       repo,
@@ -150,6 +167,12 @@ module.exports = async ({ github, context, kind, resultPath, vulnerabilities, is
     console.log(`Updated #${latest.number}`)
     return
   }
-  const { data } = await github.rest.issues.create({ owner, repo, title, body, labels: k.labels })
+  const { data } = await github.rest.issues.create({
+    owner,
+    repo,
+    title,
+    body,
+    labels: k.labels,
+  })
   console.log(`Created #${data.number}`)
 }
