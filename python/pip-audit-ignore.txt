@@ -7,6 +7,8 @@
 # pillow 12.3.0: 修正は 13.0.0 のみだが gradio 6.30.0 が pillow<13 を要求しており
 # 上げられない。アプリのコードは PIL を使わず、gradio の画像系コンポーネントも未使用。
 # gradio が pillow 13 を許容したら uv lock --upgrade-package pillow して削除する。
+# → gradio 6.32.0（2026-11-12 公開）で pillow<14 に緩んだ。公開 7 日を過ぎる 2026-11-19 以降に
+#   gradio と pillow を上げてこのブロックを削除する。
 CVE-2026-112390 2026-11-30 pillow<13 pinned by gradio 6.30.0
 CVE-2026-112391 2026-11-30 pillow<13 pinned by gradio 6.30.0
 CVE-2026-112392 2026-11-30 pillow<13 pinned by gradio 6.30.0
@@ -46,3 +48,6 @@ CVE-2026-114501 2026-11-30 pillow<13 pinned by gradio 6.30.0
 CVE-2026-112398 2026-11-30 pillow<13 pinned by gradio 6.30.0
 PYSEC-2026-4327 2026-11-30 pillow<13 pinned by gradio 6.30.0
 PYSEC-2026-4332 2026-11-30 pillow<13 pinned by gradio 6.30.0
+PYSEC-2026-4363 2026-11-30 pillow<13 pinned by gradio 6.31.0
+CVE-2026-128066 2026-11-30 pillow<13 pinned by gradio 6.31.0
+CVE-2026-128067 2026-11-30 pillow<13 pinned by gradio 6.31.0
