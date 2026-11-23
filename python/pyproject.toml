@@ -9,7 +9,7 @@ dependencies = [
   "uvicorn[standard]==0.54.0",
   "supabase==2.34.1",
   "pandas==3.1.1",
-  "numpy==2.5.4",
+  "numpy==2.5.5",
   "scikit-learn==1.9.1",
   "skops>=0.14.0",
   "python-dotenv>=1.2.2",
