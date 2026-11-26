@@ -322,7 +322,7 @@ jobs:
         uses: actions/checkout@v7.0.1
 
       - name: Dependency Review
-        uses: actions/dependency-review-action@v5.0.0
+        uses: actions/dependency-review-action@v5.0.1
         with:
           # 脆弱性の重要度がこのレベル以上の場合は失敗
           # low, moderate, high, critical
